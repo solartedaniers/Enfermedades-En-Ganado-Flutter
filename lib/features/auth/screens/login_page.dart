@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import 'register_page.dart';
+import 'forgot_password_page.dart';
+import '../../auth/home/screens/home_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -9,41 +12,38 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
 
-  final AuthService _authService = AuthService();
+  final AuthService authService = AuthService();
 
-  bool _loading = false;
+  bool loading = false;
 
-  Future<void> _login() async {
-    setState(() {
-      _loading = true;
-    });
+  Future<void> login() async {
+    setState(() => loading = true);
 
     try {
-      await _authService.signIn(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+      await authService.signIn(
+        email: emailController.text.trim(),
+        password: passwordController.text.trim(),
       );
 
-      if (!mounted) return; 
+      if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Inicio de sesión exitoso")),
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomePage()),
       );
     } catch (e) {
-      if (!mounted) return; 
+      if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
+        SnackBar(content: Text(e.toString())),
       );
     }
 
-    if (!mounted) return; 
-    setState(() {
-      _loading = false;
-    });
+    if (!mounted) return;
+    setState(() => loading = false);
   }
 
   @override
@@ -57,45 +57,53 @@ class _LoginPageState extends State<LoginPage> {
             children: [
               const Text(
                 "AgroVet AI",
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 40),
               TextField(
-                controller: _emailController,
+                controller: emailController,
                 decoration: const InputDecoration(
                   labelText: "Correo",
                   border: OutlineInputBorder(),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
               TextField(
-                controller: _passwordController,
+                controller: passwordController,
                 obscureText: true,
                 decoration: const InputDecoration(
                   labelText: "Contraseña",
                   border: OutlineInputBorder(),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 30),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _loading ? null : _login,
-                  child: _loading
+                  onPressed: loading ? null : login,
+                  child: loading
                       ? const CircularProgressIndicator()
                       : const Text("Iniciar sesión"),
                 ),
               ),
-              const SizedBox(height: 16),
               TextButton(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const ForgotPasswordPage()),
+                  );
+                },
                 child: const Text("¿Olvidaste tu contraseña?"),
               ),
               TextButton(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const RegisterPage()),
+                  );
+                },
                 child: const Text("Crear cuenta"),
               ),
             ],
