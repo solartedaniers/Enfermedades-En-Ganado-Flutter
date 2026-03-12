@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../screens/login_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -23,32 +24,96 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> loadProfile() async {
 
-    final user = supabase.auth.currentUser;
+    try {
 
-    if (user == null) return;
+      final user = supabase.auth.currentUser;
 
-    final data = await supabase
-        .from('profiles')
-        .select()
-        .eq('id', user.id)
-        .single();
+      if (user == null) return;
 
-    setState(() {
+      final data = await supabase
+          .from('profiles')
+          .select()
+          .eq('id', user.id)
+          .single();
 
-      username = data['username'] ?? "";
-      avatarUrl = data['avatar_url'] ?? "";
+      setState(() {
+        username = data['username'] ?? "";
+        avatarUrl = data['avatar_url'] ?? "";
+      });
 
-    });
+    } catch (e) {
+
+      debugPrint("Error loading profile: $e");
+
+    }
 
   }
 
   Future<void> logout() async {
 
+    final confirm = await showDialog(
+
+      context: context,
+
+      builder: (context) {
+
+        return AlertDialog(
+
+          title: const Text("Cerrar sesión"),
+
+          content: const Text("¿Seguro que deseas cerrar sesión?"),
+
+          actions: [
+
+            TextButton(
+
+              onPressed: () {
+
+                Navigator.pop(context,false);
+
+              },
+
+              child: const Text("Cancelar"),
+
+            ),
+
+            TextButton(
+
+              onPressed: () {
+
+                Navigator.pop(context,true);
+
+              },
+
+              child: const Text("Salir"),
+
+            ),
+
+          ],
+
+        );
+
+      },
+
+    );
+
+    if (confirm != true) return;
+
     await supabase.auth.signOut();
 
     if (!mounted) return;
 
-    Navigator.pushReplacementNamed(context, '/login');
+    Navigator.pushAndRemoveUntil(
+
+      context,
+
+      MaterialPageRoute(
+        builder: (context) => const LoginPage(),
+      ),
+
+      (route) => false,
+
+    );
 
   }
 
@@ -71,12 +136,12 @@ class _HomePageState extends State<HomePage> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
 
-          boxShadow: [
+          boxShadow: const [
 
             BoxShadow(
               color: Colors.black12,
               blurRadius: 10,
-              offset: const Offset(0,4),
+              offset: Offset(0,4),
             )
 
           ],
@@ -127,8 +192,12 @@ class _HomePageState extends State<HomePage> {
         actions: [
 
           IconButton(
+
             icon: const Icon(Icons.logout),
+            tooltip: "Cerrar sesión",
+
             onPressed: logout,
+
           )
 
         ],
@@ -153,12 +222,14 @@ class _HomePageState extends State<HomePage> {
 
                   radius: 30,
 
+                  backgroundColor: Colors.green.shade100,
+
                   backgroundImage: avatarUrl.isNotEmpty
                       ? NetworkImage(avatarUrl)
                       : null,
 
                   child: avatarUrl.isEmpty
-                      ? const Icon(Icons.person,size:30)
+                      ? const Icon(Icons.person,size:30,color:Colors.green)
                       : null,
 
                 ),
@@ -172,14 +243,14 @@ class _HomePageState extends State<HomePage> {
                   children: [
 
                     const Text(
-                      "Bienvenido",
+                      "Hola",
                       style: TextStyle(fontSize:16),
                     ),
 
                     Text(
                       username,
                       style: const TextStyle(
-                        fontSize:20,
+                        fontSize:22,
                         fontWeight: FontWeight.bold
                       ),
                     )
@@ -243,7 +314,32 @@ class _HomePageState extends State<HomePage> {
 
               ),
 
-            )
+            ),
+
+            const SizedBox(height:10),
+
+            SizedBox(
+
+              width: double.infinity,
+
+              child: ElevatedButton.icon(
+
+                icon: const Icon(Icons.logout),
+
+                label: const Text("Cerrar sesión"),
+
+                style: ElevatedButton.styleFrom(
+
+                  backgroundColor: Colors.red,
+                  padding: const EdgeInsets.all(14),
+
+                ),
+
+                onPressed: logout,
+
+              ),
+
+            ),
 
           ],
 

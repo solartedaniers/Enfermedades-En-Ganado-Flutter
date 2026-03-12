@@ -1,9 +1,12 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthService {
+
   final SupabaseClient _client = Supabase.instance.client;
 
-  /// Registrar usuario y crear perfil
+  /// =========================
+  /// REGISTRAR USUARIO
+  /// =========================
   Future<void> signUpUser({
     required String email,
     required String password,
@@ -14,20 +17,21 @@ class AuthService {
     required String location,
     required String userType,
   }) async {
+
     try {
 
-      // Verificar si username ya existe
+      /// Verificar si username ya existe
       final existingUsername = await _client
           .from('profiles')
-          .select()
+          .select('username')
           .eq('username', username)
           .maybeSingle();
 
       if (existingUsername != null) {
-        throw Exception("El nombre de usuario ya existe");
+        throw Exception("El nombre de usuario ya está en uso");
       }
 
-      // Registrar usuario en Supabase Auth
+      /// Registrar usuario en Auth
       final response = await _client.auth.signUp(
         email: email,
         password: password,
@@ -39,7 +43,7 @@ class AuthService {
         throw Exception("No se pudo crear la cuenta");
       }
 
-      // Crear perfil en tabla profiles
+      /// Crear perfil
       await _client.from('profiles').insert({
         'id': user.id,
         'first_name': firstName,
@@ -50,28 +54,40 @@ class AuthService {
         'user_type': userType,
       });
 
-    } on AuthException catch (e) {
+    }
 
-      // Correo ya registrado
-      if (e.message.contains("User already registered")) {
+    /// ERRORES DE SUPABASE AUTH
+    on AuthException catch (e) {
+
+      if (e.message.contains("already registered")) {
         throw Exception("Ya existe una cuenta con este correo");
       }
 
-      // Límite de correos
       if (e.message.contains("over_email_send_rate_limit")) {
         throw Exception(
             "Debes esperar unos segundos antes de solicitar otro correo de verificación");
       }
 
-      throw Exception(e.message);
+      throw Exception("No se pudo crear la cuenta");
+
     }
+
+    catch (e) {
+
+      throw Exception("Ocurrió un error al registrar el usuario");
+
+    }
+
   }
 
-  /// Iniciar sesión
+  /// =========================
+  /// LOGIN
+  /// =========================
   Future<void> signIn({
     required String email,
     required String password,
   }) async {
+
     try {
 
       await _client.auth.signInWithPassword(
@@ -79,7 +95,9 @@ class AuthService {
         password: password,
       );
 
-    } on AuthException catch (e) {
+    }
+
+    on AuthException catch (e) {
 
       if (e.message.contains("Invalid login credentials")) {
         throw Exception("Correo o contraseña incorrectos");
@@ -89,17 +107,33 @@ class AuthService {
         throw Exception("Debes confirmar tu correo antes de iniciar sesión");
       }
 
-      throw Exception(e.message);
+      throw Exception("No se pudo iniciar sesión");
+
     }
+
+    catch (e) {
+
+      throw Exception("Ocurrió un error al iniciar sesión");
+
+    }
+
   }
 
-  /// Resetear contraseña
+  /// =========================
+  /// RECUPERAR CONTRASEÑA
+  /// =========================
   Future<void> resetPassword(String email) async {
+
     try {
 
-      await _client.auth.resetPasswordForEmail(email);
+      await _client.auth.resetPasswordForEmail(
+        email,
+        redirectTo: "agrovetai://reset-password",
+      );
 
-    } on AuthException catch (e) {
+    }
+
+    on AuthException catch (e) {
 
       if (e.message.contains("User not found")) {
         throw Exception("No existe una cuenta con ese correo");
@@ -110,12 +144,23 @@ class AuthService {
             "Debes esperar unos segundos antes de solicitar otro correo");
       }
 
-      throw Exception(e.message);
+      throw Exception("No se pudo enviar el correo");
+
     }
+
+    catch (e) {
+
+      throw Exception("Ocurrió un error al recuperar la contraseña");
+
+    }
+
   }
 
-  /// Cerrar sesión
+  /// =========================
+  /// CERRAR SESIÓN
+  /// =========================
   Future<void> signOut() async {
     await _client.auth.signOut();
   }
+
 }
