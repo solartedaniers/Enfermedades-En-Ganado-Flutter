@@ -13,27 +13,38 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
   final AuthService authService = AuthService();
 
   bool loading = false;
+  bool showPassword = false;
 
   Future<void> login() async {
+
+    if (emailController.text.isEmpty || passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Ingrese correo y contraseña")),
+      );
+      return;
+    }
+
     setState(() => loading = true);
 
     try {
-      // Iniciar sesión con Supabase
+
       await authService.signIn(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
 
-      // 👇 Verificar si el correo está confirmado
       final user = Supabase.instance.client.auth.currentUser;
+
       if (user?.emailConfirmedAt == null) {
-        throw Exception("Debes confirmar tu correo antes de iniciar sesión");
+        throw Exception(
+            "Debes confirmar tu correo antes de iniciar sesión. Revisa tu email.");
       }
 
       if (!mounted) return;
@@ -42,11 +53,15 @@ class _LoginPageState extends State<LoginPage> {
         context,
         MaterialPageRoute(builder: (_) => const HomePage()),
       );
+
     } catch (e) {
+
       if (!mounted) return;
 
+      String message = e.toString().replaceAll("Exception: ", "");
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
+        SnackBar(content: Text(message)),
       );
     }
 
@@ -56,6 +71,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
       body: Center(
         child: Padding(
@@ -63,11 +79,14 @@ class _LoginPageState extends State<LoginPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+
               const Text(
                 "AgroVet AI",
                 style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
               ),
+
               const SizedBox(height: 40),
+
               TextField(
                 controller: emailController,
                 decoration: const InputDecoration(
@@ -75,16 +94,29 @@ class _LoginPageState extends State<LoginPage> {
                   border: OutlineInputBorder(),
                 ),
               ),
+
               const SizedBox(height: 20),
+
               TextField(
                 controller: passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(
+                obscureText: !showPassword,
+                decoration: InputDecoration(
                   labelText: "Contraseña",
-                  border: OutlineInputBorder(),
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                        showPassword ? Icons.visibility : Icons.visibility_off),
+                    onPressed: () {
+                      setState(() {
+                        showPassword = !showPassword;
+                      });
+                    },
+                  ),
                 ),
               ),
+
               const SizedBox(height: 30),
+
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -94,6 +126,7 @@ class _LoginPageState extends State<LoginPage> {
                       : const Text("Iniciar sesión"),
                 ),
               ),
+
               TextButton(
                 onPressed: () {
                   Navigator.push(
@@ -104,6 +137,7 @@ class _LoginPageState extends State<LoginPage> {
                 },
                 child: const Text("¿Olvidaste tu contraseña?"),
               ),
+
               TextButton(
                 onPressed: () {
                   Navigator.push(

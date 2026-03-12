@@ -14,25 +14,32 @@ class AuthService {
     required String location,
     required String userType,
   }) async {
-    // Verificar username existente
-    final existing = await _client
-        .from('profiles')
-        .select()
-        .eq('username', username)
-        .maybeSingle();
+    try {
 
-    if (existing != null) {
-      throw Exception("El nombre de usuario ya existe");
-    }
+      // Verificar si username ya existe
+      final existingUsername = await _client
+          .from('profiles')
+          .select()
+          .eq('username', username)
+          .maybeSingle();
 
-    // Registrar usuario en auth
-    final response = await _client.auth.signUp(
-      email: email,
-      password: password,
-    );
+      if (existingUsername != null) {
+        throw Exception("El nombre de usuario ya existe");
+      }
 
-    final user = response.user;
-    if (user != null) {
+      // Registrar usuario en Supabase Auth
+      final response = await _client.auth.signUp(
+        email: email,
+        password: password,
+      );
+
+      final user = response.user;
+
+      if (user == null) {
+        throw Exception("No se pudo crear la cuenta");
+      }
+
+      // Crear perfil en tabla profiles
       await _client.from('profiles').insert({
         'id': user.id,
         'first_name': firstName,
@@ -42,6 +49,21 @@ class AuthService {
         'location': location,
         'user_type': userType,
       });
+
+    } on AuthException catch (e) {
+
+      // Correo ya registrado
+      if (e.message.contains("User already registered")) {
+        throw Exception("Ya existe una cuenta con este correo");
+      }
+
+      // Límite de correos
+      if (e.message.contains("over_email_send_rate_limit")) {
+        throw Exception(
+            "Debes esperar unos segundos antes de solicitar otro correo de verificación");
+      }
+
+      throw Exception(e.message);
     }
   }
 
@@ -50,15 +72,46 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    await _client.auth.signInWithPassword(
-      email: email,
-      password: password,
-    );
+    try {
+
+      await _client.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+
+    } on AuthException catch (e) {
+
+      if (e.message.contains("Invalid login credentials")) {
+        throw Exception("Correo o contraseña incorrectos");
+      }
+
+      if (e.message.contains("Email not confirmed")) {
+        throw Exception("Debes confirmar tu correo antes de iniciar sesión");
+      }
+
+      throw Exception(e.message);
+    }
   }
 
   /// Resetear contraseña
   Future<void> resetPassword(String email) async {
-    await _client.auth.resetPasswordForEmail(email);
+    try {
+
+      await _client.auth.resetPasswordForEmail(email);
+
+    } on AuthException catch (e) {
+
+      if (e.message.contains("User not found")) {
+        throw Exception("No existe una cuenta con ese correo");
+      }
+
+      if (e.message.contains("over_email_send_rate_limit")) {
+        throw Exception(
+            "Debes esperar unos segundos antes de solicitar otro correo");
+      }
+
+      throw Exception(e.message);
+    }
   }
 
   /// Cerrar sesión
