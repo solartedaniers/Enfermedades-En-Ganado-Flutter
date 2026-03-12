@@ -3,6 +3,7 @@ import '../services/auth_service.dart';
 import 'register_page.dart';
 import 'forgot_password_page.dart';
 import '../../auth/home/screens/home_page.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -23,10 +24,17 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => loading = true);
 
     try {
+      // Iniciar sesión con Supabase
       await authService.signIn(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
+
+      // 👇 Verificar si el correo está confirmado
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user?.emailConfirmedAt == null) {
+        throw Exception("Debes confirmar tu correo antes de iniciar sesión");
+      }
 
       if (!mounted) return;
 
