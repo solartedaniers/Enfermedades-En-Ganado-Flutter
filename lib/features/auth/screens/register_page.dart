@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import 'login_page.dart'; // 👈 Importamos LoginPage
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -95,7 +96,11 @@ class _RegisterPageState extends State<RegisterPage> {
         ),
       );
 
-      Navigator.pop(context);
+      // 👇 Después de registrarse, enviamos al LoginPage
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginPage()),
+      );
     } catch (e) {
       String message = e.toString();
 
@@ -150,18 +155,14 @@ class _RegisterPageState extends State<RegisterPage> {
                 validator: (value) =>
                     value!.isEmpty ? "Ingrese su nombre" : null,
               ),
-
               const SizedBox(height: 20),
-
               TextFormField(
                 controller: lastName,
                 decoration: const InputDecoration(labelText: "Apellido"),
                 validator: (value) =>
                     value!.isEmpty ? "Ingrese su apellido" : null,
               ),
-
               const SizedBox(height: 20),
-
               TextFormField(
                 controller: username,
                 decoration:
@@ -169,32 +170,24 @@ class _RegisterPageState extends State<RegisterPage> {
                 validator: (value) =>
                     value!.isEmpty ? "Ingrese un usuario" : null,
               ),
-
               const SizedBox(height: 20),
-
               TextFormField(
                 controller: email,
                 decoration: const InputDecoration(labelText: "Correo"),
                 validator: (value) =>
                     value!.isEmpty ? "Ingrese un correo" : null,
               ),
-
               const SizedBox(height: 20),
-
               TextFormField(
                 controller: phone,
                 decoration: const InputDecoration(labelText: "Teléfono"),
               ),
-
               const SizedBox(height: 20),
-
               TextFormField(
                 controller: location,
                 decoration: const InputDecoration(labelText: "Ubicación"),
               ),
-
               const SizedBox(height: 20),
-
               DropdownButtonFormField<String>(
                 initialValue: userType,
                 items: const [
@@ -209,9 +202,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 validator: (value) =>
                     value == null ? "Seleccione tipo de usuario" : null,
               ),
-
               const SizedBox(height: 20),
-
               TextFormField(
                 controller: password,
                 obscureText: !showPassword,
@@ -231,15 +222,12 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                 ),
               ),
-
               passwordRule("Mínimo 8 caracteres", hasMinLength),
               passwordRule("Máximo 20 caracteres", hasMaxLength),
               passwordRule("Una mayúscula", hasUpper),
               passwordRule("Un número", hasNumber),
               passwordRule("Un símbolo (!@#\$&*~)", hasSymbol),
-
               const SizedBox(height: 20),
-
               TextFormField(
                 controller: confirmPassword,
                 obscureText: !showConfirmPassword,
@@ -258,9 +246,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                 ),
               ),
-
               const SizedBox(height: 30),
-
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
