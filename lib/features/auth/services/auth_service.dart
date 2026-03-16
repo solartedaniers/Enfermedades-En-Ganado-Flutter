@@ -99,9 +99,7 @@ class AuthService {
     }
   }
 
-  /// =========================
-  /// CERRAR SESIÓN
-  /// =========================
+
   Future<void> signOut() async {
     await _client.auth.signOut();
   }
