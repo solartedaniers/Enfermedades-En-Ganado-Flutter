@@ -95,7 +95,7 @@ class AuthService {
     } on AuthException catch (e) {
       throw Exception(e.message);
     } catch (e) {
-      throw Exception("Error al procesar la solicitud....");
+      throw Exception("Error al procesar la solicitud...");
     }
   }
 
