@@ -4,7 +4,7 @@ class AuthService {
   final SupabaseClient _client = Supabase.instance.client;
 
   /// =========================
-  /// REGISTRAR USUARIO (Optimizado)
+  /// REGISTRAR USUARIO
   /// =========================
   Future<void> signUpUser({
     required String email,
@@ -28,11 +28,11 @@ class AuthService {
         throw Exception("El nombre de usuario ya está en uso");
       }
 
-      // 2. Registro en Auth con Metadata
-      // Los datos en 'data' serán procesados por el Trigger de SQL
-      final response = await _client.auth.signUp(
+      // 2. Registro en Auth con Metadata y redirección exacta al host de Android
+      await _client.auth.signUp(
         email: email,
         password: password,
+        emailRedirectTo: 'agrovetai://auth-confirm', // 👈 Coincide con AndroidManifest
         data: {
           'first_name': firstName,
           'last_name': lastName,
@@ -42,13 +42,8 @@ class AuthService {
           'user_type': userType,
         },
       );
-
-      if (response.user == null) {
-        throw Exception("No se pudo crear la cuenta");
-      }
       
     } on AuthException catch (e) {
-      // Errores específicos de Supabase
       if (e.message.contains("already registered")) {
         throw Exception("Ya existe una cuenta con este correo");
       }
@@ -78,8 +73,6 @@ class AuthService {
         throw Exception("Debes confirmar tu correo antes de iniciar sesión");
       }
       throw Exception(e.message);
-    } catch (e) {
-      throw Exception("Ocurrió un error al iniciar sesión");
     }
   }
 
@@ -90,18 +83,13 @@ class AuthService {
     try {
       await _client.auth.resetPasswordForEmail(
         email,
-        redirectTo: "agrovetai://reset-password",
+        redirectTo: "agrovetai://reset-password", // 👈 Coincide con AndroidManifest
       );
     } on AuthException catch (e) {
       throw Exception(e.message);
-    } catch (e) {
-      throw Exception("Error al procesar la solicitud...");
     }
   }
 
-  /// =========================
-  /// CERRAR SESIÓN
-  /// =========================
   Future<void> signOut() async {
     await _client.auth.signOut();
   }

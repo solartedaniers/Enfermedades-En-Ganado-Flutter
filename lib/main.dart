@@ -5,7 +5,7 @@ import 'package:logger/logger.dart';
 
 import 'features/auth/screens/login_page.dart';
 import 'features/auth/home/screens/home_page.dart';
-import 'features/auth/screens/reset_password_page.dart'; // 👈 nueva pantalla
+import 'features/auth/screens/reset_password_page.dart';
 
 final logger = Logger();
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -16,6 +16,9 @@ Future<void> main() async {
   await Supabase.initialize(
     url: 'https://ouxnrcamlloyhcanpbmb.supabase.co',
     anonKey: 'sb_publishable_a49vVecFsuol_HcWdCq_0Q_9SFGJTl1',
+    authOptions: const FlutterAuthClientOptions(
+      authFlowType: AuthFlowType.pkce, // 👈 recomendado para apps móviles
+    ),
   );
 
   runApp(const AgrovetAI());
@@ -38,43 +41,41 @@ class _AgrovetAIState extends State<AgrovetAI> {
   }
 
   void initDeepLinks() {
-    _appLinks.uriLinkStream.listen((uri) {
+    _appLinks.uriLinkStream.listen((uri) async {
       logger.i("DeepLink recibido: $uri");
+      await _handleDeepLink(uri);
+    });
+
+    _appLinks.getInitialLink().then((uri) async {
+      if (uri != null) {
+        logger.i("DeepLink inicial: $uri");
+        await _handleDeepLink(uri);
+      }
+    });
+  }
+
+  Future<void> _handleDeepLink(Uri uri) async {
+    try {
+      // 👇 Esto intercambia el código de la URL por una sesión activa
+      await Supabase.instance.client.auth.getSessionFromUrl(uri);
 
       if (uri.host == "auth-confirm") {
         logger.i("Cuenta confirmada ✅");
+        // Opcional: redirigir al login directamente
+        navigatorKey.currentState?.pushReplacementNamed('/login');
       }
 
       if (uri.host == "reset-password") {
-        logger.i("Reset password solicitado 🔑");
+        logger.i("Redirigiendo a Reset Password 🔑");
 
-        navigatorKey.currentState?.push(
-          MaterialPageRoute(
-            builder: (_) => const ResetPasswordPage(),
-          ),
+        navigatorKey.currentState?.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const ResetPasswordPage()),
+          (route) => false,
         );
       }
-    });
-
-    _appLinks.getInitialLink().then((uri) {
-      if (uri != null) {
-        logger.i("DeepLink inicial: $uri");
-
-        if (uri.host == "auth-confirm") {
-          logger.i("Cuenta confirmada desde enlace inicial ✅");
-        }
-
-        if (uri.host == "reset-password") {
-          logger.i("Reset password solicitado desde enlace inicial 🔑");
-
-          navigatorKey.currentState?.push(
-            MaterialPageRoute(
-              builder: (_) => const ResetPasswordPage(),
-            ),
-          );
-        }
-      }
-    });
+    } catch (e) {
+      logger.e("Error procesando el enlace: $e");
+    }
   }
 
   @override
@@ -82,8 +83,13 @@ class _AgrovetAIState extends State<AgrovetAI> {
     final session = Supabase.instance.client.auth.currentSession;
 
     return MaterialApp(
-      navigatorKey: navigatorKey, // 👈 agregado
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
+      routes: {
+        '/login': (_) => const LoginPage(),
+        '/home': (_) => const HomePage(),
+        '/reset-password': (_) => const ResetPasswordPage(),
+      },
       home: SplashScreen(
         nextPage: session == null ? const LoginPage() : const HomePage(),
       ),
