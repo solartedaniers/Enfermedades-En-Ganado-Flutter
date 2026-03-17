@@ -23,7 +23,7 @@ class _LoginPageState extends State<LoginPage> {
   // --- PALETA DE COLORES ---
   final Color primaryGreen = const Color(0xFF2D6A4F);
   final Color darkGreen = const Color(0xFF1B4332);
-  final Color backgroundColor = const Color(0xFFF8F9FA);
+  final Color backgroundColor = const Color(0xFFF1F8F5);
 
   InputDecoration _inputStyle(String label, IconData icon) {
     return InputDecoration(
@@ -46,9 +46,7 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> login() async {
     if (emailController.text.isEmpty || passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Ingrese correo y contraseña")),
-      );
+      _showSnackBar("Ingrese correo y contraseña");
       return;
     }
 
@@ -72,11 +70,14 @@ class _LoginPageState extends State<LoginPage> {
       );
     } catch (e) {
       if (!mounted) return;
-      String message = e.toString().replaceAll("Exception: ", "");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      _showSnackBar(e.toString().replaceAll("Exception: ", ""));
     } finally {
       if (mounted) setState(() => loading = false);
     }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -90,17 +91,27 @@ class _LoginPageState extends State<LoginPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // --- CORRECCIÓN DE LA ADVERTENCIA AQUÍ ---
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    // Cambiamos withOpacity(0.1) por withValues(alpha: 0.1)
-                    color: primaryGreen.withValues(alpha: 0.1), 
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(Icons.psychology_outlined, size: 80, color: primaryGreen),
+                // Logo de la aplicación (Ruta corregida a lib/images/)
+                Image.asset(
+                  'lib/images/logo.webp', 
+                  width: 120,
+                  height: 120,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    // Si la imagen no carga, muestra un icono estético
+                    return Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        // CORRECCIÓN AQUÍ: .withValues en lugar de .withOpacity
+                        border: Border.all(color: primaryGreen.withValues(alpha: 0.2)),
+                      ),
+                      child: Icon(Icons.pets, size: 60, color: primaryGreen),
+                    );
+                  },
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 Text(
                   "AgroVet AI",
                   style: TextStyle(
@@ -112,60 +123,52 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const Text(
                   "Inteligencia Artificial para tu ganado",
-                  style: TextStyle(color: Colors.grey, fontSize: 16),
+                  style: TextStyle(color: Colors.grey, fontSize: 15),
                 ),
                 const SizedBox(height: 40),
                 
-                Card(
-                  elevation: 5,
-                  shadowColor: Colors.black12,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      children: [
-                        TextField(
-                          controller: emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          decoration: _inputStyle("Correo electrónico", Icons.email_outlined),
-                        ),
-                        const SizedBox(height: 20),
-                        TextField(
-                          controller: passwordController,
-                          obscureText: !showPassword,
-                          decoration: _inputStyle("Contraseña", Icons.lock_outline).copyWith(
-                            suffixIcon: IconButton(
-                              icon: Icon(showPassword ? Icons.visibility : Icons.visibility_off),
-                              onPressed: () => setState(() => showPassword = !showPassword),
-                            ),
-                          ),
-                        ),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ForgotPasswordPage())),
-                            child: Text("¿Olvidaste tu contraseña?", style: TextStyle(color: primaryGreen, fontWeight: FontWeight.w600)),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 55,
-                          child: ElevatedButton(
-                            onPressed: loading ? null : login,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: primaryGreen,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              elevation: 2,
-                            ),
-                            child: loading
-                                ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                                : const Text("INICIAR SESIÓN", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                          ),
-                        ),
-                      ],
+                TextField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: _inputStyle("Correo electrónico", Icons.email_outlined),
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: passwordController,
+                  obscureText: !showPassword,
+                  decoration: _inputStyle("Contraseña", Icons.lock_outline).copyWith(
+                    suffixIcon: IconButton(
+                      icon: Icon(showPassword ? Icons.visibility : Icons.visibility_off),
+                      onPressed: () => setState(() => showPassword = !showPassword),
                     ),
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.push(
+                      context, 
+                      MaterialPageRoute(builder: (_) => const ForgotPasswordPage())
+                    ),
+                    child: Text("¿Olvidaste tu contraseña?", 
+                      style: TextStyle(color: primaryGreen, fontWeight: FontWeight.w600)),
+                  ),
+                ),
+                const SizedBox(height: 30),
+                SizedBox(
+                  width: double.infinity,
+                  height: 55,
+                  child: ElevatedButton(
+                    onPressed: loading ? null : login,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryGreen,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                    ),
+                    child: loading
+                        ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Text("INICIAR SESIÓN", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   ),
                 ),
                 const SizedBox(height: 30),
@@ -179,6 +182,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 20),
               ],
             ),
           ),

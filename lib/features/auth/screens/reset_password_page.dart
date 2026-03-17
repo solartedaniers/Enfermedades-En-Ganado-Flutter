@@ -18,18 +18,15 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   bool showPassword = false;
   late final StreamSubscription<AuthState> _authSubscription;
 
-  // --- PALETA DE COLORES ---
   final Color primaryGreen = const Color(0xFF2D6A4F);
   final Color darkGreen = const Color(0xFF1B4332);
-  final Color backgroundColor = const Color(0xFFF8F9FA);
+  final Color backgroundColor = const Color(0xFFF1F8F5); // Blanco verdoso
 
   @override
   void initState() {
     super.initState();
     _authSubscription = supabase.auth.onAuthStateChange.listen((data) {
-      if (data.session == null) {
-        // Redirección opcional si se pierde la sesión
-      }
+      if (data.session == null) { /* Opcional */ }
     });
   }
 
@@ -41,7 +38,6 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     super.dispose();
   }
 
-  // Estilo de Input reutilizable
   InputDecoration _inputStyle(String label, IconData icon) {
     return InputDecoration(
       labelText: label,
@@ -69,7 +65,6 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       _showSnackBar("La contraseña debe tener al menos 8 caracteres");
       return;
     }
-
     if (pass != confirm) {
       _showSnackBar("Las contraseñas no coinciden");
       return;
@@ -80,10 +75,8 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     try {
       await supabase.auth.updateUser(UserAttributes(password: pass));
       if (!mounted) return;
-
       _showSnackBar("Contraseña actualizada con éxito.");
       await supabase.auth.signOut();
-
       if (!mounted) return;
       Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
     } on AuthException catch (e) {
@@ -107,7 +100,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       backgroundColor: backgroundColor,
       appBar: AppBar(
         title: const Text("Restablecer", style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         foregroundColor: darkGreen,
         elevation: 0,
         centerTitle: true,
@@ -140,54 +133,39 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                 ),
                 const SizedBox(height: 32),
                 
-                Card(
-                  elevation: 4,
-                  shadowColor: Colors.black12,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      children: [
-                        TextField(
-                          controller: passwordController,
-                          obscureText: !showPassword,
-                          decoration: _inputStyle("Nueva contraseña", Icons.lock_outline).copyWith(
-                            suffixIcon: IconButton(
-                              icon: Icon(showPassword ? Icons.visibility : Icons.visibility_off),
-                              onPressed: () => setState(() => showPassword = !showPassword),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        TextField(
-                          controller: confirmController,
-                          obscureText: true,
-                          decoration: _inputStyle("Confirmar contraseña", Icons.verified_user_outlined),
-                        ),
-                        const SizedBox(height: 32),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 55,
-                          child: ElevatedButton(
-                            onPressed: loading ? null : updatePassword,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: primaryGreen,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              elevation: 2,
-                            ),
-                            child: loading
-                                ? const SizedBox(
-                                    height: 24, 
-                                    width: 24, 
-                                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
-                                  )
-                                : const Text("ACTUALIZAR Y SALIR", 
-                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1.1)),
-                          ),
-                        ),
-                      ],
+                // Formulario sin Card
+                TextField(
+                  controller: passwordController,
+                  obscureText: !showPassword,
+                  decoration: _inputStyle("Nueva contraseña", Icons.lock_outline).copyWith(
+                    suffixIcon: IconButton(
+                      icon: Icon(showPassword ? Icons.visibility : Icons.visibility_off),
+                      onPressed: () => setState(() => showPassword = !showPassword),
                     ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: confirmController,
+                  obscureText: true,
+                  decoration: _inputStyle("Confirmar contraseña", Icons.verified_user_outlined),
+                ),
+                const SizedBox(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  height: 55,
+                  child: ElevatedButton(
+                    onPressed: loading ? null : updatePassword,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryGreen,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                    ),
+                    child: loading
+                        ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Text("ACTUALIZAR Y SALIR", 
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1.1)),
                   ),
                 ),
                 const SizedBox(height: 20),

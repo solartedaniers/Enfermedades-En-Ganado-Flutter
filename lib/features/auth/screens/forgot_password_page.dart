@@ -16,7 +16,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   // --- PALETA DE COLORES AGRO-TECH ---
   final Color primaryGreen = const Color(0xFF2D6A4F);
   final Color darkGreen = const Color(0xFF1B4332);
-  final Color backgroundColor = const Color(0xFFF8F9FA);
+  // Fondo blanco verdoso actualizado
+  final Color backgroundColor = const Color(0xFFF1F8F5); 
 
   // Estilo de Input Reutilizable
   InputDecoration _inputStyle(String label, IconData icon) {
@@ -52,7 +53,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
       _showSnackBar("Se envió un enlace a tu correo para recuperar tu contraseña.");
       
-      // Opcional: Volver al login después de enviar
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) Navigator.pop(context);
       });
@@ -76,7 +76,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       backgroundColor: backgroundColor,
       appBar: AppBar(
         title: const Text("Recuperar Acceso", style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent, // Se cambió a transparente para que luzca mejor con el fondo
         foregroundColor: darkGreen,
         elevation: 0,
         centerTitle: true,
@@ -88,7 +88,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Icono decorativo con el nuevo estándar de opacidad
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -116,45 +115,35 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                 ),
                 const SizedBox(height: 40),
 
-                Card(
-                  elevation: 4,
-                  shadowColor: Colors.black12,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      children: [
-                        TextField(
-                          controller: emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          decoration: _inputStyle("Correo electrónico", Icons.email_outlined),
-                        ),
-                        const SizedBox(height: 30),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 55,
-                          child: ElevatedButton(
-                            onPressed: loading ? null : reset,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: primaryGreen,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              elevation: 2,
-                            ),
-                            child: loading
-                                ? const SizedBox(
-                                    height: 24, 
-                                    width: 24, 
-                                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
-                                  )
-                                : const Text("ENVIAR INSTRUCCIONES", 
-                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1.1)),
-                          ),
-                        ),
-                      ],
+                // Se eliminó el Card y ahora los elementos están directamente en la columna
+                TextField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: _inputStyle("Correo electrónico", Icons.email_outlined),
+                ),
+                const SizedBox(height: 30),
+                SizedBox(
+                  width: double.infinity,
+                  height: 55,
+                  child: ElevatedButton(
+                    onPressed: loading ? null : reset,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryGreen,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0, // Se quitó elevación para mantener el estilo plano
                     ),
+                    child: loading
+                        ? const SizedBox(
+                            height: 24, 
+                            width: 24, 
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                          )
+                        : const Text("ENVIAR INSTRUCCIONES", 
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1.1)),
                   ),
                 ),
+                
                 const SizedBox(height: 24),
                 TextButton(
                   onPressed: () => Navigator.pop(context),

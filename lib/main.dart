@@ -17,7 +17,7 @@ Future<void> main() async {
     url: 'https://ouxnrcamlloyhcanpbmb.supabase.co',
     anonKey: 'sb_publishable_a49vVecFsuol_HcWdCq_0Q_9SFGJTl1',
     authOptions: const FlutterAuthClientOptions(
-      authFlowType: AuthFlowType.pkce, // 👈 recomendado para apps móviles
+      authFlowType: AuthFlowType.pkce,
     ),
   );
 
@@ -56,18 +56,15 @@ class _AgrovetAIState extends State<AgrovetAI> {
 
   Future<void> _handleDeepLink(Uri uri) async {
     try {
-      // 👇 Esto intercambia el código de la URL por una sesión activa
       await Supabase.instance.client.auth.getSessionFromUrl(uri);
 
       if (uri.host == "auth-confirm") {
         logger.i("Cuenta confirmada ✅");
-        // Opcional: redirigir al login directamente
         navigatorKey.currentState?.pushReplacementNamed('/login');
       }
 
       if (uri.host == "reset-password") {
         logger.i("Redirigiendo a Reset Password 🔑");
-
         navigatorKey.currentState?.pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const ResetPasswordPage()),
           (route) => false,
@@ -80,6 +77,7 @@ class _AgrovetAIState extends State<AgrovetAI> {
 
   @override
   Widget build(BuildContext context) {
+    // Verificamos la sesión actual
     final session = Supabase.instance.client.auth.currentSession;
 
     return MaterialApp(
@@ -90,47 +88,10 @@ class _AgrovetAIState extends State<AgrovetAI> {
         '/home': (_) => const HomePage(),
         '/reset-password': (_) => const ResetPasswordPage(),
       },
-      home: SplashScreen(
-        nextPage: session == null ? const LoginPage() : const HomePage(),
-      ),
+      // CAMBIO AQUÍ: Eliminamos SplashScreen y decidimos el home de inmediato
+      home: session == null ? const LoginPage() : const HomePage(),
     );
   }
 }
 
-class SplashScreen extends StatefulWidget {
-  final Widget nextPage;
-  const SplashScreen({super.key, required this.nextPage});
-
-  @override
-  State<SplashScreen> createState() => _SplashScreenState();
-}
-
-class _SplashScreenState extends State<SplashScreen> {
-  @override
-  void initState() {
-    super.initState();
-    Future.delayed(const Duration(seconds: 3), () {
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => widget.nextPage),
-      );
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: ClipOval(
-          child: Image.asset(
-            'lib/images/logo.webp',
-            width: 200,
-            height: 200,
-            fit: BoxFit.cover,
-          ),
-        ),
-      ),
-    );
-  }
-}
+// Se eliminó la clase SplashScreen para evitar la espera de 3 segundos.

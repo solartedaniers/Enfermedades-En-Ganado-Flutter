@@ -10,7 +10,6 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
-  // Controladores de texto
   final firstName = TextEditingController();
   final lastName = TextEditingController();
   final username = TextEditingController();
@@ -28,17 +27,15 @@ class _RegisterPageState extends State<RegisterPage> {
   bool showPassword = false;
   bool showConfirmPassword = false;
 
-  // Reglas de Validación de Contraseña
   bool hasUpper = false;
   bool hasNumber = false;
   bool hasSymbol = false;
   bool hasMinLength = false;
   bool hasMaxLength = true;
 
-  // --- PALETA DE COLORES AGRO-TECH ---
   final Color primaryGreen = const Color(0xFF2D6A4F);
   final Color darkGreen = const Color(0xFF1B4332);
-  final Color backgroundColor = const Color(0xFFF8F9FA);
+  final Color backgroundColor = const Color(0xFFF1F8F5);
 
   void checkPassword(String value) {
     setState(() {
@@ -52,7 +49,6 @@ class _RegisterPageState extends State<RegisterPage> {
 
   bool isStrongPassword() => hasUpper && hasNumber && hasSymbol && hasMinLength && hasMaxLength;
 
-  // Estilo de Input Profesional Reutilizable
   InputDecoration _inputStyle(String label, IconData icon) {
     return InputDecoration(
       labelText: label,
@@ -145,7 +141,7 @@ class _RegisterPageState extends State<RegisterPage> {
       backgroundColor: backgroundColor,
       appBar: AppBar(
         title: const Text("Crear Cuenta", style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         foregroundColor: darkGreen,
         elevation: 0,
         centerTitle: true,
@@ -163,125 +159,108 @@ class _RegisterPageState extends State<RegisterPage> {
                 style: TextStyle(color: Colors.grey, fontSize: 14)),
               const SizedBox(height: 30),
               
-              Card(
-                elevation: 4,
-                shadowColor: Colors.black12,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    children: [
-                      TextFormField(
-                        controller: firstName,
-                        decoration: _inputStyle("Nombre", Icons.person_outline),
-                        validator: (value) => value!.isEmpty ? "Ingrese su nombre" : null,
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: lastName,
-                        decoration: _inputStyle("Apellido", Icons.person_outline),
-                        validator: (value) => value!.isEmpty ? "Ingrese su apellido" : null,
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: username,
-                        decoration: _inputStyle("Usuario", Icons.alternate_email),
-                        validator: (value) => value!.isEmpty ? "Ingrese un usuario" : null,
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: email,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: _inputStyle("Correo", Icons.email_outlined),
-                        validator: (value) => value!.isEmpty ? "Ingrese un correo" : null,
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: phone,
-                        keyboardType: TextInputType.phone,
-                        decoration: _inputStyle("Teléfono", Icons.phone_android_outlined),
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: location,
-                        decoration: _inputStyle("Ubicación", Icons.location_on_outlined),
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // Dropdown corregido
-                      DropdownButtonFormField<String>(
-                        initialValue: userType,
-                        items: const [
-                          DropdownMenuItem(value: "ganadero", child: Text("Ganadero")),
-                          DropdownMenuItem(value: "veterinario", child: Text("Veterinario")),
-                        ],
-                        onChanged: (value) => setState(() => userType = value),
-                        decoration: _inputStyle("Tipo de usuario", Icons.badge_outlined),
-                        validator: (value) => value == null ? "Seleccione tipo" : null,
-                      ),
-                      const SizedBox(height: 24),
-                      
-                      // Sección de Contraseña
-                      TextFormField(
-                        controller: password,
-                        obscureText: !showPassword,
-                        onChanged: checkPassword,
-                        decoration: _inputStyle("Contraseña", Icons.lock_outline).copyWith(
-                          suffixIcon: IconButton(
-                            icon: Icon(showPassword ? Icons.visibility : Icons.visibility_off),
-                            onPressed: () => setState(() => showPassword = !showPassword),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      
-                      // Panel de reglas de contraseña
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: backgroundColor,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          children: [
-                            passwordRule("Mínimo 8 caracteres", hasMinLength),
-                            passwordRule("Una mayúscula y un número", hasUpper && hasNumber),
-                            passwordRule("Un símbolo (!@#\$&*~)", hasSymbol),
-                          ],
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: confirmPassword,
-                        obscureText: !showConfirmPassword,
-                        decoration: _inputStyle("Confirmar contraseña", Icons.lock_reset_outlined).copyWith(
-                          suffixIcon: IconButton(
-                            icon: Icon(showConfirmPassword ? Icons.visibility : Icons.visibility_off),
-                            onPressed: () => setState(() => showConfirmPassword = !showConfirmPassword),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                      
-                      SizedBox(
-                        width: double.infinity,
-                        height: 55,
-                        child: ElevatedButton(
-                          onPressed: loading ? null : register,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryGreen,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            elevation: 2,
-                          ),
-                          child: loading
-                              ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                              : const Text("REGISTRARSE", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1.1)),
-                        ),
-                      ),
-                    ],
+              TextFormField(
+                controller: firstName,
+                decoration: _inputStyle("Nombre", Icons.person_outline),
+                validator: (value) => value!.isEmpty ? "Ingrese su nombre" : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: lastName,
+                decoration: _inputStyle("Apellido", Icons.person_outline),
+                validator: (value) => value!.isEmpty ? "Ingrese su apellido" : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: username,
+                decoration: _inputStyle("Usuario", Icons.alternate_email),
+                validator: (value) => value!.isEmpty ? "Ingrese un usuario" : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: email,
+                keyboardType: TextInputType.emailAddress,
+                decoration: _inputStyle("Correo", Icons.email_outlined),
+                validator: (value) => value!.isEmpty ? "Ingrese un correo" : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: phone,
+                keyboardType: TextInputType.phone,
+                decoration: _inputStyle("Teléfono", Icons.phone_android_outlined),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: location,
+                decoration: _inputStyle("Ubicación", Icons.location_on_outlined),
+              ),
+              const SizedBox(height: 16),
+              
+              DropdownButtonFormField<String>(
+                initialValue: userType, // CAMBIO CLAVE AQUÍ
+                items: const [
+                  DropdownMenuItem(value: "ganadero", child: Text("Ganadero")),
+                  DropdownMenuItem(value: "veterinario", child: Text("Veterinario")),
+                ],
+                onChanged: (value) => setState(() => userType = value),
+                decoration: _inputStyle("Tipo de usuario", Icons.badge_outlined),
+                validator: (value) => value == null ? "Seleccione tipo" : null,
+              ),
+              
+              const SizedBox(height: 24),
+              TextFormField(
+                controller: password,
+                obscureText: !showPassword,
+                onChanged: checkPassword,
+                decoration: _inputStyle("Contraseña", Icons.lock_outline).copyWith(
+                  suffixIcon: IconButton(
+                    icon: Icon(showPassword ? Icons.visibility : Icons.visibility_off),
+                    onPressed: () => setState(() => showPassword = !showPassword),
                   ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFDEE2E6)),
+                ),
+                child: Column(
+                  children: [
+                    passwordRule("Mínimo 8 caracteres", hasMinLength),
+                    passwordRule("Una mayúscula y un número", hasUpper && hasNumber),
+                    passwordRule("Un símbolo (!@#\$&*~)", hasSymbol),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: confirmPassword,
+                obscureText: !showConfirmPassword,
+                decoration: _inputStyle("Confirmar contraseña", Icons.lock_reset_outlined).copyWith(
+                  suffixIcon: IconButton(
+                    icon: Icon(showConfirmPassword ? Icons.visibility : Icons.visibility_off),
+                    onPressed: () => setState(() => showConfirmPassword = !showConfirmPassword),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  onPressed: loading ? null : register,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryGreen,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                  ),
+                  child: loading
+                      ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Text("REGISTRARSE", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1.1)),
                 ),
               ),
               const SizedBox(height: 24),
