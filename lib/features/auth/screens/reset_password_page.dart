@@ -18,14 +18,17 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   bool showPassword = false;
   late final StreamSubscription<AuthState> _authSubscription;
 
+  // --- PALETA DE COLORES ---
+  final Color primaryGreen = const Color(0xFF2D6A4F);
+  final Color darkGreen = const Color(0xFF1B4332);
+  final Color backgroundColor = const Color(0xFFF8F9FA);
+
   @override
   void initState() {
     super.initState();
-    // Escuchamos cambios en la auth por si el link de recuperación tarda en validar la sesión
     _authSubscription = supabase.auth.onAuthStateChange.listen((data) {
-      final session = data.session;
-      if (session == null) {
-        // Opcional: Si no hay sesión, podrías redirigir al login
+      if (data.session == null) {
+        // Redirección opcional si se pierde la sesión
       }
     });
   }
@@ -38,108 +41,166 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     super.dispose();
   }
 
+  // Estilo de Input reutilizable
+  InputDecoration _inputStyle(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, color: primaryGreen),
+      labelStyle: const TextStyle(color: Colors.grey),
+      filled: true,
+      fillColor: Colors.white,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFDEE2E6)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: primaryGreen, width: 2),
+      ),
+    );
+  }
+
   Future<void> updatePassword() async {
     final pass = passwordController.text.trim();
     final confirm = confirmController.text.trim();
 
-    // Validaciones rápidas (sin await, se puede usar context directamente)
     if (pass.isEmpty || pass.length < 8) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("La contraseña debe tener al menos 8 caracteres")),
-      );
+      _showSnackBar("La contraseña debe tener al menos 8 caracteres");
       return;
     }
 
     if (pass != confirm) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Las contraseñas no coinciden")),
-      );
+      _showSnackBar("Las contraseñas no coinciden");
       return;
     }
 
     setState(() => loading = true);
 
     try {
-      // Actualizamos la contraseña del usuario actualmente logueado (por el link)
-      await supabase.auth.updateUser(
-        UserAttributes(password: pass),
-      );
-
+      await supabase.auth.updateUser(UserAttributes(password: pass));
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Contraseña actualizada con éxito.")),
-      );
-
+      _showSnackBar("Contraseña actualizada con éxito.");
       await supabase.auth.signOut();
 
       if (!mounted) return;
       Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
-
     } on AuthException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message)),
-      );
+      _showSnackBar(e.message);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Ocurrió un error inesperado")),
-      );
+      _showSnackBar("Ocurrió un error inesperado");
     } finally {
       if (mounted) setState(() => loading = false);
     }
   }
 
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Nueva contraseña")),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            const Text(
-              "Ingresa tu nueva contraseña a continuación.",
-              style: TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: passwordController,
-              obscureText: !showPassword,
-              decoration: InputDecoration(
-                labelText: "Nueva contraseña",
-                border: const OutlineInputBorder(),
-                suffixIcon: IconButton(
-                  icon: Icon(showPassword ? Icons.visibility : Icons.visibility_off),
-                  onPressed: () => setState(() => showPassword = !showPassword),
+      backgroundColor: backgroundColor,
+      appBar: AppBar(
+        title: const Text("Restablecer", style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        foregroundColor: darkGreen,
+        elevation: 0,
+        centerTitle: true,
+      ),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: primaryGreen.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.lock_reset_rounded, size: 60, color: primaryGreen),
                 ),
-              ),
+                const SizedBox(height: 24),
+                Text(
+                  "Nueva Contraseña",
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: darkGreen),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  "Por seguridad, ingresa una contraseña que no hayas usado antes.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                ),
+                const SizedBox(height: 32),
+                
+                Card(
+                  elevation: 4,
+                  shadowColor: Colors.black12,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      children: [
+                        TextField(
+                          controller: passwordController,
+                          obscureText: !showPassword,
+                          decoration: _inputStyle("Nueva contraseña", Icons.lock_outline).copyWith(
+                            suffixIcon: IconButton(
+                              icon: Icon(showPassword ? Icons.visibility : Icons.visibility_off),
+                              onPressed: () => setState(() => showPassword = !showPassword),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        TextField(
+                          controller: confirmController,
+                          obscureText: true,
+                          decoration: _inputStyle("Confirmar contraseña", Icons.verified_user_outlined),
+                        ),
+                        const SizedBox(height: 32),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 55,
+                          child: ElevatedButton(
+                            onPressed: loading ? null : updatePassword,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: primaryGreen,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              elevation: 2,
+                            ),
+                            child: loading
+                                ? const SizedBox(
+                                    height: 24, 
+                                    width: 24, 
+                                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                                  )
+                                : const Text("ACTUALIZAR Y SALIR", 
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1.1)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    "Cancelar proceso",
+                    style: TextStyle(color: Colors.red.shade400, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: confirmController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: "Confirmar contraseña",
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 30),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: loading ? null : updatePassword,
-                child: loading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text("Actualizar contraseña"),
-              ),
-            )
-          ],
+          ),
         ),
       ),
     );
