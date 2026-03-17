@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
-import 'login_page.dart'; // 👈 Importamos LoginPage
+import 'login_page.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -20,7 +20,6 @@ class _RegisterPageState extends State<RegisterPage> {
   final location = TextEditingController();
 
   String? userType;
-
   final authService = AuthService();
   final formKey = GlobalKey<FormState>();
 
@@ -34,6 +33,10 @@ class _RegisterPageState extends State<RegisterPage> {
   bool hasMinLength = false;
   bool hasMaxLength = true;
 
+  final Color primaryGreen = const Color(0xFF2D6A4F);
+  final Color darkGreen = const Color(0xFF1B4332);
+  final Color backgroundColor = const Color(0xFFF1F8F5);
+
   void checkPassword(String value) {
     setState(() {
       hasUpper = value.contains(RegExp(r'[A-Z]'));
@@ -44,38 +47,43 @@ class _RegisterPageState extends State<RegisterPage> {
     });
   }
 
-  bool isStrongPassword() {
-    return hasUpper && hasNumber && hasSymbol && hasMinLength && hasMaxLength;
+  bool isStrongPassword() => hasUpper && hasNumber && hasSymbol && hasMinLength && hasMaxLength;
+
+  InputDecoration _inputStyle(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, color: primaryGreen),
+      labelStyle: const TextStyle(color: Colors.grey),
+      filled: true,
+      fillColor: Colors.white,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFDEE2E6)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: primaryGreen, width: 2),
+      ),
+    );
   }
 
   Future<void> register() async {
     if (!formKey.currentState!.validate()) return;
-
     if (!isStrongPassword()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("La contraseña no cumple los requisitos de seguridad"),
-        ),
-      );
+      _showSnackBar("La contraseña no cumple los requisitos de seguridad");
       return;
     }
-
     if (password.text != confirmPassword.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Las contraseñas no coinciden")),
-      );
+      _showSnackBar("Las contraseñas no coinciden");
       return;
     }
-
     if (userType == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Seleccione tipo de usuario")),
-      );
+      _showSnackBar("Seleccione tipo de usuario");
       return;
     }
 
     setState(() => loading = true);
-
     try {
       await authService.signUpUser(
         email: email.text.trim(),
@@ -87,175 +95,186 @@ class _RegisterPageState extends State<RegisterPage> {
         location: location.text.trim(),
         userType: userType!,
       );
-
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Cuenta creada correctamente. Revisa tu correo."),
-        ),
-      );
-
-      // 👇 Después de registrarse, enviamos al LoginPage
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginPage()),
-      );
+      _showSnackBar("Cuenta creada correctamente. Revisa tu correo.");
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginPage()));
     } catch (e) {
-      String message = e.toString();
-
-      if (message.contains("over_email_send_rate_limit")) {
-        message =
-            "Debes esperar unos segundos antes de solicitar otro correo de verificación.";
-      }
-
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      _showSnackBar(e.toString().contains("over_email_send_rate_limit") 
+          ? "Espera unos segundos para solicitar otro correo." 
+          : e.toString().replaceAll("Exception: ", ""));
+    } finally {
+      if (mounted) setState(() => loading = false);
     }
+  }
 
-    if (!mounted) return;
-    setState(() => loading = false);
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Widget passwordRule(String text, bool valid) {
-    return Row(
-      children: [
-        Icon(
-          valid ? Icons.check_circle : Icons.radio_button_unchecked,
-          color: valid ? Colors.green : Colors.grey,
-          size: 18,
-        ),
-        const SizedBox(width: 8),
-        Text(
-          text,
-          style: TextStyle(
-            color: valid ? Colors.green : Colors.grey,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Icon(
+            valid ? Icons.check_circle : Icons.cancel_outlined,
+            color: valid ? Colors.green : Colors.grey.withValues(alpha: 0.5),
+            size: 16,
           ),
-        )
-      ],
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 12,
+              color: valid ? Colors.green : Colors.grey,
+            ),
+          )
+        ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Crear cuenta")),
+      backgroundColor: backgroundColor,
+      appBar: AppBar(
+        title: const Text("Crear Cuenta", style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.transparent,
+        foregroundColor: darkGreen,
+        elevation: 0,
+        centerTitle: true,
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Form(
           key: formKey,
           child: Column(
             children: [
+              Text("Únete a AgroVet AI", 
+                style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: darkGreen)),
+              const SizedBox(height: 8),
+              const Text("Gestiona la salud de tu ganado con IA", 
+                style: TextStyle(color: Colors.grey, fontSize: 14)),
+              const SizedBox(height: 30),
+              
               TextFormField(
                 controller: firstName,
-                decoration: const InputDecoration(labelText: "Nombre"),
-                validator: (value) =>
-                    value!.isEmpty ? "Ingrese su nombre" : null,
+                decoration: _inputStyle("Nombre", Icons.person_outline),
+                validator: (value) => value!.isEmpty ? "Ingrese su nombre" : null,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: lastName,
-                decoration: const InputDecoration(labelText: "Apellido"),
-                validator: (value) =>
-                    value!.isEmpty ? "Ingrese su apellido" : null,
+                decoration: _inputStyle("Apellido", Icons.person_outline),
+                validator: (value) => value!.isEmpty ? "Ingrese su apellido" : null,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: username,
-                decoration:
-                    const InputDecoration(labelText: "Nombre de usuario"),
-                validator: (value) =>
-                    value!.isEmpty ? "Ingrese un usuario" : null,
+                decoration: _inputStyle("Usuario", Icons.alternate_email),
+                validator: (value) => value!.isEmpty ? "Ingrese un usuario" : null,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: email,
-                decoration: const InputDecoration(labelText: "Correo"),
-                validator: (value) =>
-                    value!.isEmpty ? "Ingrese un correo" : null,
+                keyboardType: TextInputType.emailAddress,
+                decoration: _inputStyle("Correo", Icons.email_outlined),
+                validator: (value) => value!.isEmpty ? "Ingrese un correo" : null,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: phone,
-                decoration: const InputDecoration(labelText: "Teléfono"),
+                keyboardType: TextInputType.phone,
+                decoration: _inputStyle("Teléfono", Icons.phone_android_outlined),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: location,
-                decoration: const InputDecoration(labelText: "Ubicación"),
+                decoration: _inputStyle("Ubicación", Icons.location_on_outlined),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
+              
               DropdownButtonFormField<String>(
-                initialValue: userType,
+                initialValue: userType, // CAMBIO CLAVE AQUÍ
                 items: const [
-                  DropdownMenuItem(
-                      value: "ganadero", child: Text("Ganadero")),
-                  DropdownMenuItem(
-                      value: "veterinario", child: Text("Veterinario")),
+                  DropdownMenuItem(value: "ganadero", child: Text("Ganadero")),
+                  DropdownMenuItem(value: "veterinario", child: Text("Veterinario")),
                 ],
                 onChanged: (value) => setState(() => userType = value),
-                decoration:
-                    const InputDecoration(labelText: "Tipo de usuario"),
-                validator: (value) =>
-                    value == null ? "Seleccione tipo de usuario" : null,
+                decoration: _inputStyle("Tipo de usuario", Icons.badge_outlined),
+                validator: (value) => value == null ? "Seleccione tipo" : null,
               ),
-              const SizedBox(height: 20),
+              
+              const SizedBox(height: 24),
               TextFormField(
                 controller: password,
                 obscureText: !showPassword,
-                maxLength: 20,
                 onChanged: checkPassword,
-                decoration: InputDecoration(
-                  labelText: "Contraseña",
-                  border: const OutlineInputBorder(),
+                decoration: _inputStyle("Contraseña", Icons.lock_outline).copyWith(
                   suffixIcon: IconButton(
-                    icon: Icon(
-                        showPassword ? Icons.visibility : Icons.visibility_off),
-                    onPressed: () {
-                      setState(() {
-                        showPassword = !showPassword;
-                      });
-                    },
+                    icon: Icon(showPassword ? Icons.visibility : Icons.visibility_off),
+                    onPressed: () => setState(() => showPassword = !showPassword),
                   ),
                 ),
               ),
-              passwordRule("Mínimo 8 caracteres", hasMinLength),
-              passwordRule("Máximo 20 caracteres", hasMaxLength),
-              passwordRule("Una mayúscula", hasUpper),
-              passwordRule("Un número", hasNumber),
-              passwordRule("Un símbolo (!@#\$&*~)", hasSymbol),
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFDEE2E6)),
+                ),
+                child: Column(
+                  children: [
+                    passwordRule("Mínimo 8 caracteres", hasMinLength),
+                    passwordRule("Una mayúscula y un número", hasUpper && hasNumber),
+                    passwordRule("Un símbolo (!@#\$&*~)", hasSymbol),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: confirmPassword,
                 obscureText: !showConfirmPassword,
-                decoration: InputDecoration(
-                  labelText: "Confirmar contraseña",
-                  border: const OutlineInputBorder(),
+                decoration: _inputStyle("Confirmar contraseña", Icons.lock_reset_outlined).copyWith(
                   suffixIcon: IconButton(
-                    icon: Icon(showConfirmPassword
-                        ? Icons.visibility
-                        : Icons.visibility_off),
-                    onPressed: () {
-                      setState(() {
-                        showConfirmPassword = !showConfirmPassword;
-                      });
-                    },
+                    icon: Icon(showConfirmPassword ? Icons.visibility : Icons.visibility_off),
+                    onPressed: () => setState(() => showConfirmPassword = !showConfirmPassword),
                   ),
                 ),
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,
+                height: 55,
                 child: ElevatedButton(
                   onPressed: loading ? null : register,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryGreen,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                  ),
                   child: loading
-                      ? const CircularProgressIndicator()
-                      : const Text("Crear cuenta"),
+                      ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Text("REGISTRARSE", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1.1)),
                 ),
               ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text("¿Ya tienes cuenta?"),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text("Inicia sesión", style: TextStyle(color: darkGreen, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
             ],
           ),
         ),

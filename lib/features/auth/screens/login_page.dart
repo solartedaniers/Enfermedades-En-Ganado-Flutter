@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 import 'register_page.dart';
 import 'forgot_password_page.dart';
 import '../../auth/home/screens/home_page.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -13,166 +13,180 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  // Controladores para capturar los datos del usuario
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final AuthService _authService = AuthService();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+  final AuthService authService = AuthService();
 
-  bool _isLoading = false;
-  bool _showPassword = false;
+  bool loading = false;
+  bool showPassword = false;
 
-  // Lógica principal de inicio de sesión
-  Future<void> _handleLogin() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      _showErrorSnackBar("Por favor, ingresa correo y contraseña");
+  // --- PALETA DE COLORES ---
+  final Color primaryGreen = const Color(0xFF2D6A4F);
+  final Color darkGreen = const Color(0xFF1B4332);
+  final Color backgroundColor = const Color(0xFFF1F8F5);
+
+  InputDecoration _inputStyle(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, color: primaryGreen),
+      labelStyle: const TextStyle(color: Colors.grey),
+      filled: true,
+      fillColor: Colors.white,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFDEE2E6)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: primaryGreen, width: 2),
+      ),
+    );
+  }
+
+  Future<void> login() async {
+    if (emailController.text.isEmpty || passwordController.text.isEmpty) {
+      _showSnackBar("Ingrese correo y contraseña");
       return;
     }
 
-    setState(() => _isLoading = true);
+    setState(() => loading = true);
 
     try {
-      // Intento de autenticación vía Supabase
-      await _authService.signIn(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+      await authService.signIn(
+        email: emailController.text.trim(),
+        password: passwordController.text.trim(),
       );
 
       final user = Supabase.instance.client.auth.currentUser;
-
-      // Validación de confirmación de correo
       if (user?.emailConfirmedAt == null) {
-        throw Exception("Debes confirmar tu correo antes de entrar. Revisa tu bandeja.");
+        throw Exception("Debes confirmar tu correo antes de iniciar sesión.");
       }
 
       if (!mounted) return;
-
-      // Navegación fluida al Home
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const HomePage()),
       );
     } catch (e) {
       if (!mounted) return;
-      _showErrorSnackBar(e.toString().replaceAll("Exception: ", ""));
+      _showSnackBar(e.toString().replaceAll("Exception: ", ""));
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => loading = false);
     }
   }
 
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.redAccent,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          // Fondo con degradado sutil
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Colors.green.shade50, Colors.white],
-              ),
-            ),
-          ),
-          SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 40),
-              child: Column(
-                children: [
-                  const SizedBox(height: 20),
-                  // Contenedor del logo con sombra
-                  Hero(
-                    tag: 'logo',
-                    child: Container(
+      backgroundColor: backgroundColor,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Logo de la aplicación (Ruta corregida a lib/images/)
+                Image.asset(
+                  'lib/images/logo.webp', 
+                  width: 120,
+                  height: 120,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    // Si la imagen no carga, muestra un icono estético
+                    return Container(
+                      padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
+                        color: Colors.white,
                         shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
-                          )
-                        ],
+                        // CORRECCIÓN AQUÍ: .withValues en lugar de .withOpacity
+                        border: Border.all(color: primaryGreen.withValues(alpha: 0.2)),
                       ),
-                      child: ClipOval(
-                        child: Image.asset('lib/images/logo.webp', 
-                          width: 150, height: 150, fit: BoxFit.cover),
-                      ),
+                      child: Icon(Icons.pets, size: 60, color: primaryGreen),
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  "AgroVet AI",
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: darkGreen,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                const Text(
+                  "Inteligencia Artificial para tu ganado",
+                  style: TextStyle(color: Colors.grey, fontSize: 15),
+                ),
+                const SizedBox(height: 40),
+                
+                TextField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: _inputStyle("Correo electrónico", Icons.email_outlined),
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: passwordController,
+                  obscureText: !showPassword,
+                  decoration: _inputStyle("Contraseña", Icons.lock_outline).copyWith(
+                    suffixIcon: IconButton(
+                      icon: Icon(showPassword ? Icons.visibility : Icons.visibility_off),
+                      onPressed: () => setState(() => showPassword = !showPassword),
                     ),
                   ),
-                  const SizedBox(height: 30),
-                  Text("AgroVet AI", style: Theme.of(context).textTheme.displayLarge),
-                  const Text("Detección Inteligente Veterinaria", 
-                    style: TextStyle(color: Colors.black54, fontSize: 16)),
-                  const SizedBox(height: 50),
-                  
-                  // Formulario de entrada
-                  TextField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: "Correo Electrónico",
-                      prefixIcon: Icon(Icons.email_outlined),
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.push(
+                      context, 
+                      MaterialPageRoute(builder: (_) => const ForgotPasswordPage())
                     ),
+                    child: Text("¿Olvidaste tu contraseña?", 
+                      style: TextStyle(color: primaryGreen, fontWeight: FontWeight.w600)),
                   ),
-                  const SizedBox(height: 20),
-                  TextField(
-                    controller: _passwordController,
-                    obscureText: !_showPassword,
-                    decoration: InputDecoration(
-                      labelText: "Contraseña",
-                      prefixIcon: const Icon(Icons.lock_outline),
-                      suffixIcon: IconButton(
-                        icon: Icon(_showPassword ? Icons.visibility : Icons.visibility_off),
-                        onPressed: () => setState(() => _showPassword = !_showPassword),
-                      ),
+                ),
+                const SizedBox(height: 30),
+                SizedBox(
+                  width: double.infinity,
+                  height: 55,
+                  child: ElevatedButton(
+                    onPressed: loading ? null : login,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryGreen,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
                     ),
+                    child: loading
+                        ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Text("INICIAR SESIÓN", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   ),
-                  
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ForgotPasswordPage())),
-                      child: const Text("¿Olvidaste tu contraseña?"),
+                ),
+                const SizedBox(height: 30),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text("¿No tienes una cuenta?"),
+                    TextButton(
+                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterPage())),
+                      child: Text("Regístrate aquí", style: TextStyle(color: darkGreen, fontWeight: FontWeight.bold)),
                     ),
-                  ),
-                  const SizedBox(height: 30),
-                  
-                  // Botón de acción con estado de carga
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _handleLogin,
-                    child: _isLoading 
-                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text("INICIAR SESIÓN"),
-                  ),
-                  const SizedBox(height: 25),
-                  
-                  // Enlace de registro
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text("¿Eres nuevo?"),
-                      TextButton(
-                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterPage())),
-                        child: const Text("Crea una cuenta", style: TextStyle(fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }

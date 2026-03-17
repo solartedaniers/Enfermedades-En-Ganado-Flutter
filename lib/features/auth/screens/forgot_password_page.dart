@@ -9,71 +9,152 @@ class ForgotPasswordPage extends StatefulWidget {
 }
 
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
-
-  final email = TextEditingController();
+  final emailController = TextEditingController();
   final authService = AuthService();
+  bool loading = false;
+
+  // --- PALETA DE COLORES AGRO-TECH ---
+  final Color primaryGreen = const Color(0xFF2D6A4F);
+  final Color darkGreen = const Color(0xFF1B4332);
+  // Fondo blanco verdoso actualizado
+  final Color backgroundColor = const Color(0xFFF1F8F5); 
+
+  // Estilo de Input Reutilizable
+  InputDecoration _inputStyle(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, color: primaryGreen),
+      labelStyle: const TextStyle(color: Colors.grey),
+      filled: true,
+      fillColor: Colors.white,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFDEE2E6)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: primaryGreen, width: 2),
+      ),
+    );
+  }
 
   Future<void> reset() async {
-
-    if (email.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Ingrese su correo")),
-      );
+    if (emailController.text.isEmpty) {
+      _showSnackBar("Por favor, ingrese su correo electrónico");
       return;
     }
 
+    setState(() => loading = true);
+
     try {
-
-      await authService.resetPassword(email.text.trim());
-
+      await authService.resetPassword(emailController.text.trim());
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            "Se envió un enlace a tu correo para recuperar tu contraseña."
-          ),
-        ),
-      );
-
+      _showSnackBar("Se envió un enlace a tu correo para recuperar tu contraseña.");
+      
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) Navigator.pop(context);
+      });
+      
     } catch (e) {
-
       if (!mounted) return;
-
       String message = e.toString().replaceAll("Exception: ", "");
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      _showSnackBar(message);
+    } finally {
+      if (mounted) setState(() => loading = false);
     }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
-      appBar: AppBar(title: const Text("Recuperar contraseña")),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
+      backgroundColor: backgroundColor,
+      appBar: AppBar(
+        title: const Text("Recuperar Acceso", style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.transparent, // Se cambió a transparente para que luzca mejor con el fondo
+        foregroundColor: darkGreen,
+        elevation: 0,
+        centerTitle: true,
+      ),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: primaryGreen.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.mark_email_read_outlined, size: 70, color: primaryGreen),
+                ),
+                const SizedBox(height: 32),
+                
+                Text(
+                  "¿Olvidaste tu contraseña?",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: darkGreen,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  "No te preocupes. Ingresa tu correo y te enviaremos instrucciones para restablecerla.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey, fontSize: 15),
+                ),
+                const SizedBox(height: 40),
 
-            TextField(
-              controller: email,
-              decoration: const InputDecoration(
-                labelText: "Correo",
-                border: OutlineInputBorder(),
-              ),
+                // Se eliminó el Card y ahora los elementos están directamente en la columna
+                TextField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: _inputStyle("Correo electrónico", Icons.email_outlined),
+                ),
+                const SizedBox(height: 30),
+                SizedBox(
+                  width: double.infinity,
+                  height: 55,
+                  child: ElevatedButton(
+                    onPressed: loading ? null : reset,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryGreen,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0, // Se quitó elevación para mantener el estilo plano
+                    ),
+                    child: loading
+                        ? const SizedBox(
+                            height: 24, 
+                            width: 24, 
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                          )
+                        : const Text("ENVIAR INSTRUCCIONES", 
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1.1)),
+                  ),
+                ),
+                
+                const SizedBox(height: 24),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    "Volver al inicio de sesión",
+                    style: TextStyle(color: darkGreen, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
             ),
-
-            const SizedBox(height: 30),
-
-            ElevatedButton(
-              onPressed: reset,
-              child: const Text("Enviar correo de recuperación"),
-            ),
-
-          ],
+          ),
         ),
       ),
     );
