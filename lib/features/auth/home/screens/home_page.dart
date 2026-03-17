@@ -10,345 +10,158 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-
-  final SupabaseClient supabase = Supabase.instance.client;
-
-  String username = "";
-  String avatarUrl = "";
+  final SupabaseClient _supabase = Supabase.instance.client;
+  String _username = "Cargando...";
+  String _avatarUrl = "";
 
   @override
   void initState() {
     super.initState();
-    loadProfile();
+    _loadProfile();
   }
 
-  Future<void> loadProfile() async {
-
+  // Carga de datos de perfil desde Supabase
+  Future<void> _loadProfile() async {
     try {
-
-      final user = supabase.auth.currentUser;
-
+      final user = _supabase.auth.currentUser;
       if (user == null) return;
 
-      final data = await supabase
-          .from('profiles')
-          .select()
-          .eq('id', user.id)
-          .single();
-
+      final data = await _supabase.from('profiles').select().eq('id', user.id).single();
       setState(() {
-        username = data['username'] ?? "";
-        avatarUrl = data['avatar_url'] ?? "";
+        _username = data['username'] ?? "Usuario";
+        _avatarUrl = data['avatar_url'] ?? "";
       });
-
     } catch (e) {
-
       debugPrint("Error loading profile: $e");
-
     }
-
   }
 
-  Future<void> logout() async {
-
-    final confirm = await showDialog(
-
+  // Lógica de cierre de sesión con diálogo de confirmación
+  Future<void> _handleLogout() async {
+    final bool? confirm = await showDialog(
       context: context,
-
-      builder: (context) {
-
-        return AlertDialog(
-
-          title: const Text("Cerrar sesión"),
-
-          content: const Text("¿Seguro que deseas cerrar sesión?"),
-
-          actions: [
-
-            TextButton(
-
-              onPressed: () {
-
-                Navigator.pop(context,false);
-
-              },
-
-              child: const Text("Cancelar"),
-
-            ),
-
-            TextButton(
-
-              onPressed: () {
-
-                Navigator.pop(context,true);
-
-              },
-
-              child: const Text("Salir"),
-
-            ),
-
-          ],
-
-        );
-
-      },
-
-    );
-
-    if (confirm != true) return;
-
-    await supabase.auth.signOut();
-
-    if (!mounted) return;
-
-    Navigator.pushAndRemoveUntil(
-
-      context,
-
-      MaterialPageRoute(
-        builder: (context) => const LoginPage(),
+      builder: (context) => AlertDialog(
+        title: const Text("Cerrar sesión"),
+        content: const Text("¿Seguro que deseas salir de AgroVet AI?"),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("CANCELAR")),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("SALIR", style: TextStyle(color: Colors.red))),
+        ],
       ),
-
-      (route) => false,
-
     );
 
-  }
-
-  Widget buildMenuCard({
-
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-
-  }) {
-
-    return GestureDetector(
-
-      onTap: onTap,
-
-      child: Container(
-
-        decoration: BoxDecoration(
-
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-
-          boxShadow: const [
-
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 10,
-              offset: Offset(0,4),
-            )
-
-          ],
-
-        ),
-
-        padding: const EdgeInsets.all(20),
-
-        child: Column(
-
-          mainAxisAlignment: MainAxisAlignment.center,
-
-          children: [
-
-            Icon(icon,size:40,color:Colors.green),
-
-            const SizedBox(height:10),
-
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold
-              ),
-            )
-
-          ],
-
-        ),
-
-      ),
-
-    );
-
+    if (confirm == true) {
+      await _supabase.auth.signOut();
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context, 
+        MaterialPageRoute(builder: (_) => const LoginPage()), 
+        (route) => false
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
-
-      backgroundColor: const Color(0xFFF5F6FA),
-
+      backgroundColor: const Color(0xFFF0F4F0), // Fondo naturaleza
       appBar: AppBar(
-
-        title: const Text("AgroVet AI"),
-
-        actions: [
-
-          IconButton(
-
-            icon: const Icon(Icons.logout),
-            tooltip: "Cerrar sesión",
-
-            onPressed: logout,
-
-          )
-
-        ],
-
+        title: const Text("Panel AgroVet", style: TextStyle(fontWeight: FontWeight.bold)),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
-
-      body: Padding(
-
-        padding: const EdgeInsets.all(20),
-
-        child: Column(
-
-          crossAxisAlignment: CrossAxisAlignment.start,
-
-          children: [
-
-            Row(
-
+      body: Column(
+        children: [
+          // Sección de Bienvenida (Profile Header)
+          Container(
+            margin: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(25),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15)],
+            ),
+            child: Row(
               children: [
-
                 CircleAvatar(
-
-                  radius: 30,
-
+                  radius: 35,
                   backgroundColor: Colors.green.shade100,
-
-                  backgroundImage: avatarUrl.isNotEmpty
-                      ? NetworkImage(avatarUrl)
-                      : null,
-
-                  child: avatarUrl.isEmpty
-                      ? const Icon(Icons.person,size:30,color:Colors.green)
-                      : null,
-
+                  backgroundImage: _avatarUrl.isNotEmpty ? NetworkImage(_avatarUrl) : null,
+                  child: _avatarUrl.isEmpty ? const Icon(Icons.person, size: 35, color: Colors.green) : null,
                 ),
-
-                const SizedBox(width:15),
-
+                const SizedBox(width: 15),
                 Column(
-
                   crossAxisAlignment: CrossAxisAlignment.start,
-
                   children: [
-
-                    const Text(
-                      "Hola",
-                      style: TextStyle(fontSize:16),
-                    ),
-
-                    Text(
-                      username,
-                      style: const TextStyle(
-                        fontSize:22,
-                        fontWeight: FontWeight.bold
-                      ),
-                    )
-
+                    const Text("Hola,", style: TextStyle(color: Colors.black54, fontSize: 16)),
+                    Text(_username, style: Theme.of(context).textTheme.titleLarge),
                   ],
-
-                )
-
-              ],
-
-            ),
-
-            const SizedBox(height:30),
-
-            const Text(
-              "Panel principal",
-              style: TextStyle(
-                fontSize:20,
-                fontWeight: FontWeight.bold
-              ),
-            ),
-
-            const SizedBox(height:20),
-
-            Expanded(
-
-              child: GridView.count(
-
-                crossAxisCount: 2,
-
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-
-                children: [
-
-                  buildMenuCard(
-                    icon: Icons.pets,
-                    title: "Registrar animal",
-                    onTap: () {},
-                  ),
-
-                  buildMenuCard(
-                    icon: Icons.health_and_safety,
-                    title: "Diagnóstico",
-                    onTap: () {},
-                  ),
-
-                  buildMenuCard(
-                    icon: Icons.history,
-                    title: "Historial",
-                    onTap: () {},
-                  ),
-
-                  buildMenuCard(
-                    icon: Icons.vaccines,
-                    title: "Vacunas",
-                    onTap: () {},
-                  ),
-
-                ],
-
-              ),
-
-            ),
-
-            const SizedBox(height:10),
-
-            SizedBox(
-
-              width: double.infinity,
-
-              child: ElevatedButton.icon(
-
-                icon: const Icon(Icons.logout),
-
-                label: const Text("Cerrar sesión"),
-
-                style: ElevatedButton.styleFrom(
-
-                  backgroundColor: Colors.red,
-                  padding: const EdgeInsets.all(14),
-
                 ),
-
-                onPressed: logout,
-
-              ),
-
+              ],
             ),
-
-          ],
-
-        ),
-
+          ),
+          
+          // Grid de Acciones Principales
+          Expanded(
+            child: GridView.count(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              crossAxisCount: 2,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              children: [
+                _buildActionCard(Icons.pets, "Registrar Animal", Colors.green, () {}),
+                _buildActionCard(Icons.biotech_rounded, "Diagnóstico AI", Colors.blue, () {}),
+                _buildActionCard(Icons.history_rounded, "Historial", Colors.orange, () {}),
+                _buildActionCard(Icons.vaccines_rounded, "Vacunación", Colors.teal, () {}),
+              ],
+            ),
+          ),
+          
+          // Botón de salida elegante
+          Padding(
+            padding: const EdgeInsets.all(25),
+            child: OutlinedButton.icon(
+              onPressed: _handleLogout,
+              icon: const Icon(Icons.logout, color: Colors.red),
+              label: const Text("CERRAR SESIÓN", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 55),
+                side: const BorderSide(color: Colors.red, width: 2),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+              ),
+            ),
+          ),
+        ],
       ),
-
     );
-
   }
 
+  // Widget reutilizable para las tarjetas del menú
+  Widget _buildActionCard(IconData icon, String title, Color color, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [BoxShadow(color: color.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5))],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(15),
+              decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+              child: Icon(icon, size: 40, color: color),
+            ),
+            const SizedBox(height: 12),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          ],
+        ),
+      ),
+    );
+  }
 }
