@@ -11,20 +11,32 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # --- Base de Datos y Estado ---
   supabase_flutter: ^2.12.0
   provider: ^6.1.2
+  
+  # --- Almacenamiento Local (Hive) ---
+  hive: ^2.2.3            # 👈 Añadido para solucionar el error de importación
+  hive_flutter: ^1.1.0    # Inicialización de Hive en Flutter
+
+  # --- Utilidades y UI ---
   fluttertoast: ^9.0.0
   cupertino_icons: ^1.0.8
-  image_picker: ^1.1.2   # 👈 Librería para imágenes
-  app_links: ^6.4.1      # 👈 Dependencia para Deep Linking
-  logger: ^2.6.2         # 👈 Dependencia para logging profesional
+  image_picker: ^1.1.2    # Librería para imágenes
+  app_links: ^6.4.1       # Dependencia para Deep Linking
+  logger: ^2.6.2          # Dependencia para logging profesional
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  
+  # --- Generación de Código ---
+  build_runner: ^2.4.9
+  hive_generator: ^2.0.1
 
 flutter:
   uses-material-design: true
+
   assets:
-    - lib/images/logo.webp   # 👈 Aquí declaras tu logo para usarlo en la app
+    - lib/images/logo.webp   # Tu logo declarado correctamente

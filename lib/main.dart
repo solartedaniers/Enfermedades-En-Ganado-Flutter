@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:app_links/app_links.dart';
 import 'package:logger/logger.dart';
+import 'package:hive_flutter/hive_flutter.dart';   // 👈 Import Hive
+import 'features/animals/data/models/animal_model.dart'; // 👈 Tu modelo Hive
 
 import 'features/auth/screens/login_page.dart';
 import 'features/auth/home/screens/home_page.dart';
@@ -13,6 +15,11 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Inicializar Hive
+  await Hive.initFlutter();
+  Hive.registerAdapter(AnimalModelAdapter()); // 👈 Registrar tu adapter
+
+  // Inicializar Supabase
   await Supabase.initialize(
     url: 'https://ouxnrcamlloyhcanpbmb.supabase.co',
     anonKey: 'sb_publishable_a49vVecFsuol_HcWdCq_0Q_9SFGJTl1',
@@ -77,7 +84,6 @@ class _AgrovetAIState extends State<AgrovetAI> {
 
   @override
   Widget build(BuildContext context) {
-    // Verificamos la sesión actual
     final session = Supabase.instance.client.auth.currentSession;
 
     return MaterialApp(
@@ -88,10 +94,7 @@ class _AgrovetAIState extends State<AgrovetAI> {
         '/home': (_) => const HomePage(),
         '/reset-password': (_) => const ResetPasswordPage(),
       },
-      // CAMBIO AQUÍ: Eliminamos SplashScreen y decidimos el home de inmediato
       home: session == null ? const LoginPage() : const HomePage(),
     );
   }
 }
-
-// Se eliminó la clase SplashScreen para evitar la espera de 3 segundos.
