@@ -26,6 +26,8 @@ dependencies:
   image_picker: ^1.1.2    # Librería para imágenes
   app_links: ^6.4.1       # Dependencia para Deep Linking
   logger: ^2.6.2          # Dependencia para logging profesional
+  connectivity_plus: ^6.0.3   # 👈 Nueva dependencia para detectar conexión
+  uuid: ^4.5.3
 
 dev_dependencies:
   flutter_test:

@@ -4,6 +4,7 @@ import 'package:app_links/app_links.dart';
 import 'package:logger/logger.dart';
 import 'package:hive_flutter/hive_flutter.dart';   // 👈 Import Hive
 import 'features/animals/data/models/animal_model.dart'; // 👈 Tu modelo Hive
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // 👈 Import Riverpod
 
 import 'features/auth/screens/login_page.dart';
 import 'features/auth/home/screens/home_page.dart';
@@ -28,7 +29,11 @@ Future<void> main() async {
     ),
   );
 
-  runApp(const AgrovetAI());
+  runApp(
+    const ProviderScope(   // 👈 Aquí envuelves tu app
+      child: AgrovetAI(),
+    ),
+  );
 }
 
 class AgrovetAI extends StatefulWidget {
