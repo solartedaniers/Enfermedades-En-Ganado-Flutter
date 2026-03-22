@@ -3,17 +3,17 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 class StorageService {
-  final supabase = Supabase.instance.client;
-  final uuid = const Uuid();
+  final _supabase = Supabase.instance.client;
+  final _uuid = const Uuid();
 
-  Future<String> uploadImage(File file) async {
-    final fileName = '${uuid.v4()}.jpg';
+  Future<String> uploadAnimalImage(File file, String userId) async {
+    final fileName = '$userId/${_uuid.v4()}.jpg';  // 🔥 organizado por usuario
 
-    await supabase.storage
+    await _supabase.storage
         .from('animals')
         .upload(fileName, file);
 
-    final publicUrl = supabase.storage
+    final publicUrl = _supabase.storage
         .from('animals')
         .getPublicUrl(fileName);
 

@@ -1,7 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
+import '../../../../core/services/storage_service.dart';
 import '../../domain/entities/animal_entity.dart';
 import '../providers/animal_provider.dart';
 
@@ -21,6 +24,9 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
   final _weightController = TextEditingController();
   final _temperatureController = TextEditingController();
 
+  File? _selectedImage;
+  final _picker = ImagePicker();
+  final _storageService = StorageService();
   bool _isLoading = false;
 
   @override
@@ -32,6 +38,46 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
     _weightController.dispose();
     _temperatureController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    final picked = await _picker.pickImage(
+      source: source,
+      imageQuality: 80, // comprime un poco para no subir archivos enormes
+    );
+
+    if (picked != null) {
+      setState(() => _selectedImage = File(picked.path));
+    }
+  }
+
+  void _showImageSourceDialog() {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text("Tomar foto"),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text("Elegir de galería"),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _submit() async {
@@ -48,6 +94,15 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
         return;
       }
 
+      // Subir imagen si fue seleccionada
+      String? imageUrl;
+      if (_selectedImage != null) {
+        imageUrl = await _storageService.uploadAnimalImage(
+          _selectedImage!,
+          user.id,
+        );
+      }
+
       final animal = AnimalEntity(
         id: const Uuid().v4(),
         userId: user.id,
@@ -61,7 +116,7 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
         temperature: _temperatureController.text.trim().isEmpty
             ? null
             : double.tryParse(_temperatureController.text.trim()),
-        imageUrl: null,
+        imageUrl: imageUrl, // 🔥 URL de Supabase Storage
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -96,6 +151,40 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
           key: _formKey,
           child: Column(
             children: [
+              // --- Selector de imagen ---
+              GestureDetector(
+                onTap: _showImageSourceDialog,
+                child: Container(
+                  height: 160,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade400),
+                  ),
+                  child: _selectedImage != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.file(
+                            _selectedImage!,
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                      : const Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.add_a_photo,
+                                size: 48, color: Colors.grey),
+                            SizedBox(height: 8),
+                            Text("Toca para agregar foto",
+                                style: TextStyle(color: Colors.grey)),
+                          ],
+                        ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // --- Campos del formulario ---
               TextFormField(
                 controller: _nameController,
                 decoration: const InputDecoration(
@@ -159,6 +248,8 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
                 keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 24),
+
+              // --- Botón guardar ---
               SizedBox(
                 width: double.infinity,
                 height: 48,
