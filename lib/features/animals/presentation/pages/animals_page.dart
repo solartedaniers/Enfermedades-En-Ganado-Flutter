@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/animal_provider.dart';
+import 'add_animal_page.dart';
 
 class AnimalsPage extends ConsumerWidget {
   const AnimalsPage({super.key});
@@ -10,41 +11,28 @@ class AnimalsPage extends ConsumerWidget {
     final animalRepo = ref.watch(animalRepositoryProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Mis Animales")), // Corregido: AppBar
+      appBar: AppBar(title: const Text("Mis Animales")),
       body: FutureBuilder(
         future: animalRepo.getAnimals(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError) {
-            return Center(child: Text("Error: ${snapshot.error}"));
-          }
-
+          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
           final animals = snapshot.data ?? [];
-
           return ListView.builder(
             itemCount: animals.length,
             itemBuilder: (context, index) {
               final animal = animals[index];
-
               return ListTile(
-                leading: CircleAvatar(
-                  backgroundImage: (animal.imageUrl != null && animal.imageUrl!.isNotEmpty)
-                      ? NetworkImage(animal.imageUrl!)
-                      : null,
-                  child: (animal.imageUrl == null || animal.imageUrl!.isEmpty)
-                      ? const Icon(Icons.pets)
-                      : null,
-                ),
+                leading: const Icon(Icons.pets),
                 title: Text(animal.name),
-                // Solo usamos breed ya que species no está en tu modelo
-                subtitle: Text(animal.breed), 
+                subtitle: Text(animal.breed),
               );
             },
           );
         },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddAnimalPage())),
+        child: const Icon(Icons.add),
       ),
     );
   }

@@ -18,45 +18,48 @@ class AnimalModelAdapter extends TypeAdapter<AnimalModel> {
     };
     return AnimalModel(
       id: fields[0] as String,
-      name: fields[1] as String,
-      breed: fields[2] as String,
-      age: fields[3] as int,
-      symptoms: fields[6] as String,
-      createdAt: fields[8] as DateTime,
-      updatedAt: fields[9] as DateTime,
+      userId: fields[1] as String,
+      name: fields[2] as String,
+      breed: fields[3] as String,
+      age: fields[4] as int,
+      symptoms: fields[5] as String,
+      createdAt: fields[6] as DateTime,
+      updatedAt: fields[7] as DateTime,
+      weight: fields[8] as double?,
+      temperature: fields[9] as double?,
+      imageUrl: fields[11] as String?,
       isSynced: fields[10] as bool,
-      weight: fields[4] as double?,
-      temperature: fields[5] as double?,
-      imageUrl: fields[7] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, AnimalModel obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.name)
+      ..write(obj.userId)
       ..writeByte(2)
-      ..write(obj.breed)
+      ..write(obj.name)
       ..writeByte(3)
-      ..write(obj.age)
+      ..write(obj.breed)
       ..writeByte(4)
-      ..write(obj.weight)
+      ..write(obj.age)
       ..writeByte(5)
-      ..write(obj.temperature)
-      ..writeByte(6)
       ..write(obj.symptoms)
-      ..writeByte(7)
-      ..write(obj.imageUrl)
-      ..writeByte(8)
+      ..writeByte(6)
       ..write(obj.createdAt)
-      ..writeByte(9)
+      ..writeByte(7)
       ..write(obj.updatedAt)
+      ..writeByte(8)
+      ..write(obj.weight)
+      ..writeByte(9)
+      ..write(obj.temperature)
       ..writeByte(10)
-      ..write(obj.isSynced);
+      ..write(obj.isSynced)
+      ..writeByte(11)
+      ..write(obj.imageUrl);
   }
 
   @override

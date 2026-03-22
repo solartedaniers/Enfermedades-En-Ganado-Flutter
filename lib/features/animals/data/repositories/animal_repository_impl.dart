@@ -13,42 +13,26 @@ class AnimalRepositoryImpl implements AnimalRepository {
     required this.remoteDataSource,
   });
 
-  /// Crear animal (offline-first)
   @override
   Future<void> addAnimal(AnimalEntity animal) async {
-    final model = AnimalModel(
-      id: animal.id,
-      name: animal.name,
-      breed: animal.breed,
-      age: animal.age,
-      symptoms: animal.symptoms,
-      createdAt: animal.createdAt,
-      updatedAt: animal.updatedAt,
-      weight: animal.weight,
-      temperature: animal.temperature,
-      imageUrl: animal.imageUrl,
-      isSynced: false, // 👈 CLAVE
-    );
+    final model = AnimalModel.fromEntity(animal, isSynced: false);
 
-    // 1. Guardar LOCAL
     await localDataSource.saveAnimal(model);
 
-    // 2. Intentar sincronizar
     try {
       await remoteDataSource.insertAnimal(model);
       await localDataSource.markAsSynced(model.id);
     } catch (e) {
-      // ❌ Sin internet → queda pendiente
+      // Sin internet → queda pendiente para sincronización futura
     }
   }
 
-  /// Obtener animales (prioridad local)
   @override
   Future<List<AnimalEntity>> getAnimals() async {
-    return await localDataSource.getAnimals();
+    final models = await localDataSource.getAnimals();
+    return models.map((m) => m.toEntity()).toList();
   }
 
-  /// 🔥 SINCRONIZACIÓN MANUAL
   Future<void> syncAnimals() async {
     final unsynced = await localDataSource.getUnsyncedAnimals();
 
@@ -57,7 +41,7 @@ class AnimalRepositoryImpl implements AnimalRepository {
         await remoteDataSource.insertAnimal(animal);
         await localDataSource.markAsSynced(animal.id);
       } catch (e) {
-        // sigue intentando luego
+        // Si falla, se seguirá intentando luego
       }
     }
   }

@@ -14,7 +14,7 @@ dependencies:
   # --- Base de Datos y Estado ---
   supabase_flutter: ^2.12.0
   provider: ^6.1.2
-  flutter_riverpod: ^2.5.1   # 👈 Añadido para manejar estado con Riverpod
+  flutter_riverpod: ^2.6.1   # 👈 Añadido para manejar estado con Riverpod
 
   # --- Almacenamiento Local (Hive) ---
   hive: ^2.2.3            # 👈 Añadido para solucionar el error de importación

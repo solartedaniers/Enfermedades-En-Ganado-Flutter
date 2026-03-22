@@ -11,7 +11,21 @@ class AnimalLocalDataSource {
   /// Guardar animal localmente
   Future<void> saveAnimal(AnimalModel animal) async {
     final box = await _openBox();
-    await box.put(animal.id, animal);
+    final animalModel = AnimalModel(
+      id: animal.id,
+      userId: animal.userId, // 👈 Campo obligatorio
+      name: animal.name,
+      breed: animal.breed,
+      age: animal.age,
+      symptoms: animal.symptoms,
+      createdAt: animal.createdAt,
+      updatedAt: animal.updatedAt,
+      weight: animal.weight,
+      temperature: animal.temperature,
+      imageUrl: animal.imageUrl,
+      isSynced: false, // 👈 Se guarda inicialmente como no sincronizado
+    );
+    await box.put(animal.id, animalModel);
   }
 
   /// Obtener todos los animales
@@ -34,16 +48,17 @@ class AnimalLocalDataSource {
     if (animal != null) {
       final updated = AnimalModel(
         id: animal.id,
+        userId: animal.userId, // 👈 Mantener el userId
         name: animal.name,
         breed: animal.breed,
         age: animal.age,
         symptoms: animal.symptoms,
         createdAt: animal.createdAt,
         updatedAt: DateTime.now(),
-        isSynced: true,
         weight: animal.weight,
         temperature: animal.temperature,
         imageUrl: animal.imageUrl,
+        isSynced: true, // 👈 Ahora marcado como sincronizado
       );
 
       await box.put(id, updated);
