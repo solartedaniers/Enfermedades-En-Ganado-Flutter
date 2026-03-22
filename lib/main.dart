@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:app_links/app_links.dart';
 import 'package:logger/logger.dart';
-import 'package:hive_flutter/hive_flutter.dart';   // 👈 Import Hive
-import 'features/animals/data/models/animal_model.dart'; // 👈 Tu modelo Hive
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // 👈 Import Riverpod
-
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'features/animals/data/models/animal_model.dart';
 import 'features/auth/screens/login_page.dart';
 import 'features/auth/home/screens/home_page.dart';
 import 'features/auth/screens/reset_password_page.dart';
+import 'core/theme/app_theme.dart';
 
 final logger = Logger();
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -16,11 +16,9 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inicializar Hive
   await Hive.initFlutter();
-  Hive.registerAdapter(AnimalModelAdapter()); // 👈 Registrar tu adapter
+  Hive.registerAdapter(AnimalModelAdapter());
 
-  // Inicializar Supabase
   await Supabase.initialize(
     url: 'https://ouxnrcamlloyhcanpbmb.supabase.co',
     anonKey: 'sb_publishable_a49vVecFsuol_HcWdCq_0Q_9SFGJTl1',
@@ -30,7 +28,7 @@ Future<void> main() async {
   );
 
   runApp(
-    const ProviderScope(   // 👈 Aquí envuelves tu app
+    const ProviderScope(
       child: AgrovetAI(),
     ),
   );
@@ -94,6 +92,9 @@ class _AgrovetAIState extends State<AgrovetAI> {
     return MaterialApp(
       navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.system,
       routes: {
         '/login': (_) => const LoginPage(),
         '/home': (_) => const HomePage(),

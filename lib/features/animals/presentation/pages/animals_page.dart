@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/animal_provider.dart';
+import '../widgets/animal_card.dart';
 import 'add_animal_page.dart';
 import 'package:agrovet_ai/features/medical/presentation/pages/medical_history_page.dart';
 
@@ -13,30 +14,82 @@ class AnimalsPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text("Mis Animales")),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AddAnimalPage()),
+          );
+          ref.invalidate(animalRepositoryProvider);
+        },
+        child: const Icon(Icons.add),
+      ),
       body: FutureBuilder(
         future: animalRepo.getAnimals(),
         builder: (context, snapshot) {
+          // --- Loading ---
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
+
+          // --- Error ---
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline,
+                      size: 64, color: Colors.redAccent),
+                  const SizedBox(height: 16),
+                  Text(
+                    "Error al cargar datos",
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed: () => ref.invalidate(animalRepositoryProvider),
+                    child: const Text("Reintentar"),
+                  ),
+                ],
+              ),
+            );
+          }
+
           final animals = snapshot.data ?? [];
+
+          // --- Empty state ---
+          if (animals.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.pets, size: 80, color: Colors.grey[400]),
+                  const SizedBox(height: 16),
+                  Text(
+                    "No tienes animales registrados",
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Toca el botón + para agregar uno",
+                    style: TextStyle(color: Colors.grey[400]),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          // --- Lista ---
           return ListView.builder(
+            padding: const EdgeInsets.symmetric(vertical: 8),
             itemCount: animals.length,
             itemBuilder: (context, index) {
               final animal = animals[index];
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundImage: (animal.imageUrl != null &&
-                          animal.imageUrl!.isNotEmpty)
-                      ? NetworkImage(animal.imageUrl!)
-                      : null,
-                  child: (animal.imageUrl == null || animal.imageUrl!.isEmpty)
-                      ? const Icon(Icons.pets)
-                      : null,
-                ),
-                title: Text(animal.name),
-                subtitle: Text(animal.breed),
-                trailing: const Icon(Icons.chevron_right),
+              return AnimalCard(
+                animal: animal,
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -50,13 +103,6 @@ class AnimalsPage extends ConsumerWidget {
             },
           );
         },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const AddAnimalPage()),
-        ),
-        child: const Icon(Icons.add),
       ),
     );
   }

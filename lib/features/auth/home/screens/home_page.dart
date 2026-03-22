@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../animals/data/services/animal_sync_service.dart'; 
+import '../../../animals/data/services/animal_sync_service.dart';
+import '../../../animals/presentation/pages/animals_page.dart';
 import '../../screens/login_page.dart';
 
 class HomePage extends ConsumerStatefulWidget {
@@ -13,28 +14,20 @@ class HomePage extends ConsumerStatefulWidget {
 
 class _HomePageState extends ConsumerState<HomePage> {
   final SupabaseClient supabase = Supabase.instance.client;
-  
-  // 🧠 Definimos el servicio
   AnimalSyncService? syncService;
-
   String username = "";
   String avatarUrl = "";
 
   @override
   void initState() {
     super.initState();
-    
-    // 🚀 IMPORTANTE: Usamos 'ref.read' para obtener el contexto del provider
-    // y lo pasamos al servicio. Esto quita el error de WidgetRef.
     syncService = AnimalSyncService(ref);
     syncService?.start();
-    
     loadProfile();
   }
 
   @override
   void dispose() {
-    // 🛑 Detenemos el servicio al salir
     syncService?.stop();
     super.dispose();
   }
@@ -81,18 +74,46 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
 
     if (confirm != true) return;
-    
-    // Detener sync antes de salir
+
     syncService?.stop();
-    
     await supabase.auth.signOut();
     if (!mounted) return;
 
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (context) => const LoginPage()),
+      MaterialPageRoute(builder: (_) => const LoginPage()),
       (route) => false,
     );
+  }
+
+  void _onMenuTap(String title) {
+    switch (title) {
+      case "Registrar animal":
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AnimalsPage()),
+        );
+        break;
+
+      case "Historial":
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AnimalsPage()),
+        );
+        break;
+
+      case "Diagnóstico":
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Próximamente: Diagnóstico IA 🤖")),
+        );
+        break;
+
+      case "Vacunas":
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Próximamente: Vacunas 💉")),
+        );
+        break;
+    }
   }
 
   @override
@@ -105,7 +126,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: logout,
-          )
+          ),
         ],
       ),
       body: Padding(
@@ -113,14 +134,16 @@ class _HomePageState extends ConsumerState<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Perfil de Usuario
             Row(
               children: [
                 CircleAvatar(
                   radius: 30,
                   backgroundColor: Colors.green.shade100,
-                  backgroundImage: avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
-                  child: avatarUrl.isEmpty ? const Icon(Icons.person, size: 30, color: Colors.green) : null,
+                  backgroundImage:
+                      avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
+                  child: avatarUrl.isEmpty
+                      ? const Icon(Icons.person, size: 30, color: Colors.green)
+                      : null,
                 ),
                 const SizedBox(width: 15),
                 Column(
@@ -129,10 +152,11 @@ class _HomePageState extends ConsumerState<HomePage> {
                     const Text("Hola", style: TextStyle(fontSize: 16)),
                     Text(
                       username,
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                    )
+                      style: const TextStyle(
+                          fontSize: 22, fontWeight: FontWeight.bold),
+                    ),
                   ],
-                )
+                ),
               ],
             ),
             const SizedBox(height: 30),
@@ -141,7 +165,6 @@ class _HomePageState extends ConsumerState<HomePage> {
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 20),
-            // Cuadrícula de opciones
             Expanded(
               child: GridView.count(
                 crossAxisCount: 2,
@@ -162,19 +185,28 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Widget _buildMenuCard(IconData icon, String title) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 40, color: Colors.green),
-          const SizedBox(height: 10),
-          Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        ],
+    return GestureDetector(
+      onTap: () => _onMenuTap(title),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 10,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 40, color: Colors.green),
+            const SizedBox(height: 10),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
       ),
     );
   }
