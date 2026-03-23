@@ -43,3 +43,5 @@ flutter:
 
   assets:
     - lib/images/logo.webp   # Tu logo declarado correctamente
+    - lib/l10n/es.json       # Traducciones en español
+    - lib/l10n/en.json       # Traducciones en inglés

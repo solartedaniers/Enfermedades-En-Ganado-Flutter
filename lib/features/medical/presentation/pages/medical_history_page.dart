@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/utils/app_strings.dart';
 import '../providers/medical_provider.dart';
 
 class MedicalHistoryPage extends ConsumerWidget {
@@ -17,7 +18,9 @@ class MedicalHistoryPage extends ConsumerWidget {
     final repo = ref.watch(medicalRepositoryProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text("Historial de $animalName")),
+      appBar: AppBar(
+        title: Text("${AppStrings.t("medical_history")} - $animalName"),
+      ),
       body: FutureBuilder(
         future: repo.getRecords(animalId),
         builder: (context, snapshot) {
@@ -26,22 +29,24 @@ class MedicalHistoryPage extends ConsumerWidget {
           }
 
           if (snapshot.hasError) {
-            return Center(child: Text("Error: ${snapshot.error}"));
+            return Center(
+              child: Text("${AppStrings.t("load_error")}: ${snapshot.error}"),
+            );
           }
 
           final records = snapshot.data ?? [];
 
           if (records.isEmpty) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.medical_services_outlined,
+                  const Icon(Icons.medical_services_outlined,
                       size: 64, color: Colors.grey),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   Text(
-                    "No hay registros médicos aún",
-                    style: TextStyle(color: Colors.grey),
+                    AppStrings.t("no_records"),
+                    style: const TextStyle(color: Colors.grey),
                   ),
                 ],
               ),
@@ -73,17 +78,17 @@ class MedicalHistoryPage extends ConsumerWidget {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      const Text(
-                        "Diagnóstico:",
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                      Text(
+                        "${AppStrings.t("diagnosis_label")}:",
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      Text(record.diagnosis ?? "Sin diagnóstico"),
+                      Text(record.diagnosis ?? AppStrings.t("no_diagnosis")),
                       const SizedBox(height: 8),
-                      const Text(
-                        "Resultado IA:",
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                      Text(
+                        "${AppStrings.t("ai_result")}:",
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      Text(record.aiResult ?? "Sin resultado de IA"),
+                      Text(record.aiResult ?? AppStrings.t("no_ai_result")),
                     ],
                   ),
                 ),

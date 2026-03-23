@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/animal_provider.dart';
 import '../widgets/animal_card.dart';
 import 'add_animal_page.dart';
-import 'package:agrovet_ai/features/medical/presentation/pages/medical_history_page.dart';
+import 'animal_detail_page.dart';
 
 class AnimalsPage extends ConsumerWidget {
   const AnimalsPage({super.key});
@@ -27,12 +27,10 @@ class AnimalsPage extends ConsumerWidget {
       body: FutureBuilder(
         future: animalRepo.getAnimals(),
         builder: (context, snapshot) {
-          // --- Loading ---
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // --- Error ---
           if (snapshot.hasError) {
             return Center(
               child: Column(
@@ -41,10 +39,8 @@ class AnimalsPage extends ConsumerWidget {
                   const Icon(Icons.error_outline,
                       size: 64, color: Colors.redAccent),
                   const SizedBox(height: 16),
-                  Text(
-                    "Error al cargar datos",
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
+                  Text("Error al cargar datos",
+                      style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 8),
                   ElevatedButton(
                     onPressed: () => ref.invalidate(animalRepositoryProvider),
@@ -57,7 +53,6 @@ class AnimalsPage extends ConsumerWidget {
 
           final animals = snapshot.data ?? [];
 
-          // --- Empty state ---
           if (animals.isEmpty) {
             return Center(
               child: Column(
@@ -67,10 +62,7 @@ class AnimalsPage extends ConsumerWidget {
                   const SizedBox(height: 16),
                   Text(
                     "No tienes animales registrados",
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey[600],
-                    ),
+                    style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -82,7 +74,6 @@ class AnimalsPage extends ConsumerWidget {
             );
           }
 
-          // --- Lista ---
           return ListView.builder(
             padding: const EdgeInsets.symmetric(vertical: 8),
             itemCount: animals.length,
@@ -93,10 +84,7 @@ class AnimalsPage extends ConsumerWidget {
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => MedicalHistoryPage(
-                      animalId: animal.id,
-                      animalName: animal.name,
-                    ),
+                    builder: (_) => AnimalDetailPage(animal: animal),
                   ),
                 ),
               );

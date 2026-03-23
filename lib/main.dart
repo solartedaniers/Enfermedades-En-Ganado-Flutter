@@ -9,6 +9,7 @@ import 'features/auth/screens/login_page.dart';
 import 'features/auth/home/screens/home_page.dart';
 import 'features/auth/screens/reset_password_page.dart';
 import 'core/theme/app_theme.dart';
+import 'features/profile/presentation/providers/profile_provider.dart';
 
 final logger = Logger();
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -34,14 +35,14 @@ Future<void> main() async {
   );
 }
 
-class AgrovetAI extends StatefulWidget {
+class AgrovetAI extends ConsumerStatefulWidget {
   const AgrovetAI({super.key});
 
   @override
-  State<AgrovetAI> createState() => _AgrovetAIState();
+  ConsumerState<AgrovetAI> createState() => _AgrovetAIState();
 }
 
-class _AgrovetAIState extends State<AgrovetAI> {
+class _AgrovetAIState extends ConsumerState<AgrovetAI> {
   final AppLinks _appLinks = AppLinks();
 
   @override
@@ -87,6 +88,8 @@ class _AgrovetAIState extends State<AgrovetAI> {
 
   @override
   Widget build(BuildContext context) {
+    // 🔥 El tema ahora responde al provider en tiempo real
+    final themeMode = ref.watch(profileProvider).themeMode;
     final session = Supabase.instance.client.auth.currentSession;
 
     return MaterialApp(
@@ -94,7 +97,7 @@ class _AgrovetAIState extends State<AgrovetAI> {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
+      themeMode: themeMode,
       routes: {
         '/login': (_) => const LoginPage(),
         '/home': (_) => const HomePage(),
