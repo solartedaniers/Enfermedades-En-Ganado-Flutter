@@ -7,7 +7,8 @@ class AnimalEntity {
   final double? weight;
   final double? temperature;
   final String symptoms;
-  final String? imageUrl;
+  final String? imageUrl;         // foto para IA (en add_animal_page)
+  final String? profileImageUrl;  // foto de perfil del animal (en historial)
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -23,5 +24,6 @@ class AnimalEntity {
     this.weight,
     this.temperature,
     this.imageUrl,
+    this.profileImageUrl,
   });
 }

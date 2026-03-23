@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/auth_service.dart';
 import 'login_page.dart';
+import '../../../../core/utils/app_strings.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../profile/presentation/providers/profile_provider.dart';
 
-class RegisterPage extends StatefulWidget {
+class RegisterPage extends ConsumerStatefulWidget {
   const RegisterPage({super.key});
 
   @override
-  State<RegisterPage> createState() => _RegisterPageState();
+  ConsumerState<RegisterPage> createState() => _RegisterPageState();
 }
 
-class _RegisterPageState extends State<RegisterPage> {
+class _RegisterPageState extends ConsumerState<RegisterPage> {
   final firstName = TextEditingController();
   final lastName = TextEditingController();
   final username = TextEditingController();
@@ -26,16 +30,24 @@ class _RegisterPageState extends State<RegisterPage> {
   bool loading = false;
   bool showPassword = false;
   bool showConfirmPassword = false;
-
   bool hasUpper = false;
   bool hasNumber = false;
   bool hasSymbol = false;
   bool hasMinLength = false;
   bool hasMaxLength = true;
 
-  final Color primaryGreen = const Color(0xFF2D6A4F);
-  final Color darkGreen = const Color(0xFF1B4332);
-  final Color backgroundColor = const Color(0xFFF1F8F5);
+  @override
+  void dispose() {
+    firstName.dispose();
+    lastName.dispose();
+    username.dispose();
+    email.dispose();
+    password.dispose();
+    confirmPassword.dispose();
+    phone.dispose();
+    location.dispose();
+    super.dispose();
+  }
 
   void checkPassword(String value) {
     setState(() {
@@ -47,42 +59,23 @@ class _RegisterPageState extends State<RegisterPage> {
     });
   }
 
-  bool isStrongPassword() => hasUpper && hasNumber && hasSymbol && hasMinLength && hasMaxLength;
-
-  InputDecoration _inputStyle(String label, IconData icon) {
-    return InputDecoration(
-      labelText: label,
-      prefixIcon: Icon(icon, color: primaryGreen),
-      labelStyle: const TextStyle(color: Colors.grey),
-      filled: true,
-      fillColor: Colors.white,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFDEE2E6)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: primaryGreen, width: 2),
-      ),
-    );
-  }
+  bool isStrongPassword() =>
+      hasUpper && hasNumber && hasSymbol && hasMinLength && hasMaxLength;
 
   Future<void> register() async {
     if (!formKey.currentState!.validate()) return;
     if (!isStrongPassword()) {
-      _showSnackBar("La contraseña no cumple los requisitos de seguridad");
+      _showSnackBar(AppStrings.t("password_weak"));
       return;
     }
     if (password.text != confirmPassword.text) {
-      _showSnackBar("Las contraseñas no coinciden");
+      _showSnackBar(AppStrings.t("passwords_no_match"));
       return;
     }
     if (userType == null) {
-      _showSnackBar("Seleccione tipo de usuario");
+      _showSnackBar(AppStrings.t("select_user_type"));
       return;
     }
-
     setState(() => loading = true);
     try {
       await authService.signUpUser(
@@ -96,12 +89,13 @@ class _RegisterPageState extends State<RegisterPage> {
         userType: userType!,
       );
       if (!mounted) return;
-      _showSnackBar("Cuenta creada correctamente. Revisa tu correo.");
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginPage()));
+      _showSnackBar(AppStrings.t("account_created"));
+      Navigator.pushReplacement(
+          context, MaterialPageRoute(builder: (_) => const LoginPage()));
     } catch (e) {
       if (!mounted) return;
-      _showSnackBar(e.toString().contains("over_email_send_rate_limit") 
-          ? "Espera unos segundos para solicitar otro correo." 
+      _showSnackBar(e.toString().contains("over_email_send_rate_limit")
+          ? AppStrings.t("wait_email")
           : e.toString().replaceAll("Exception: ", ""));
     } finally {
       if (mounted) setState(() => loading = false);
@@ -109,10 +103,31 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Widget passwordRule(String text, bool valid) {
+  InputDecoration _inputStyle(String label, IconData icon) {
+    final primaryGreen = AppTheme.primaryColor;
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, color: primaryGreen),
+      labelStyle: const TextStyle(color: Colors.grey),
+      filled: true,
+      border:
+          OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFDEE2E6)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: primaryGreen, width: 2),
+      ),
+    );
+  }
+
+  Widget _passwordRule(String text, bool valid) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
@@ -123,13 +138,10 @@ class _RegisterPageState extends State<RegisterPage> {
             size: 16,
           ),
           const SizedBox(width: 8),
-          Text(
-            text,
-            style: TextStyle(
-              fontSize: 12,
-              color: valid ? Colors.green : Colors.grey,
-            ),
-          )
+          Text(text,
+              style: TextStyle(
+                  fontSize: 12,
+                  color: valid ? Colors.green : Colors.grey)),
         ],
       ),
     );
@@ -137,12 +149,19 @@ class _RegisterPageState extends State<RegisterPage> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(profileProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final darkGreen = const Color(0xFF1B4332);
+    final bgColor =
+        isDark ? const Color(0xFF121212) : const Color(0xFFF1F8F5);
+
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: bgColor,
       appBar: AppBar(
-        title: const Text("Crear Cuenta", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(AppStrings.t("create_account"),
+            style: const TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
-        foregroundColor: darkGreen,
+        foregroundColor: isDark ? Colors.white : darkGreen,
         elevation: 0,
         centerTitle: true,
       ),
@@ -152,70 +171,92 @@ class _RegisterPageState extends State<RegisterPage> {
           key: formKey,
           child: Column(
             children: [
-              Text("Únete a AgroVet AI", 
-                style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: darkGreen)),
+              Text(AppStrings.t("join_app"),
+                  style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : darkGreen)),
               const SizedBox(height: 8),
-              const Text("Gestiona la salud de tu ganado con IA", 
-                style: TextStyle(color: Colors.grey, fontSize: 14)),
+              Text(AppStrings.t("manage_livestock"),
+                  style:
+                      const TextStyle(color: Colors.grey, fontSize: 14)),
               const SizedBox(height: 30),
-              
               TextFormField(
                 controller: firstName,
-                decoration: _inputStyle("Nombre", Icons.person_outline),
-                validator: (value) => value!.isEmpty ? "Ingrese su nombre" : null,
+                decoration:
+                    _inputStyle(AppStrings.t("first_name"), Icons.person_outline),
+                validator: (v) =>
+                    v!.isEmpty ? AppStrings.t("enter_name") : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: lastName,
-                decoration: _inputStyle("Apellido", Icons.person_outline),
-                validator: (value) => value!.isEmpty ? "Ingrese su apellido" : null,
+                decoration:
+                    _inputStyle(AppStrings.t("last_name"), Icons.person_outline),
+                validator: (v) =>
+                    v!.isEmpty ? AppStrings.t("enter_last_name") : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: username,
-                decoration: _inputStyle("Usuario", Icons.alternate_email),
-                validator: (value) => value!.isEmpty ? "Ingrese un usuario" : null,
+                decoration: _inputStyle(
+                    AppStrings.t("username"), Icons.alternate_email),
+                validator: (v) =>
+                    v!.isEmpty ? AppStrings.t("enter_username") : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: email,
                 keyboardType: TextInputType.emailAddress,
-                decoration: _inputStyle("Correo", Icons.email_outlined),
-                validator: (value) => value!.isEmpty ? "Ingrese un correo" : null,
+                decoration: _inputStyle(
+                    AppStrings.t("email"), Icons.email_outlined),
+                validator: (v) =>
+                    v!.isEmpty ? AppStrings.t("enter_email") : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: phone,
                 keyboardType: TextInputType.phone,
-                decoration: _inputStyle("Teléfono", Icons.phone_android_outlined),
+                decoration: _inputStyle(
+                    AppStrings.t("phone"), Icons.phone_android_outlined),
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: location,
-                decoration: _inputStyle("Ubicación", Icons.location_on_outlined),
+                decoration: _inputStyle(
+                    AppStrings.t("location"), Icons.location_on_outlined),
               ),
               const SizedBox(height: 16),
-              
               DropdownButtonFormField<String>(
-                initialValue: userType, // CAMBIO CLAVE AQUÍ
-                items: const [
-                  DropdownMenuItem(value: "ganadero", child: Text("Ganadero")),
-                  DropdownMenuItem(value: "veterinario", child: Text("Veterinario")),
+                initialValue: userType,
+                items: [
+                  DropdownMenuItem(
+                      value: "ganadero",
+                      child: Text(AppStrings.t("farmer"))),
+                  DropdownMenuItem(
+                      value: "veterinario",
+                      child: Text(AppStrings.t("vet"))),
                 ],
-                onChanged: (value) => setState(() => userType = value),
-                decoration: _inputStyle("Tipo de usuario", Icons.badge_outlined),
-                validator: (value) => value == null ? "Seleccione tipo" : null,
+                onChanged: (v) => setState(() => userType = v),
+                decoration: _inputStyle(
+                    AppStrings.t("user_type"), Icons.badge_outlined),
+                validator: (v) =>
+                    v == null ? AppStrings.t("select_type") : null,
               ),
-              
               const SizedBox(height: 24),
               TextFormField(
                 controller: password,
                 obscureText: !showPassword,
                 onChanged: checkPassword,
-                decoration: _inputStyle("Contraseña", Icons.lock_outline).copyWith(
+                decoration:
+                    _inputStyle(AppStrings.t("password"), Icons.lock_outline)
+                        .copyWith(
                   suffixIcon: IconButton(
-                    icon: Icon(showPassword ? Icons.visibility : Icons.visibility_off),
-                    onPressed: () => setState(() => showPassword = !showPassword),
+                    icon: Icon(showPassword
+                        ? Icons.visibility
+                        : Icons.visibility_off),
+                    onPressed: () =>
+                        setState(() => showPassword = !showPassword),
                   ),
                 ),
               ),
@@ -223,15 +264,18 @@ class _RegisterPageState extends State<RegisterPage> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: isDark ? Colors.grey[850] : Colors.white,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: const Color(0xFFDEE2E6)),
                 ),
                 child: Column(
                   children: [
-                    passwordRule("Mínimo 8 caracteres", hasMinLength),
-                    passwordRule("Una mayúscula y un número", hasUpper && hasNumber),
-                    passwordRule("Un símbolo (!@#\$&*~)", hasSymbol),
+                    _passwordRule(
+                        AppStrings.t("min_8_chars"), hasMinLength),
+                    _passwordRule(AppStrings.t("upper_and_number"),
+                        hasUpper && hasNumber),
+                    _passwordRule(
+                        AppStrings.t("symbol_required"), hasSymbol),
                   ],
                 ),
               ),
@@ -239,10 +283,15 @@ class _RegisterPageState extends State<RegisterPage> {
               TextFormField(
                 controller: confirmPassword,
                 obscureText: !showConfirmPassword,
-                decoration: _inputStyle("Confirmar contraseña", Icons.lock_reset_outlined).copyWith(
+                decoration: _inputStyle(AppStrings.t("confirm_password"),
+                        Icons.lock_reset_outlined)
+                    .copyWith(
                   suffixIcon: IconButton(
-                    icon: Icon(showConfirmPassword ? Icons.visibility : Icons.visibility_off),
-                    onPressed: () => setState(() => showConfirmPassword = !showConfirmPassword),
+                    icon: Icon(showConfirmPassword
+                        ? Icons.visibility
+                        : Icons.visibility_off),
+                    onPressed: () => setState(
+                        () => showConfirmPassword = !showConfirmPassword),
                   ),
                 ),
               ),
@@ -252,29 +301,34 @@ class _RegisterPageState extends State<RegisterPage> {
                 height: 55,
                 child: ElevatedButton(
                   onPressed: loading ? null : register,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryGreen,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    elevation: 0,
-                  ),
                   child: loading
-                      ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text("REGISTRARSE", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1.1)),
+                      ? const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2),
+                        )
+                      : Text(AppStrings.t("register_btn"),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              letterSpacing: 1.1)),
                 ),
               ),
               const SizedBox(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text("¿Ya tienes cuenta?"),
+                  Text(AppStrings.t("already_account")),
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: Text("Inicia sesión", style: TextStyle(color: darkGreen, fontWeight: FontWeight.bold)),
+                    child: Text(AppStrings.t("sign_in"),
+                        style: TextStyle(
+                            color: isDark ? Colors.greenAccent : darkGreen,
+                            fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
             ],
           ),
         ),

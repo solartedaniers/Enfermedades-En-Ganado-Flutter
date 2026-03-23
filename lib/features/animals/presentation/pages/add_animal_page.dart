@@ -1,10 +1,7 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
-import '../../../../core/services/storage_service.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../../domain/entities/animal_entity.dart';
 import '../providers/animal_provider.dart';
@@ -24,10 +21,6 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
   final _symptomsController = TextEditingController();
   final _weightController = TextEditingController();
   final _temperatureController = TextEditingController();
-
-  File? _selectedImage;
-  final _picker = ImagePicker();
-  final _storageService = StorageService();
   bool _isLoading = false;
 
   @override
@@ -41,50 +34,9 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
     super.dispose();
   }
 
-  Future<void> _pickImage(ImageSource source) async {
-    final picked = await _picker.pickImage(
-      source: source,
-      imageQuality: 80,
-    );
-    if (picked != null) {
-      setState(() => _selectedImage = File(picked.path));
-    }
-  }
-
-  void _showImageSourceDialog() {
-    showModalBottomSheet(
-      context: context,
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt),
-              title: Text(AppStrings.t("take_photo")),
-              onTap: () {
-                Navigator.pop(context);
-                _pickImage(ImageSource.camera);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: Text(AppStrings.t("choose_gallery")),
-              onTap: () {
-                Navigator.pop(context);
-                _pickImage(ImageSource.gallery);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _isLoading = true);
-
     try {
       final user = Supabase.instance.client.auth.currentUser;
       if (user == null) {
@@ -92,14 +44,6 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
           SnackBar(content: Text(AppStrings.t("error_no_session"))),
         );
         return;
-      }
-
-      String? imageUrl;
-      if (_selectedImage != null) {
-        imageUrl = await _storageService.uploadAnimalImage(
-          _selectedImage!,
-          user.id,
-        );
       }
 
       final animal = AnimalEntity(
@@ -115,7 +59,8 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
         temperature: _temperatureController.text.trim().isEmpty
             ? null
             : double.tryParse(_temperatureController.text.trim()),
-        imageUrl: imageUrl,
+        imageUrl: null,
+        profileImageUrl: null,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -150,45 +95,35 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
           key: _formKey,
           child: Column(
             children: [
-              // --- Imagen ---
-              GestureDetector(
-                onTap: _showImageSourceDialog,
-                child: Container(
-                  height: 160,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade400),
-                  ),
-                  child: _selectedImage != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.file(
-                            _selectedImage!,
-                            fit: BoxFit.cover,
-                          ),
-                        )
-                      : Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.add_a_photo,
-                                size: 48, color: Colors.grey),
-                            const SizedBox(height: 8),
-                            Text(AppStrings.t("add_photo"),
-                                style:
-                                    const TextStyle(color: Colors.grey)),
-                          ],
-                        ),
+              // --- Ícono de ganado en lugar de huella ---
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.green.shade200),
+                ),
+                child: Column(
+                  children: [
+                    Icon(Icons.set_meal,
+                        size: 64, color: Colors.green.shade400),
+                    const SizedBox(height: 8),
+                    Text(
+                      "La foto para diagnóstico IA\nse agrega desde el historial",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          color: Colors.green.shade700, fontSize: 13),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
               TextFormField(
                 controller: _nameController,
                 decoration: InputDecoration(
-                  labelText: "${AppStrings.t("name")} *",
-                ),
+                    labelText: "${AppStrings.t("name")} *"),
                 validator: (v) => v == null || v.isEmpty
                     ? AppStrings.t("required_field")
                     : null,
@@ -197,8 +132,7 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
               TextFormField(
                 controller: _breedController,
                 decoration: InputDecoration(
-                  labelText: "${AppStrings.t("breed")} *",
-                ),
+                    labelText: "${AppStrings.t("breed")} *"),
                 validator: (v) => v == null || v.isEmpty
                     ? AppStrings.t("required_field")
                     : null,
@@ -207,8 +141,7 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
               TextFormField(
                 controller: _ageController,
                 decoration: InputDecoration(
-                  labelText: "${AppStrings.t("age")} *",
-                ),
+                    labelText: "${AppStrings.t("age")} *"),
                 keyboardType: TextInputType.number,
                 validator: (v) {
                   if (v == null || v.isEmpty) {
@@ -224,8 +157,7 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
               TextFormField(
                 controller: _symptomsController,
                 decoration: InputDecoration(
-                  labelText: "${AppStrings.t("symptoms")} *",
-                ),
+                    labelText: "${AppStrings.t("symptoms")} *"),
                 maxLines: 3,
                 validator: (v) => v == null || v.isEmpty
                     ? AppStrings.t("required_field")
@@ -250,7 +182,6 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
                 keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 24),
-
               SizedBox(
                 width: double.infinity,
                 height: 48,

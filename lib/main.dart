@@ -9,6 +9,7 @@ import 'features/auth/screens/login_page.dart';
 import 'features/auth/home/screens/home_page.dart';
 import 'features/auth/screens/reset_password_page.dart';
 import 'core/theme/app_theme.dart';
+import 'core/utils/app_strings.dart';
 import 'features/profile/presentation/providers/profile_provider.dart';
 
 final logger = Logger();
@@ -27,6 +28,9 @@ Future<void> main() async {
       authFlowType: AuthFlowType.pkce,
     ),
   );
+
+  // Cargar idioma por defecto antes de arrancar
+  await AppStrings.load('es');
 
   runApp(
     const ProviderScope(
@@ -68,14 +72,10 @@ class _AgrovetAIState extends ConsumerState<AgrovetAI> {
   Future<void> _handleDeepLink(Uri uri) async {
     try {
       await Supabase.instance.client.auth.getSessionFromUrl(uri);
-
       if (uri.host == "auth-confirm") {
-        logger.i("Cuenta confirmada ✅");
         navigatorKey.currentState?.pushReplacementNamed('/login');
       }
-
       if (uri.host == "reset-password") {
-        logger.i("Redirigiendo a Reset Password 🔑");
         navigatorKey.currentState?.pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const ResetPasswordPage()),
           (route) => false,
@@ -88,7 +88,6 @@ class _AgrovetAIState extends ConsumerState<AgrovetAI> {
 
   @override
   Widget build(BuildContext context) {
-    // 🔥 El tema ahora responde al provider en tiempo real
     final themeMode = ref.watch(profileProvider).themeMode;
     final session = Supabase.instance.client.auth.currentSession;
 

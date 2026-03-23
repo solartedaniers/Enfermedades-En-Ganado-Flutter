@@ -2,13 +2,16 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/animal_model.dart';
 
 class AnimalRemoteDataSource {
-  final supabase = Supabase.instance.client;
+  final _supabase = Supabase.instance.client;
 
-  /// Obtener animales desde la nube
   Future<List<AnimalModel>> getAnimals() async {
-    final response = await supabase
+    final user = _supabase.auth.currentUser;
+    if (user == null) return [];
+
+    final response = await _supabase
         .from('animals')
         .select()
+        .eq('user_id', user.id)
         .order('created_at', ascending: false);
 
     return (response as List)
@@ -16,8 +19,18 @@ class AnimalRemoteDataSource {
         .toList();
   }
 
-  /// Subir animal a Supabase
   Future<void> insertAnimal(AnimalModel animal) async {
-    await supabase.from('animals').insert(animal.toJson());
+    await _supabase.from('animals').insert(animal.toJson());
+  }
+
+  Future<void> updateAnimal(AnimalModel animal) async {
+    await _supabase
+        .from('animals')
+        .update(animal.toJson())
+        .eq('id', animal.id);
+  }
+
+  Future<void> deleteAnimal(String id) async {
+    await _supabase.from('animals').delete().eq('id', id);
   }
 }

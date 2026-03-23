@@ -7,6 +7,7 @@ class MedicalRecordModel extends MedicalRecordEntity {
     required super.userId,
     super.diagnosis,
     super.aiResult,
+    super.imageUrl,
     required super.createdAt,
   });
 
@@ -17,6 +18,7 @@ class MedicalRecordModel extends MedicalRecordEntity {
       userId: json['user_id'],
       diagnosis: json['diagnosis'],
       aiResult: json['ai_result'],
+      imageUrl: json['image_url'],
       createdAt: DateTime.parse(json['created_at']),
     );
   }
@@ -28,6 +30,7 @@ class MedicalRecordModel extends MedicalRecordEntity {
       'user_id': userId,
       'diagnosis': diagnosis,
       'ai_result': aiResult,
+      'image_url': imageUrl,
       'created_at': createdAt.toIso8601String(),
     };
   }

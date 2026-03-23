@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/utils/app_strings.dart';
 import '../../domain/entities/animal_entity.dart';
 import '../../../medical/presentation/pages/medical_history_page.dart';
 
@@ -16,38 +17,64 @@ class AnimalDetailPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- Imagen ---
-            if (animal.imageUrl != null && animal.imageUrl!.isNotEmpty)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image.network(
-                  animal.imageUrl!,
-                  width: double.infinity,
-                  height: 220,
-                  fit: BoxFit.cover,
+            // --- Foto de perfil del animal ---
+            GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => MedicalHistoryPage(animal: animal),
                 ),
-              )
-            else
-              Container(
-                width: double.infinity,
-                height: 220,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(Icons.pets, size: 80, color: Colors.grey),
               ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: animal.profileImageUrl != null &&
+                        animal.profileImageUrl!.isNotEmpty
+                    ? Image.network(
+                        animal.profileImageUrl!,
+                        width: double.infinity,
+                        height: 220,
+                        fit: BoxFit.cover,
+                      )
+                    : Container(
+                        width: double.infinity,
+                        height: 220,
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.set_meal,
+                                size: 80,
+                                color: Colors.green.shade300),
+                            const SizedBox(height: 8),
+                            Text(
+                              "Toca para agregar foto de perfil",
+                              style: TextStyle(
+                                  color: Colors.green.shade400,
+                                  fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+              ),
+            ),
             const SizedBox(height: 20),
 
             // --- Info ---
-            _infoRow(Icons.pets, "Raza", animal.breed),
-            _infoRow(Icons.cake, "Edad", "${animal.age} años"),
-            _infoRow(Icons.sick, "Síntomas", animal.symptoms),
+            _infoRow(Icons.pets, AppStrings.t("breed_label"),
+                animal.breed),
+            _infoRow(Icons.cake, AppStrings.t("age_label"),
+                "${animal.age} ${AppStrings.t("years")}"),
+            _infoRow(Icons.sick, AppStrings.t("symptoms_label"),
+                animal.symptoms),
             if (animal.weight != null)
-              _infoRow(Icons.monitor_weight, "Peso",
-                  "${animal.weight} kg"),
+              _infoRow(Icons.monitor_weight,
+                  AppStrings.t("weight_label"), "${animal.weight} kg"),
             if (animal.temperature != null)
-              _infoRow(Icons.thermostat, "Temperatura",
+              _infoRow(Icons.thermostat,
+                  AppStrings.t("temperature_label"),
                   "${animal.temperature} °C"),
             const SizedBox(height: 24),
 
@@ -57,14 +84,11 @@ class AnimalDetailPage extends StatelessWidget {
               height: 48,
               child: ElevatedButton.icon(
                 icon: const Icon(Icons.medical_services),
-                label: const Text("Ver historial clínico"),
+                label: Text(AppStrings.t("view_medical_history")),
                 onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => MedicalHistoryPage(
-                      animalId: animal.id,
-                      animalName: animal.name,
-                    ),
+                    builder: (_) => MedicalHistoryPage(animal: animal),
                   ),
                 ),
               ),

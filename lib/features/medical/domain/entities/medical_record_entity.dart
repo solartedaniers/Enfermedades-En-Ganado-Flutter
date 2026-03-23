@@ -4,6 +4,7 @@ class MedicalRecordEntity {
   final String userId;
   final String? diagnosis;
   final String? aiResult;
+  final String? imageUrl;
   final DateTime createdAt;
 
   MedicalRecordEntity({
@@ -12,6 +13,7 @@ class MedicalRecordEntity {
     required this.userId,
     this.diagnosis,
     this.aiResult,
+    this.imageUrl,
     required this.createdAt,
   });
 }

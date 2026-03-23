@@ -39,7 +39,10 @@ class AnimalModel {
   final bool isSynced;
 
   @HiveField(11)
-  final String? imageUrl;
+  final String? imageUrl;         // foto para IA
+
+  @HiveField(12)
+  final String? profileImageUrl;  // foto de perfil del animal
 
   const AnimalModel({
     required this.id,
@@ -53,10 +56,42 @@ class AnimalModel {
     this.weight,
     this.temperature,
     this.imageUrl,
+    this.profileImageUrl,
     this.isSynced = false,
   });
 
-  // Convierte al entity del dominio
+  AnimalModel copyWith({
+    String? id,
+    String? userId,
+    String? name,
+    String? breed,
+    int? age,
+    String? symptoms,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    double? weight,
+    double? temperature,
+    String? imageUrl,
+    String? profileImageUrl,
+    bool? isSynced,
+  }) {
+    return AnimalModel(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      name: name ?? this.name,
+      breed: breed ?? this.breed,
+      age: age ?? this.age,
+      symptoms: symptoms ?? this.symptoms,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      weight: weight ?? this.weight,
+      temperature: temperature ?? this.temperature,
+      imageUrl: imageUrl ?? this.imageUrl,
+      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
+      isSynced: isSynced ?? this.isSynced,
+    );
+  }
+
   AnimalEntity toEntity() => AnimalEntity(
         id: id,
         userId: userId,
@@ -69,10 +104,11 @@ class AnimalModel {
         weight: weight,
         temperature: temperature,
         imageUrl: imageUrl,
+        profileImageUrl: profileImageUrl,
       );
 
-  // Crea un model desde el entity del dominio
-  factory AnimalModel.fromEntity(AnimalEntity entity, {bool isSynced = false}) {
+  factory AnimalModel.fromEntity(AnimalEntity entity,
+      {bool isSynced = false}) {
     return AnimalModel(
       id: entity.id,
       userId: entity.userId,
@@ -85,6 +121,7 @@ class AnimalModel {
       weight: entity.weight,
       temperature: entity.temperature,
       imageUrl: entity.imageUrl,
+      profileImageUrl: entity.profileImageUrl,
       isSynced: isSynced,
     );
   }
@@ -100,6 +137,7 @@ class AnimalModel {
       weight: (json['weight'] as num?)?.toDouble(),
       temperature: (json['temperature'] as num?)?.toDouble(),
       imageUrl: json['image_url'],
+      profileImageUrl: json['profile_image_url'],
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
       isSynced: true,
@@ -117,6 +155,7 @@ class AnimalModel {
       'weight': weight,
       'temperature': temperature,
       'image_url': imageUrl,
+      'profile_image_url': profileImageUrl,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };

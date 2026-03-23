@@ -8,14 +8,14 @@ class ProfileState {
   final String language;
   final ThemeMode themeMode;
   final String? avatarUrl;
-  final bool isLoading;
+  final bool isLoaded;
 
   ProfileState({
     required this.name,
     required this.language,
     required this.themeMode,
     this.avatarUrl,
-    this.isLoading = false,
+    this.isLoaded = false,
   });
 
   ProfileState copyWith({
@@ -23,14 +23,15 @@ class ProfileState {
     String? language,
     ThemeMode? themeMode,
     String? avatarUrl,
-    bool? isLoading,
+    bool? isLoaded,
+    bool clearAvatar = false,
   }) {
     return ProfileState(
       name: name ?? this.name,
       language: language ?? this.language,
       themeMode: themeMode ?? this.themeMode,
-      avatarUrl: avatarUrl ?? this.avatarUrl,
-      isLoading: isLoading ?? this.isLoading,
+      avatarUrl: clearAvatar ? null : avatarUrl ?? this.avatarUrl,
+      isLoaded: isLoaded ?? this.isLoaded,
     );
   }
 }
@@ -41,17 +42,20 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
           name: "Usuario",
           language: "es",
           themeMode: ThemeMode.system,
+          isLoaded: false,
         )) {
     _loadFromSupabase();
   }
 
   final _supabase = Supabase.instance.client;
 
-  // Carga el perfil desde Supabase al iniciar
   Future<void> _loadFromSupabase() async {
     try {
       final user = _supabase.auth.currentUser;
-      if (user == null) return;
+      if (user == null) {
+        await AppStrings.load('es');
+        return;
+      }
 
       final data = await _supabase
           .from('profiles')
@@ -59,29 +63,38 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
           .eq('id', user.id)
           .single();
 
-      final lang = data['language'] ?? 'es';
+      final lang = (data['language'] as String?) ?? 'es';
+      final theme = (data['theme'] as String?) ?? 'system';
+      final name = (data['username'] as String?) ?? 'Usuario';
+      final avatar = data['avatar_url'] as String?;
+
       await AppStrings.load(lang);
 
       state = state.copyWith(
-        name: data['username'] ?? 'Usuario',
-        avatarUrl: data['avatar_url'],
+        name: name,
+        avatarUrl: avatar,
         language: lang,
-        themeMode: _themeFromString(data['theme'] ?? 'system'),
+        themeMode: _themeFromString(theme),
+        isLoaded: true,
       );
     } catch (e) {
-      // Si falla, queda con valores por defecto
       await AppStrings.load('es');
+      state = state.copyWith(isLoaded: true);
     }
   }
 
-  // Guarda cambios en Supabase
+  // Recarga forzada desde Supabase (útil al volver al home)
+  Future<void> reload() async {
+    await _loadFromSupabase();
+  }
+
   Future<void> _saveToSupabase(Map<String, dynamic> data) async {
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) return;
       await _supabase.from('profiles').update(data).eq('id', user.id);
     } catch (e) {
-      // fallo silencioso, el estado local ya cambió
+      // fallo silencioso
     }
   }
 

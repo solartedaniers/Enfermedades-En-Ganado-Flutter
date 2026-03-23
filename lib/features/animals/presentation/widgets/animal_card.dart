@@ -19,14 +19,15 @@ class AnimalCard extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
           children: [
-            // --- Imagen ---
+            // --- Foto de perfil del animal ---
             ClipRRect(
               borderRadius: const BorderRadius.horizontal(
                 left: Radius.circular(16),
               ),
-              child: animal.imageUrl != null && animal.imageUrl!.isNotEmpty
+              child: animal.profileImageUrl != null &&
+                      animal.profileImageUrl!.isNotEmpty
                   ? Image.network(
-                      animal.imageUrl!,
+                      animal.profileImageUrl!,
                       width: 100,
                       height: 100,
                       fit: BoxFit.cover,
@@ -57,21 +58,18 @@ class AnimalCard extends StatelessWidget {
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        const Icon(Icons.cake, size: 14, color: Colors.grey),
+                        const Icon(Icons.cake,
+                            size: 14, color: Colors.grey),
                         const SizedBox(width: 4),
-                        Text(
-                          "${animal.age} años",
-                          style: const TextStyle(fontSize: 13),
-                        ),
+                        Text("${animal.age} años",
+                            style: const TextStyle(fontSize: 13)),
                         if (animal.weight != null) ...[
                           const SizedBox(width: 12),
                           const Icon(Icons.monitor_weight,
                               size: 14, color: Colors.grey),
                           const SizedBox(width: 4),
-                          Text(
-                            "${animal.weight} kg",
-                            style: const TextStyle(fontSize: 13),
-                          ),
+                          Text("${animal.weight} kg",
+                              style: const TextStyle(fontSize: 13)),
                         ],
                       ],
                     ),
@@ -79,7 +77,6 @@ class AnimalCard extends StatelessWidget {
                 ),
               ),
             ),
-
             const Padding(
               padding: EdgeInsets.all(8),
               child: Icon(Icons.arrow_forward_ios,
@@ -95,8 +92,8 @@ class AnimalCard extends StatelessWidget {
     return Container(
       width: 100,
       height: 100,
-      color: Colors.grey[200],
-      child: const Icon(Icons.pets, size: 40, color: Colors.grey),
+      color: Colors.green.shade50,
+      child: Icon(Icons.set_meal, size: 48, color: Colors.green.shade300),
     );
   }
 }

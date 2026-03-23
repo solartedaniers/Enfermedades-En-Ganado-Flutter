@@ -28,6 +28,7 @@ class AnimalModelAdapter extends TypeAdapter<AnimalModel> {
       weight: fields[8] as double?,
       temperature: fields[9] as double?,
       imageUrl: fields[11] as String?,
+      profileImageUrl: fields[12] as String?,
       isSynced: fields[10] as bool,
     );
   }
@@ -35,7 +36,7 @@ class AnimalModelAdapter extends TypeAdapter<AnimalModel> {
   @override
   void write(BinaryWriter writer, AnimalModel obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(13)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -59,7 +60,9 @@ class AnimalModelAdapter extends TypeAdapter<AnimalModel> {
       ..writeByte(10)
       ..write(obj.isSynced)
       ..writeByte(11)
-      ..write(obj.imageUrl);
+      ..write(obj.imageUrl)
+      ..writeByte(12)
+      ..write(obj.profileImageUrl);
   }
 
   @override

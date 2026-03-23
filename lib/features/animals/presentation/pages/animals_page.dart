@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/utils/app_strings.dart';
 import '../providers/animal_provider.dart';
 import '../widgets/animal_card.dart';
 import 'add_animal_page.dart';
@@ -13,7 +14,7 @@ class AnimalsPage extends ConsumerWidget {
     final animalRepo = ref.watch(animalRepositoryProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Mis Animales")),
+      appBar: AppBar(title: Text(AppStrings.t("my_animals"))),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           await Navigator.push(
@@ -30,7 +31,6 @@ class AnimalsPage extends ConsumerWidget {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-
           if (snapshot.hasError) {
             return Center(
               child: Column(
@@ -39,20 +39,19 @@ class AnimalsPage extends ConsumerWidget {
                   const Icon(Icons.error_outline,
                       size: 64, color: Colors.redAccent),
                   const SizedBox(height: 16),
-                  Text("Error al cargar datos",
+                  Text(AppStrings.t("load_error"),
                       style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 8),
                   ElevatedButton(
-                    onPressed: () => ref.invalidate(animalRepositoryProvider),
-                    child: const Text("Reintentar"),
+                    onPressed: () =>
+                        ref.invalidate(animalRepositoryProvider),
+                    child: Text(AppStrings.t("retry")),
                   ),
                 ],
               ),
             );
           }
-
           final animals = snapshot.data ?? [];
-
           if (animals.isEmpty) {
             return Center(
               child: Column(
@@ -60,20 +59,16 @@ class AnimalsPage extends ConsumerWidget {
                 children: [
                   Icon(Icons.pets, size: 80, color: Colors.grey[400]),
                   const SizedBox(height: 16),
-                  Text(
-                    "No tienes animales registrados",
-                    style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                  ),
+                  Text(AppStrings.t("no_animals"),
+                      style: TextStyle(
+                          fontSize: 16, color: Colors.grey[600])),
                   const SizedBox(height: 8),
-                  Text(
-                    "Toca el botón + para agregar uno",
-                    style: TextStyle(color: Colors.grey[400]),
-                  ),
+                  Text(AppStrings.t("add_first"),
+                      style: TextStyle(color: Colors.grey[400])),
                 ],
               ),
             );
           }
-
           return ListView.builder(
             padding: const EdgeInsets.symmetric(vertical: 8),
             itemCount: animals.length,
