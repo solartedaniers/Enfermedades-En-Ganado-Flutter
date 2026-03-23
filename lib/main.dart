@@ -10,6 +10,7 @@ import 'features/auth/home/screens/home_page.dart';
 import 'features/auth/screens/reset_password_page.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/app_strings.dart';
+import 'core/services/notification_service.dart';
 import 'features/profile/presentation/providers/profile_provider.dart';
 
 final logger = Logger();
@@ -29,14 +30,10 @@ Future<void> main() async {
     ),
   );
 
-  // Cargar idioma por defecto antes de arrancar
   await AppStrings.load('es');
+  await NotificationService.init();
 
-  runApp(
-    const ProviderScope(
-      child: AgrovetAI(),
-    ),
-  );
+  runApp(const ProviderScope(child: AgrovetAI()));
 }
 
 class AgrovetAI extends ConsumerStatefulWidget {
@@ -60,7 +57,6 @@ class _AgrovetAIState extends ConsumerState<AgrovetAI> {
       logger.i("DeepLink recibido: $uri");
       await _handleDeepLink(uri);
     });
-
     _appLinks.getInitialLink().then((uri) async {
       if (uri != null) {
         logger.i("DeepLink inicial: $uri");
