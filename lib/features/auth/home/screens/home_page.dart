@@ -105,9 +105,10 @@ class _HomePageState extends ConsumerState<HomePage> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    // --- LISTA ACTUALIZADA ---
     final menuItems = [
       {
-        "icon": Icons.pets,
+        "image": "lib/images/Taureau.webp", // Ruta de tu imagen
         "key": "register_animal",
         "color": const Color(0xFF43A047),
         "bg": const Color(0xFFE8F5E9),
@@ -152,7 +153,6 @@ class _HomePageState extends ConsumerState<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- Header con gradiente ---
             Container(
               width: double.infinity,
               decoration: const BoxDecoration(
@@ -166,8 +166,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   bottomRight: Radius.circular(32),
                 ),
               ),
-              padding:
-                  const EdgeInsets.fromLTRB(24, 20, 24, 36),
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
               child: Row(
                 children: [
                   GestureDetector(
@@ -195,8 +194,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                           child: CircleAvatar(
                             radius: 36,
                             backgroundColor: Colors.white24,
-                            backgroundImage: profile.avatarUrl !=
-                                        null &&
+                            backgroundImage: profile.avatarUrl != null &&
                                     profile.avatarUrl!.isNotEmpty
                                 ? NetworkImage(profile.avatarUrl!)
                                 : null,
@@ -260,7 +258,6 @@ class _HomePageState extends ConsumerState<HomePage> {
               ),
             ).animate().fadeIn(delay: 200.ms),
 
-            // --- Grid ---
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: GridView.count(
@@ -273,7 +270,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                   final i = entry.key;
                   final item = entry.value;
                   return _buildMenuCard(
-                    icon: item["icon"] as IconData,
+                    icon: item["icon"] as IconData?, // Ahora es opcional
+                    imagePath: item["image"] as String?, // Nueva propiedad
                     key: item["key"] as String,
                     color: item["color"] as Color,
                     bg: item["bg"] as Color,
@@ -295,8 +293,10 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
+  // --- WIDGET ACTUALIZADO ---
   Widget _buildMenuCard({
-    required IconData icon,
+    IconData? icon,
+    String? imagePath,
     required String key,
     required Color color,
     required Color bg,
@@ -321,14 +321,23 @@ class _HomePageState extends ConsumerState<HomePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12), // Ajuste de padding para la imagen
               decoration: BoxDecoration(
                 color: isDark
                     ? color.withValues(alpha: 0.15)
                     : bg,
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 32, color: color),
+              child: imagePath != null 
+                ? ClipOval( // Si hay imagen, la mostramos circular
+                    child: Image.asset(
+                      imagePath,
+                      width: 40,
+                      height: 40,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                : Icon(icon, size: 32, color: color), // Si no, el icono de siempre
             ),
             const SizedBox(height: 12),
             Text(
