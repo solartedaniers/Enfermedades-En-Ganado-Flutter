@@ -110,5 +110,19 @@
   "age_label": "Edad",
   "symptoms_label": "Síntomas",
   "weight_label": "Peso",
-  "temperature_label": "Temperatura"
+  "temperature_label": "Temperatura",
+  "animal_default_image": "lib/images/icon.webp",
+  "animal_register_image": "lib/images/Taureau.webp",
+  "notifications": "Notificaciones",
+  "add_notification": "Nueva notificación",
+  "notification_title": "Título",
+  "notification_message": "Mensaje / medicamento",
+  "notification_date": "Fecha y hora",
+  "notification_animal": "Animal",
+  "notification_saved": "Notificación programada",
+  "notification_deleted": "Notificación eliminada",
+  "no_notifications": "No hay notificaciones programadas",
+  "notification_reminder": "Recordatorio de medicamento",
+  "delete_notification": "Eliminar notificación",
+  "delete_notification_confirm": "¿Seguro que deseas eliminar esta notificación?"
 }
