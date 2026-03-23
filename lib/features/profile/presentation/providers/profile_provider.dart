@@ -34,26 +34,49 @@ class ProfileState {
       isLoaded: isLoaded ?? this.isLoaded,
     );
   }
+
+  // Estado limpio para cuando no hay sesión o se cierra sesión
+  factory ProfileState.empty() => ProfileState(
+        name: "Usuario",
+        language: "es",
+        themeMode: ThemeMode.system,
+        avatarUrl: null,
+        isLoaded: false,
+      );
 }
 
 class ProfileNotifier extends StateNotifier<ProfileState> {
-  ProfileNotifier()
-      : super(ProfileState(
-          name: "Usuario",
-          language: "es",
-          themeMode: ThemeMode.system,
-          isLoaded: false,
-        )) {
-    _loadFromSupabase();
+  ProfileNotifier() : super(ProfileState.empty()) {
+    _listenToAuthChanges();
   }
 
   final _supabase = Supabase.instance.client;
+
+  // Escucha cambios de sesión para limpiar/cargar perfil automáticamente
+  void _listenToAuthChanges() {
+    _supabase.auth.onAuthStateChange.listen((data) async {
+      final event = data.event;
+      if (event == AuthChangeEvent.signedIn) {
+        await _loadFromSupabase();
+      } else if (event == AuthChangeEvent.signedOut) {
+        // Limpia el estado completamente al cerrar sesión
+        await AppStrings.load('es');
+        state = ProfileState.empty();
+      }
+    });
+
+    // Carga inicial si ya hay sesión activa
+    if (_supabase.auth.currentUser != null) {
+      _loadFromSupabase();
+    }
+  }
 
   Future<void> _loadFromSupabase() async {
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) {
         await AppStrings.load('es');
+        state = ProfileState.empty();
         return;
       }
 
@@ -61,41 +84,47 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
           .from('profiles')
           .select('username, avatar_url, language, theme')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
+
+      if (data == null) {
+        // El perfil aún no existe, usa datos de auth metadata
+        final meta = user.userMetadata;
+        final name = meta?['username'] ?? meta?['first_name'] ?? 'Usuario';
+        await AppStrings.load('es');
+        state = ProfileState(
+          name: name,
+          language: 'es',
+          themeMode: ThemeMode.system,
+          avatarUrl: null,
+          isLoaded: true,
+        );
+        return;
+      }
 
       final lang = (data['language'] as String?) ?? 'es';
-      final theme = (data['theme'] as String?) ?? 'system';
-      final name = (data['username'] as String?) ?? 'Usuario';
-      final avatar = data['avatar_url'] as String?;
-
       await AppStrings.load(lang);
 
-      state = state.copyWith(
-        name: name,
-        avatarUrl: avatar,
+      state = ProfileState(
+        name: (data['username'] as String?) ?? 'Usuario',
+        avatarUrl: data['avatar_url'] as String?,
         language: lang,
-        themeMode: _themeFromString(theme),
+        themeMode: _themeFromString(data['theme'] ?? 'system'),
         isLoaded: true,
       );
     } catch (e) {
       await AppStrings.load('es');
-      state = state.copyWith(isLoaded: true);
+      state = ProfileState.empty().copyWith(isLoaded: true);
     }
   }
 
-  // Recarga forzada desde Supabase (útil al volver al home)
-  Future<void> reload() async {
-    await _loadFromSupabase();
-  }
+  Future<void> reload() => _loadFromSupabase();
 
   Future<void> _saveToSupabase(Map<String, dynamic> data) async {
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) return;
       await _supabase.from('profiles').update(data).eq('id', user.id);
-    } catch (e) {
-      // fallo silencioso
-    }
+    } catch (_) {}
   }
 
   Future<void> changeName(String name) async {
