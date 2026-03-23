@@ -45,11 +45,31 @@ class AgrovetAI extends ConsumerStatefulWidget {
 
 class _AgrovetAIState extends ConsumerState<AgrovetAI> {
   final AppLinks _appLinks = AppLinks();
+  final _supabase = Supabase.instance.client;
 
   @override
   void initState() {
     super.initState();
+    _listenToAuthEvents();
     initDeepLinks();
+  }
+
+  // Escucha eventos de auth — esto atrapa el passwordRecovery
+  void _listenToAuthEvents() {
+    _supabase.auth.onAuthStateChange.listen((data) {
+      final event = data.event;
+
+      if (event == AuthChangeEvent.passwordRecovery) {
+        // Supabase estableció sesión temporal para reset
+        // Navega a ResetPasswordPage sin importar dónde esté el usuario
+        navigatorKey.currentState?.pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (_) => const ResetPasswordPage(),
+          ),
+          (route) => false,
+        );
+      }
+    });
   }
 
   void initDeepLinks() {
@@ -57,6 +77,7 @@ class _AgrovetAIState extends ConsumerState<AgrovetAI> {
       logger.i("DeepLink recibido: $uri");
       await _handleDeepLink(uri);
     });
+
     _appLinks.getInitialLink().then((uri) async {
       if (uri != null) {
         logger.i("DeepLink inicial: $uri");
@@ -67,16 +88,22 @@ class _AgrovetAIState extends ConsumerState<AgrovetAI> {
 
   Future<void> _handleDeepLink(Uri uri) async {
     try {
-      await Supabase.instance.client.auth.getSessionFromUrl(uri);
+      // Esto procesa el token del enlace y dispara onAuthStateChange
+      // con el evento correcto (passwordRecovery o signedIn)
+      await _supabase.auth.getSessionFromUrl(uri);
+
       if (uri.host == "auth-confirm") {
-        navigatorKey.currentState?.pushReplacementNamed('/login');
-      }
-      if (uri.host == "reset-password") {
+        logger.i("Cuenta confirmada ✅");
+        // Solo redirige al login, no al home
         navigatorKey.currentState?.pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const ResetPasswordPage()),
+          MaterialPageRoute(builder: (_) => const LoginPage()),
           (route) => false,
         );
       }
+
+      // El caso reset-password ya lo maneja _listenToAuthEvents
+      // con el evento passwordRecovery, no hace falta manejarlo aquí
+
     } catch (e) {
       logger.e("Error procesando el enlace: $e");
     }
@@ -85,7 +112,7 @@ class _AgrovetAIState extends ConsumerState<AgrovetAI> {
   @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(profileProvider).themeMode;
-    final session = Supabase.instance.client.auth.currentSession;
+    final session = _supabase.auth.currentSession;
 
     return MaterialApp(
       navigatorKey: navigatorKey,
