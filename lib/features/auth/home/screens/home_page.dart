@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../animals/data/services/animal_sync_service.dart';
 import '../../../animals/presentation/pages/animals_page.dart';
+import '../../../diagnosis/screens/scanner_screen.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
 import '../../../profile/presentation/pages/profile_page.dart';
 import '../../../notifications/presentation/pages/notifications_page.dart';
@@ -83,10 +84,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                 builder: (_) => const NotificationsPage()));
         break;
       case "diagnosis":
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content:
-                  Text(AppStrings.t("coming_soon_diagnosis"))),
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ScannerScreen()),
         );
         break;
       case "vaccines":
