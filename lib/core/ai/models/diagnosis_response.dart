@@ -77,7 +77,7 @@ class DiagnosisReport {
   final List<String> monitoringPlan;
   final DateTime generatedAt;
 
-  const DiagnosisReport({
+  DiagnosisReport({
     required this.primaryDiagnosis,
     required this.diagnosticStatement,
     required this.confidence,
