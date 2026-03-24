@@ -80,6 +80,46 @@ class LivestockDiagnosisService {
       ..sort((a, b) => b.value.compareTo(a.value));
 
     final primary = sortedCandidates.first;
+    if (primary.value < 0.15) {
+      final report = DiagnosisReport(
+        primaryDiagnosis: 'evaluacion_inconclusa',
+        diagnosticStatement:
+            'La IA no encontró evidencia suficiente para emitir un diagnóstico confiable todavía.',
+        confidence: double.parse(primary.value.toStringAsFixed(2)),
+        severityIndex: 20,
+        urgencyIndex: 25,
+        isContagious: false,
+        requiresVeterinarian: false,
+        reasoning:
+            'Los síntomas seleccionados no forman un patrón clínico fuerte. Se recomienda agregar más evidencia estructurada o una foto del síntoma.',
+        findings: _buildFallbackFindings(request),
+        differentialDiagnoses: const [],
+        immediateActions: const [
+          'Completar más síntomas de la encuesta.',
+          'Agregar evidencia visual con la cámara si el caso tiene lesiones visibles.',
+          'Si el animal empeora, solicitar valoración veterinaria.',
+        ],
+        treatmentProtocol: const [
+          'No iniciar un tratamiento específico hasta tener evidencia clínica más clara.',
+        ],
+        isolationMeasures: const [],
+        monitoringPlan: const [
+          'Seguir observando el animal y registrar nuevos signos clínicos.',
+        ],
+      );
+
+      return DiagnosisResponse(
+        status: DiagnosisStatus.completed,
+        nextStep: const DiagnosisNextStep(
+          status: DiagnosisStatus.completed,
+          title: 'Resultado preliminar',
+          message:
+              'La IA no encontró evidencia suficiente y devolvió un resultado preliminar en lugar de una enfermedad específica.',
+        ),
+        report: report,
+      );
+    }
+
     final secondary = sortedCandidates
         .skip(1)
         .take(2)
