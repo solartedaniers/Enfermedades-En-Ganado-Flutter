@@ -18,6 +18,16 @@ enum _ScannerStep {
   result,
 }
 
+class _SelectableOption {
+  final String label;
+  final String value;
+
+  const _SelectableOption({
+    required this.label,
+    required this.value,
+  });
+}
+
 class ScannerScreen extends ConsumerStatefulWidget {
   const ScannerScreen({super.key});
 
@@ -30,16 +40,70 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   static const Color _scannerActionColor = Color(0xFFBF22DF);
   static const Color _targetColor = Color(0xFF34C759);
   static const double _targetSize = 260;
-
-  final TextEditingController _questionController = TextEditingController();
-  final TextEditingController _symptomsController = TextEditingController();
-  final TextEditingController _visualNotesController = TextEditingController();
-  final TextEditingController _temperatureController = TextEditingController();
+  static const List<_SelectableOption> _concernOptions = [
+    _SelectableOption(
+      label: 'Problema en ubre o leche',
+      value: 'mastitis',
+    ),
+    _SelectableOption(
+      label: 'Problema respiratorio',
+      value: 'neumonia bovina',
+    ),
+    _SelectableOption(
+      label: 'Lesiones en piel',
+      value: 'dermatofitosis',
+    ),
+    _SelectableOption(
+      label: 'Problema digestivo',
+      value: 'gastroenteritis',
+    ),
+    _SelectableOption(
+      label: 'Lesiones en boca o pezuñas',
+      value: 'fiebre aftosa',
+    ),
+  ];
+  static const List<_SelectableOption> _symptomOptions = [
+    _SelectableOption(label: 'Ubre inflamada', value: 'ubre inflamada'),
+    _SelectableOption(label: 'Ubre caliente', value: 'ubre caliente'),
+    _SelectableOption(label: 'Leche grumosa', value: 'leche grumosa'),
+    _SelectableOption(label: 'Tos', value: 'tos'),
+    _SelectableOption(
+      label: 'Dificultad respiratoria',
+      value: 'dificultad respiratoria',
+    ),
+    _SelectableOption(label: 'Secreción nasal', value: 'secrecion nasal'),
+    _SelectableOption(label: 'Diarrea', value: 'diarrea'),
+    _SelectableOption(label: 'Deshidratación', value: 'deshidratacion'),
+    _SelectableOption(label: 'Debilidad', value: 'debilidad'),
+    _SelectableOption(label: 'Cojera', value: 'cojera'),
+    _SelectableOption(label: 'Babeo', value: 'babeo'),
+    _SelectableOption(label: 'Pérdida de pelo', value: 'caida de pelo'),
+  ];
+  static const List<_SelectableOption> _visualFindingOptions = [
+    _SelectableOption(label: 'Lesiones en piel', value: 'lesiones en piel'),
+    _SelectableOption(label: 'Manchas circulares', value: 'manchas circulares'),
+    _SelectableOption(label: 'Costras', value: 'costras'),
+    _SelectableOption(label: 'Llagas en boca', value: 'llagas en boca'),
+    _SelectableOption(label: 'Lesiones en pezuñas', value: 'lesiones pezuñas'),
+    _SelectableOption(label: 'Ubre endurecida', value: 'dolor en ubre'),
+  ];
+  static const List<_SelectableOption> _temperatureOptions = [
+    _SelectableOption(label: 'Sin medir', value: ''),
+    _SelectableOption(label: 'Normal (38.5 °C)', value: '38.5'),
+    _SelectableOption(label: 'Leve fiebre (39.3 °C)', value: '39.3'),
+    _SelectableOption(label: 'Fiebre (39.8 °C)', value: '39.8'),
+    _SelectableOption(label: 'Alta fiebre (40.5 °C)', value: '40.5'),
+  ];
 
   CameraController? _cameraController;
   DiagnosisReport? _report;
   Uint8List? _capturedImageBytes;
   _ScannerStep _step = _ScannerStep.intake;
+  String? _selectedConcern;
+  String _selectedTemperature = '';
+  final Set<String> _selectedSymptoms = {};
+  final Set<String> _selectedVisualFindings = {};
+  DiagnosisNextStep? _pendingNextStep;
   bool _isInitializing = false;
   bool _isAnalyzing = false;
   String? _errorMessage;
@@ -74,10 +138,6 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _questionController.dispose();
-    _symptomsController.dispose();
-    _visualNotesController.dispose();
-    _temperatureController.dispose();
     _cameraController?.dispose();
     super.dispose();
   }
@@ -147,10 +207,10 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   }
 
   Future<void> _startDiagnosisFlow() async {
-    FocusScope.of(context).unfocus();
     setState(() {
       _isAnalyzing = true;
       _errorMessage = null;
+      _pendingNextStep = null;
     });
 
     try {
@@ -165,13 +225,14 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
           await _showOfflineDialog(preparation.nextStep);
           break;
         case DiagnosisStatus.needsClinicalQuestion:
-          _showMessage(preparation.nextStep.message);
+          setState(() {
+            _pendingNextStep = preparation.nextStep;
+          });
           break;
         case DiagnosisStatus.needsVisualEvidence:
           setState(() {
-            _step = _ScannerStep.camera;
+            _pendingNextStep = preparation.nextStep;
           });
-          await _initializeCamera();
           break;
         case DiagnosisStatus.readyToAnalyze:
           await _runDiagnosis(request);
@@ -241,29 +302,55 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
 
   DiagnosisRequest _buildRequest({Uint8List? imageBytes}) {
     final user = Supabase.instance.client.auth.currentUser;
-    final symptoms = _symptomsController.text
-        .split(',')
-        .map((item) => item.trim())
-        .where((item) => item.isNotEmpty)
-        .toList();
-    final visualNotes = _visualNotesController.text
-        .split(',')
-        .map((item) => item.trim())
-        .where((item) => item.isNotEmpty)
-        .toList();
+    String? concernLabel;
+    for (final option in _concernOptions) {
+      if (option.value == _selectedConcern) {
+        concernLabel = option.label;
+        break;
+      }
+    }
 
     return DiagnosisRequest(
       animalId: 'scanner_session',
       userId: user?.id ?? 'guest',
       animalName: 'Ganado en evaluación',
-      clinicalQuestion: _questionController.text.trim(),
-      reportedSymptoms: symptoms,
-      visualFindings: visualNotes,
-      temperature: double.tryParse(
-        _temperatureController.text.trim().replaceAll(',', '.'),
-      ),
+      clinicalQuestion: concernLabel ?? '',
+      reportedSymptoms: _selectedSymptoms.toList(),
+      visualFindings: _selectedVisualFindings.toList(),
+      temperature: double.tryParse(_selectedTemperature),
       imageBytes: imageBytes,
     );
+  }
+
+  Future<void> _openCameraStep() async {
+    setState(() {
+      _step = _ScannerStep.camera;
+      _pendingNextStep = null;
+    });
+    await _initializeCamera();
+  }
+
+  void _toggleValue(Set<String> source, String value) {
+    setState(() {
+      if (source.contains(value)) {
+        source.remove(value);
+      } else {
+        source.add(value);
+      }
+    });
+  }
+
+  void _resetDiagnosis() {
+    setState(() {
+      _report = null;
+      _capturedImageBytes = null;
+      _selectedConcern = null;
+      _selectedTemperature = '';
+      _selectedSymptoms.clear();
+      _selectedVisualFindings.clear();
+      _pendingNextStep = null;
+      _step = _ScannerStep.intake;
+    });
   }
 
   Future<void> _showOfflineDialog(DiagnosisNextStep nextStep) async {
@@ -381,56 +468,108 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Primero cuéntame qué le pasa al animal',
+                  'Diagnóstico guiado del animal',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'La cámara ya no se abre de una. Primero escribes el caso y el motor decide si necesita foto o si puede diagnosticar con síntomas.',
+                  'Ahora el formulario es cerrado para evitar diagnósticos por texto libre. Selecciona el problema principal, los síntomas y, si quieres, agrega foto con cámara.',
                   style: Theme.of(
                     context,
                   ).textTheme.bodyMedium?.copyWith(color: Colors.black54),
                 ),
                 const SizedBox(height: 20),
-                TextField(
-                  controller: _questionController,
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedConcern,
                   decoration: const InputDecoration(
-                    labelText: '¿Qué le preocupa del animal?',
-                    hintText: 'Ej: tiene la ubre inflamada y está decaído',
+                    labelText: 'Motivo principal del diagnóstico',
                   ),
-                  maxLines: 3,
+                  items: _concernOptions
+                      .map(
+                        (option) => DropdownMenuItem<String>(
+                          value: option.value,
+                          child: Text(option.label),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedConcern = value;
+                    });
+                  },
                 ),
                 const SizedBox(height: 16),
-                TextField(
-                  controller: _symptomsController,
-                  decoration: const InputDecoration(
-                    labelText: 'Síntomas observados',
-                    hintText: 'Sepáralos por comas',
-                  ),
-                  maxLines: 2,
+                _buildChoiceGroup(
+                  title: 'Síntomas observados',
+                  options: _symptomOptions,
+                  selectedValues: _selectedSymptoms,
                 ),
                 const SizedBox(height: 16),
-                TextField(
-                  controller: _temperatureController,
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedTemperature,
                   decoration: const InputDecoration(
-                    labelText: 'Temperatura (opcional)',
-                    hintText: 'Ej: 39.8',
+                    labelText: 'Temperatura',
                   ),
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
+                  items: _temperatureOptions
+                      .map(
+                        (option) => DropdownMenuItem<String>(
+                          value: option.value,
+                          child: Text(option.label),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedTemperature = value ?? '';
+                    });
+                  },
                 ),
                 const SizedBox(height: 16),
-                TextField(
-                  controller: _visualNotesController,
-                  decoration: const InputDecoration(
-                    labelText: 'Hallazgos visibles si ya los viste',
-                    hintText: 'Ej: lesiones en piel, babeo, ubre caliente',
-                  ),
-                  maxLines: 2,
+                _buildChoiceGroup(
+                  title: 'Hallazgos visibles',
+                  options: _visualFindingOptions,
+                  selectedValues: _selectedVisualFindings,
                 ),
+                const SizedBox(height: 24),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8F0FC),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: _scannerActionColor.withValues(alpha: 0.25),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.camera_alt_outlined,
+                        color: _scannerActionColor,
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'La cámara es opcional. Úsala si el síntoma tiene algo visible como lesiones, piel, boca, pezuñas o ubre.',
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      OutlinedButton(
+                        onPressed: _openCameraStep,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: _scannerActionColor,
+                          side: const BorderSide(color: _scannerActionColor),
+                        ),
+                        child: const Text('Abrir cámara'),
+                      ),
+                    ],
+                  ),
+                ),
+                if (_pendingNextStep != null) ...[
+                  const SizedBox(height: 16),
+                  _buildDecisionCard(_pendingNextStep!),
+                ],
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
@@ -449,7 +588,9 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                           )
                         : const Icon(Icons.psychology_alt_outlined),
                     label: Text(
-                      _isAnalyzing ? 'Revisando evidencia...' : 'Continuar diagnóstico',
+                      _isAnalyzing
+                          ? 'Analizando encuesta...'
+                          : 'Diagnosticar con la IA',
                     ),
                   ),
                 ),
@@ -485,7 +626,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                 foregroundColor: Colors.white,
               ),
               icon: const Icon(Icons.arrow_back),
-              label: const Text('Volver a los datos clínicos'),
+              label: const Text('Volver al formulario'),
             ),
           ),
       ],
@@ -565,11 +706,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: () {
-                      setState(() {
-                        _report = null;
-                        _capturedImageBytes = null;
-                        _step = _ScannerStep.intake;
-                      });
+                      _resetDiagnosis();
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _scannerActionColor,
@@ -637,6 +774,84 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
               child: Text('- $item'),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChoiceGroup({
+    required String title,
+    required List<_SelectableOption> options,
+    required Set<String> selectedValues,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 15,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: options
+              .map(
+                (option) => FilterChip(
+                  label: Text(option.label),
+                  selected: selectedValues.contains(option.value),
+                  onSelected: (_) => _toggleValue(selectedValues, option.value),
+                  selectedColor: _scannerActionColor.withValues(alpha: 0.18),
+                  checkmarkColor: _scannerActionColor,
+                ),
+              )
+              .toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDecisionCard(DiagnosisNextStep nextStep) {
+    final needsCamera = nextStep.status == DiagnosisStatus.needsVisualEvidence;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: needsCamera
+              ? _targetColor
+              : _scannerActionColor.withValues(alpha: 0.22),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            nextStep.title,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(nextStep.message),
+          if (needsCamera) ...[
+            const SizedBox(height: 14),
+            ElevatedButton.icon(
+              onPressed: _openCameraStep,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _scannerActionColor,
+                foregroundColor: Colors.white,
+              ),
+              icon: const Icon(Icons.camera_alt),
+              label: const Text('Continuar con cámara'),
+            ),
+          ],
         ],
       ),
     );
