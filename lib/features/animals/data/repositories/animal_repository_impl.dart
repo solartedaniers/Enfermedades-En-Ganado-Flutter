@@ -1,3 +1,5 @@
+import 'dart:io';
+import '../../../../core/services/storage_service.dart';
 import '../../domain/entities/animal_entity.dart';
 import '../../domain/repositories/animal_repository.dart';
 import '../datasources/animal_local_datasource.dart';
@@ -7,6 +9,7 @@ import '../models/animal_model.dart';
 class AnimalRepositoryImpl implements AnimalRepository {
   final AnimalLocalDataSource localDataSource;
   final AnimalRemoteDataSource remoteDataSource;
+  final StorageService _storageService = StorageService();
 
   AnimalRepositoryImpl({
     required this.localDataSource,
@@ -14,18 +17,40 @@ class AnimalRepositoryImpl implements AnimalRepository {
   });
 
   @override
-  Future<void> addAnimal(AnimalEntity animal) async {
-    final model = AnimalModel.fromEntity(animal, isSynced: false);
+  Future<void> addAnimal(AnimalEntity animal, {String? localImagePath}) async {
+    // Guarda siempre en local primero
+    final model = AnimalModel.fromEntity(
+      animal,
+      isSynced: false,
+      pendingImagePath: localImagePath,
+    );
     await localDataSource.saveAnimal(model);
+
+    // Intenta sincronizar con Supabase
     try {
-      await remoteDataSource.insertAnimal(model);
-      await localDataSource.markAsSynced(model.id);
+      String? imageUrl;
+
+      // Si hay imagen local pendiente, súbela
+      if (localImagePath != null) {
+        imageUrl = await _storageService.uploadAnimalImage(
+          File(localImagePath),
+          animal.userId,
+        );
+      }
+
+      final syncedModel = model.copyWith(
+        imageUrl: imageUrl ?? animal.imageUrl,
+        isSynced: true,
+        pendingImagePath: null,
+      );
+
+      await remoteDataSource.insertAnimal(syncedModel);
+      await localDataSource.saveAnimal(syncedModel);
     } catch (e) {
-      // Sin internet → queda pendiente
+      // Sin internet → queda en local con pendingImagePath
     }
   }
 
-  // Primero intenta traer desde Supabase y sincroniza local
   @override
   Future<List<AnimalEntity>> getAnimals() async {
     try {
@@ -33,29 +58,52 @@ class AnimalRepositoryImpl implements AnimalRepository {
       await localDataSource.syncFromRemote(remoteAnimals);
       return remoteAnimals.map((m) => m.toEntity()).toList();
     } catch (e) {
-      // Sin internet → usa local
+      // Sin internet → usa cache local
       final localAnimals = await localDataSource.getAnimals();
       return localAnimals.map((m) => m.toEntity()).toList();
     }
   }
 
+  // Se eliminó el @override si no está definido en el contrato/interfaz
   Future<void> deleteAnimal(String id) async {
     await localDataSource.deleteAnimal(id);
     try {
       await remoteDataSource.deleteAnimal(id);
     } catch (e) {
-      // Sin internet → se borrará cuando haya conexión
+      // Se reintentará en la próxima sync
     }
   }
 
+  /// Sincroniza animales pendientes incluyendo imágenes
+  // SE ELIMINÓ EL @override AQUÍ PARA QUITAR LA ADVERTENCIA
   Future<void> syncAnimals() async {
     final unsynced = await localDataSource.getUnsyncedAnimals();
+
     for (final animal in unsynced) {
       try {
-        await remoteDataSource.insertAnimal(animal);
-        await localDataSource.markAsSynced(animal.id);
+        String? imageUrl = animal.imageUrl;
+
+        // Si tiene imagen local pendiente, súbela ahora que hay internet
+        if (animal.pendingImagePath != null) {
+          final file = File(animal.pendingImagePath!);
+          if (await file.exists()) {
+            imageUrl = await _storageService.uploadAnimalImage(
+              file,
+              animal.userId,
+            );
+          }
+        }
+
+        final syncedModel = animal.copyWith(
+          imageUrl: imageUrl,
+          isSynced: true,
+          pendingImagePath: null,
+        );
+
+        await remoteDataSource.insertAnimal(syncedModel);
+        await localDataSource.saveAnimal(syncedModel);
       } catch (e) {
-        // Reintentará luego
+        // Reintentará en la próxima conexión
       }
     }
   }

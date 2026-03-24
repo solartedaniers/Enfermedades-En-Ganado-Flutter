@@ -39,10 +39,13 @@ class AnimalModel {
   final bool isSynced;
 
   @HiveField(11)
-  final String? imageUrl;         // foto para IA
+  final String? imageUrl;
 
   @HiveField(12)
-  final String? profileImageUrl;  // foto de perfil del animal
+  final String? profileImageUrl;
+
+  @HiveField(13)
+  final String? pendingImagePath; // ruta local cuando no hay internet
 
   const AnimalModel({
     required this.id,
@@ -57,6 +60,7 @@ class AnimalModel {
     this.temperature,
     this.imageUrl,
     this.profileImageUrl,
+    this.pendingImagePath,
     this.isSynced = false,
   });
 
@@ -73,6 +77,7 @@ class AnimalModel {
     double? temperature,
     String? imageUrl,
     String? profileImageUrl,
+    String? pendingImagePath,
     bool? isSynced,
   }) {
     return AnimalModel(
@@ -88,6 +93,7 @@ class AnimalModel {
       temperature: temperature ?? this.temperature,
       imageUrl: imageUrl ?? this.imageUrl,
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
+      pendingImagePath: pendingImagePath ?? this.pendingImagePath,
       isSynced: isSynced ?? this.isSynced,
     );
   }
@@ -108,7 +114,7 @@ class AnimalModel {
       );
 
   factory AnimalModel.fromEntity(AnimalEntity entity,
-      {bool isSynced = false}) {
+      {bool isSynced = false, String? pendingImagePath}) {
     return AnimalModel(
       id: entity.id,
       userId: entity.userId,
@@ -122,6 +128,7 @@ class AnimalModel {
       temperature: entity.temperature,
       imageUrl: entity.imageUrl,
       profileImageUrl: entity.profileImageUrl,
+      pendingImagePath: pendingImagePath,
       isSynced: isSynced,
     );
   }
@@ -141,6 +148,7 @@ class AnimalModel {
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
       isSynced: true,
+      pendingImagePath: null,
     );
   }
 
