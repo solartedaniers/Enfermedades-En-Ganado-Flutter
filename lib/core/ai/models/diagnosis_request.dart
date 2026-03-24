@@ -19,7 +19,7 @@ class DiagnosisRequest {
   final List<String> visualFindings;
   final DateTime observedAt;
 
-  const DiagnosisRequest({
+  DiagnosisRequest({
     required this.animalId,
     required this.userId,
     required this.animalName,
