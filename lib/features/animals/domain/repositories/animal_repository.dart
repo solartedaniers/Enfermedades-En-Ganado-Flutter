@@ -7,6 +7,9 @@ abstract class AnimalRepository {
 
   Future<List<AnimalEntity>> getAnimals();
 
+  /// Actualiza un animal existente tanto en local como en Supabase.
+  Future<void> updateAnimal(AnimalEntity animal, {String? localImagePath});
+
   /// Elimina el animal tanto en Hive como en Supabase.
   Future<void> deleteAnimal(String id);
 

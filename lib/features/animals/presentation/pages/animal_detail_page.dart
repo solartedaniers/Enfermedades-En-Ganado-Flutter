@@ -307,7 +307,7 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
       );
 
       // Actualiza en Supabase y Hive
-      await ref.read(animalRepositoryProvider).addAnimal(updated);
+      await ref.read(animalRepositoryProvider).updateAnimal(updated);
 
       // También actualiza profile_image_url directamente en Supabase
       // para que otros dispositivos lo vean inmediatamente
