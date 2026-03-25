@@ -1,53 +1,47 @@
 import '../../network/network_info.dart';
 import '../models/diagnosis_request.dart';
 import '../models/diagnosis_response.dart';
-import 'openai_diagnosis_api.dart';
+import 'local_diagnosis_api.dart';
+import 'supabase_diagnosis_api.dart';
 
 class LivestockDiagnosisService {
   final NetworkInfo networkInfo;
-  final OpenAIDiagnosisApi diagnosisApi;
+  final SupabaseDiagnosisApi remoteDiagnosisApi;
+  final LocalDiagnosisApi localDiagnosisApi;
 
   const LivestockDiagnosisService({
     required this.networkInfo,
-    this.diagnosisApi = const OpenAIDiagnosisApi(),
+    this.remoteDiagnosisApi = const SupabaseDiagnosisApi(),
+    this.localDiagnosisApi = const LocalDiagnosisApi(),
   });
 
-  /// Evalúa qué debe pedir primero la app antes de ejecutar el análisis.
+  /// Evalua que debe pedir primero la app antes de ejecutar el analisis.
   Future<DiagnosisResponse> prepare(DiagnosisRequest request) async {
-    if (!diagnosisApi.isConfigured) {
-      return DiagnosisResponse(
-        status: DiagnosisStatus.needsConfiguration,
-        nextStep: const DiagnosisNextStep(
-          status: DiagnosisStatus.needsConfiguration,
-          title: 'Falta configurar la IA',
-          message:
-              'Debes iniciar la app con OPENAI_API_KEY y, si quieres, OPENAI_DIAGNOSIS_MODEL para usar diagnóstico real por API.',
-        ),
-      );
-    }
-
-    if (!await networkInfo.isConnected) {
-      return DiagnosisResponse(
-        status: DiagnosisStatus.needsInternet,
-        nextStep: const DiagnosisNextStep(
-          status: DiagnosisStatus.needsInternet,
-          title: 'Se necesita internet',
-          message:
-              'El diagnóstico inteligente requiere conexión. Mientras vuelves a tener internet, revisa el historial médico o la ficha del animal.',
-          canContinueOffline: true,
-          suggestedRoutes: ['medical_history', 'animals_page'],
-        ),
-      );
-    }
-
-    if (!request.hasClinicalQuestion && !request.hasSymptoms && !request.hasVisualEvidence) {
+    if (!request.hasClinicalQuestion &&
+        !request.hasSymptoms &&
+        !request.hasVisualEvidence) {
       return DiagnosisResponse(
         status: DiagnosisStatus.needsClinicalQuestion,
         nextStep: const DiagnosisNextStep(
           status: DiagnosisStatus.needsClinicalQuestion,
           title: 'Primero describe el caso',
           message:
-              'Selecciona un animal y escribe síntomas o motivo de consulta antes de analizar.',
+              'Selecciona un animal y escribe sintomas o motivo de consulta antes de analizar.',
+        ),
+      );
+    }
+
+    final connected = await networkInfo.isConnected;
+    if (!connected) {
+      return DiagnosisResponse(
+        status: DiagnosisStatus.readyToAnalyze,
+        nextStep: const DiagnosisNextStep(
+          status: DiagnosisStatus.readyToAnalyze,
+          title: 'Modo local disponible',
+          message:
+              'No hay internet. El diagnostico seguira con el motor local de respaldo.',
+          canContinueOffline: true,
+          suggestedRoutes: ['medical_history', 'animals_page'],
         ),
       );
     }
@@ -58,28 +52,53 @@ class LivestockDiagnosisService {
         status: DiagnosisStatus.readyToAnalyze,
         title: 'Listo para analizar',
         message:
-            'Ya hay suficiente información clínica para ejecutar el razonamiento del motor de diagnóstico.',
+            'La app intentara usar IA remota y, si no esta disponible, cambiara al motor local automaticamente.',
       ),
     );
   }
 
-  /// Ejecuta el diagnóstico completo y devuelve una salida lista para UI y BD.
+  /// Ejecuta el diagnostico y cae al motor local si la IA remota falla.
   Future<DiagnosisResponse> analyze(DiagnosisRequest request) async {
     final preparation = await prepare(request);
     if (preparation.status != DiagnosisStatus.readyToAnalyze) {
       return preparation;
     }
-    final report = await diagnosisApi.createDiagnosisReport(request);
+
+    final connected = await networkInfo.isConnected;
+
+    if (connected) {
+      try {
+        final report = await remoteDiagnosisApi.createDiagnosisReport(request);
+        return DiagnosisResponse(
+          status: DiagnosisStatus.completed,
+          nextStep: const DiagnosisNextStep(
+            status: DiagnosisStatus.completed,
+            title: 'Diagnostico completado',
+            message:
+                'La IA remota genero un informe estructurado listo para mostrarse o guardarse en Supabase.',
+          ),
+          report: report,
+        );
+      } catch (error) {
+        if (!remoteDiagnosisApi.isRecoverableError(error)) {
+          rethrow;
+        }
+      }
+    }
+
+    final localReport = await localDiagnosisApi.createDiagnosisReport(request);
 
     return DiagnosisResponse(
       status: DiagnosisStatus.completed,
-      nextStep: const DiagnosisNextStep(
+      nextStep: DiagnosisNextStep(
         status: DiagnosisStatus.completed,
-        title: 'Diagnóstico completado',
-        message:
-            'El motor ya generó un informe estructurado listo para mostrarse al usuario o guardarse en Supabase.',
+        title: 'Diagnostico completado',
+        message: connected
+            ? 'La IA remota no estuvo disponible, asi que se uso el motor local de respaldo.'
+            : 'Se completo el diagnostico con el motor local porque no habia internet.',
+        canContinueOffline: !connected,
       ),
-      report: report,
+      report: localReport,
     );
   }
 }
