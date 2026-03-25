@@ -231,10 +231,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                 initialValue: userType,
                 items: [
                   DropdownMenuItem(
-                      value: "ganadero",
+                      value: "farmer",
                       child: Text(AppStrings.t("farmer"))),
                   DropdownMenuItem(
-                      value: "veterinario",
+                      value: "veterinarian",
                       child: Text(AppStrings.t("vet"))),
                 ],
                 onChanged: (v) => setState(() => userType = v),
