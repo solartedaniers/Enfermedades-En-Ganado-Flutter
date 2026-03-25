@@ -318,6 +318,28 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     });
 
     try {
+      final normalizedTemperature =
+          _temperatureController.text.trim().replaceAll(',', '.');
+      final updatedAnimal = AnimalEntity(
+        id: animal.id,
+        userId: animal.userId,
+        name: animal.name,
+        breed: animal.breed,
+        age: animal.age,
+        ageLabel: animal.ageLabel,
+        symptoms: _symptomsController.text.trim().isEmpty
+            ? animal.symptoms
+            : _symptomsController.text.trim(),
+        weight: animal.weight,
+        temperature: double.tryParse(normalizedTemperature) ?? animal.temperature,
+        imageUrl: animal.imageUrl,
+        profileImageUrl: animal.profileImageUrl,
+        createdAt: animal.createdAt,
+        updatedAt: DateTime.now(),
+      );
+
+      await ref.read(animalRepositoryProvider).updateAnimal(updatedAnimal);
+
       final repo = ref.read(medicalRepositoryProvider);
       final record = MedicalRecordModel.fromDiagnosisReport(
         id: const Uuid().v4(),
@@ -328,6 +350,9 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       await repo.addRecord(record);
 
       if (!mounted) return;
+      setState(() {
+        _selectedAnimal = updatedAnimal;
+      });
       _showMessage(AppStrings.t('diagnosis_saved_message'));
     } catch (error) {
       if (!mounted) return;
