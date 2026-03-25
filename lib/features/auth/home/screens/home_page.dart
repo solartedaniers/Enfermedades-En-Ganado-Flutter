@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../animals/data/services/animal_sync_service.dart';
+import '../../../animals/presentation/pages/add_animal_page.dart';
 import '../../../animals/presentation/pages/animals_page.dart';
 import '../../../diagnosis/screens/scanner_screen.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
@@ -73,27 +74,38 @@ class _HomePageState extends ConsumerState<HomePage> {
   void _onMenuTap(String key) {
     switch (key) {
       case "register_animal":
-      case "history":
-        Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const AnimalsPage()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AddAnimalPage()),
+        );
         break;
+
+      case "history":
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AnimalsPage()),
+        );
+        break;
+
       case "notifications":
         Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (_) => const NotificationsPage()));
+          context,
+          MaterialPageRoute(builder: (_) => const NotificationsPage()),
+        );
         break;
+
       case "diagnosis":
+        // Conflictos resueltos: Navegación al Scanner habilitada
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const ScannerScreen()),
         );
         break;
+
       case "vaccines":
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content:
-                  Text(AppStrings.t("coming_soon_vaccines"))),
+              content: Text(AppStrings.t("coming_soon_vaccines"))),
         );
         break;
     }
@@ -105,10 +117,9 @@ class _HomePageState extends ConsumerState<HomePage> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    // --- LISTA ACTUALIZADA ---
     final menuItems = [
       {
-        "image": "lib/images/Taureau.webp", // Ruta de tu imagen
+        "image": "lib/images/Taureau.webp",
         "key": "register_animal",
         "color": const Color(0xFF43A047),
         "bg": const Color(0xFFE8F5E9),
@@ -120,7 +131,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         "bg": const Color(0xFFE3F2FD),
       },
       {
-        "icon": Icons.history,
+        "icon": Icons.pets,
         "key": "history",
         "color": const Color(0xFF8E24AA),
         "bg": const Color(0xFFF3E5F5),
@@ -132,7 +143,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         "bg": const Color(0xFFFFEBEE),
       },
       {
-        "icon": Icons.notifications_active,
+        "icon": Icons.alarm,
         "key": "notifications",
         "color": const Color(0xFFF57C00),
         "bg": const Color(0xFFFFF3E0),
@@ -184,8 +195,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                 color: Colors.white, width: 2),
                             boxShadow: [
                               BoxShadow(
-                                color:
-                                    Colors.black.withValues(alpha: 0.2),
+                                color: Colors.black.withValues(alpha: 0.2),
                                 blurRadius: 8,
                                 offset: const Offset(0, 4),
                               )
@@ -194,15 +204,15 @@ class _HomePageState extends ConsumerState<HomePage> {
                           child: CircleAvatar(
                             radius: 36,
                             backgroundColor: Colors.white24,
-                            backgroundImage: profile.avatarUrl != null &&
-                                    profile.avatarUrl!.isNotEmpty
-                                ? NetworkImage(profile.avatarUrl!)
-                                : null,
+                            backgroundImage:
+                                profile.avatarUrl != null &&
+                                        profile.avatarUrl!.isNotEmpty
+                                    ? NetworkImage(profile.avatarUrl!)
+                                    : null,
                             child: profile.avatarUrl == null ||
                                     profile.avatarUrl!.isEmpty
                                 ? const Icon(Icons.person,
-                                    size: 36,
-                                    color: Colors.white)
+                                    size: 36, color: Colors.white)
                                 : null,
                           ),
                         ),
@@ -216,8 +226,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(Icons.edit,
-                                size: 12,
-                                color: Color(0xFF2E7D32)),
+                                size: 12, color: Color(0xFF2E7D32)),
                           ),
                         ),
                       ],
@@ -248,7 +257,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                 ],
               ),
             ).animate().fadeIn(duration: 500.ms).slideY(begin: -0.1),
-
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
               child: Text(
@@ -257,7 +265,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                     ?.copyWith(fontWeight: FontWeight.bold),
               ),
             ).animate().fadeIn(delay: 200.ms),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: GridView.count(
@@ -270,16 +277,19 @@ class _HomePageState extends ConsumerState<HomePage> {
                   final i = entry.key;
                   final item = entry.value;
                   return _buildMenuCard(
-                    icon: item["icon"] as IconData?, // Ahora es opcional
-                    imagePath: item["image"] as String?, // Nueva propiedad
-                    key: item["key"] as String,
+                    icon: item["icon"] as IconData?,
+                    imagePath: item["image"] as String?,
+                    itemKey: item["key"] as String,
                     color: item["color"] as Color,
                     bg: item["bg"] as Color,
                     isDark: isDark,
-                  ).animate().fadeIn(
+                  )
+                      .animate()
+                      .fadeIn(
                         delay: (200 + i * 80).ms,
                         duration: 400.ms,
-                      ).scale(
+                      )
+                      .scale(
                         begin: const Offset(0.85, 0.85),
                         end: const Offset(1, 1),
                       );
@@ -293,17 +303,16 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  // --- WIDGET ACTUALIZADO ---
   Widget _buildMenuCard({
     IconData? icon,
     String? imagePath,
-    required String key,
+    required String itemKey,
     required Color color,
     required Color bg,
     required bool isDark,
   }) {
     return GestureDetector(
-      onTap: () => _onMenuTap(key),
+      onTap: () => _onMenuTap(itemKey),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         decoration: BoxDecoration(
@@ -321,27 +330,25 @@ class _HomePageState extends ConsumerState<HomePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(12), // Ajuste de padding para la imagen
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isDark
-                    ? color.withValues(alpha: 0.15)
-                    : bg,
+                color: isDark ? color.withValues(alpha: 0.15) : bg,
                 shape: BoxShape.circle,
               ),
-              child: imagePath != null 
-                ? ClipOval( // Si hay imagen, la mostramos circular
-                    child: Image.asset(
-                      imagePath,
-                      width: 40,
-                      height: 40,
-                      fit: BoxFit.cover,
-                    ),
-                  )
-                : Icon(icon, size: 32, color: color), // Si no, el icono de siempre
+              child: imagePath != null
+                  ? ClipOval(
+                      child: Image.asset(
+                        imagePath,
+                        width: 40,
+                        height: 40,
+                        fit: BoxFit.cover,
+                      ),
+                    )
+                  : Icon(icon, size: 32, color: color),
             ),
             const SizedBox(height: 12),
             Text(
-              AppStrings.t(key),
+              AppStrings.t(itemKey),
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontWeight: FontWeight.bold,

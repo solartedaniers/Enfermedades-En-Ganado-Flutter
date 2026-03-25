@@ -4,7 +4,10 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+// --- Servicios y Core ---
 import '../../../../core/services/storage_service.dart';
+import '../../../../core/services/connectivity_service.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../providers/profile_provider.dart';
 
@@ -33,9 +36,19 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   }
 
   Future<void> _pickAndUploadAvatar() async {
+    // Verificación de conexión antes de proceder
+    final isOnline = await ConnectivityService.checkAndNotify(
+      context,
+      message: "Necesitas internet para cambiar tu foto de perfil",
+    );
+    if (!isOnline) return;
+
     final picker = ImagePicker();
     final picked = await picker.pickImage(
-        source: ImageSource.gallery, imageQuality: 80);
+      source: ImageSource.gallery, 
+      imageQuality: 80,
+    );
+    
     if (picked == null) return;
 
     setState(() => _isUploadingAvatar = true);
@@ -43,16 +56,17 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       final user = Supabase.instance.client.auth.currentUser;
       if (user == null) return;
 
-      // Usa bucket 'users' para avatares
+      // Subida al bucket 'users' de Supabase
       final url = await StorageService()
           .uploadUserAvatar(File(picked.path), user.id);
+      
       ref.read(profileProvider.notifier).changeAvatar(url);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text(
-                  "${AppStrings.t("upload_avatar_error")}: $e")),
+            content: Text("${AppStrings.t("upload_avatar_error")}: $e"),
+          ),
         );
       }
     } finally {
@@ -71,7 +85,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // --- Header ---
+            // --- Header con degradado y Avatar ---
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(20, 30, 20, 40),
@@ -96,12 +110,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         Container(
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: Border.all(
-                                color: Colors.white, width: 3),
+                            border: Border.all(color: Colors.white, width: 3),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black
-                                    .withValues(alpha: 0.25),
+                                color: Colors.black.withValues(alpha: 0.25),
                                 blurRadius: 12,
                                 offset: const Offset(0, 6),
                               ),
@@ -110,8 +122,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           child: CircleAvatar(
                             radius: 55,
                             backgroundColor: Colors.white24,
-                            backgroundImage: profile.avatarUrl !=
-                                        null &&
+                            backgroundImage: profile.avatarUrl != null &&
                                     profile.avatarUrl!.isNotEmpty
                                 ? NetworkImage(profile.avatarUrl!)
                                 : null,
@@ -123,8 +134,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           ),
                         ),
                         if (_isUploadingAvatar)
-                          const CircularProgressIndicator(
-                              color: Colors.white)
+                          const CircularProgressIndicator(color: Colors.white)
                         else
                           Container(
                             padding: const EdgeInsets.all(7),
@@ -155,13 +165,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  // --- Nombre ---
+                  // --- Campo Nombre ---
                   TextField(
                     controller: _nameController,
                     decoration: InputDecoration(
                       labelText: AppStrings.t("name"),
-                      prefixIcon: const Icon(Icons.person_outline,
-                          color: primary),
+                      prefixIcon: const Icon(Icons.person_outline, color: primary),
                     ),
                     onChanged: (v) => ref
                         .read(profileProvider.notifier)
@@ -169,7 +178,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   ).animate().fadeIn(delay: 200.ms),
                   const SizedBox(height: 20),
 
-                  // --- Tema ---
+                  // --- Sección Tema ---
                   _sectionCard(
                     title: AppStrings.t("app_theme"),
                     icon: Icons.palette_outlined,
@@ -178,8 +187,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       _SelectTile(
                         icon: Icons.brightness_auto,
                         label: AppStrings.t("theme_system"),
-                        selected:
-                            profile.themeMode == ThemeMode.system,
+                        selected: profile.themeMode == ThemeMode.system,
                         onTap: () => ref
                             .read(profileProvider.notifier)
                             .changeTheme(ThemeMode.system),
@@ -187,8 +195,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       _SelectTile(
                         icon: Icons.light_mode,
                         label: AppStrings.t("theme_light"),
-                        selected:
-                            profile.themeMode == ThemeMode.light,
+                        selected: profile.themeMode == ThemeMode.light,
                         onTap: () => ref
                             .read(profileProvider.notifier)
                             .changeTheme(ThemeMode.light),
@@ -196,8 +203,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       _SelectTile(
                         icon: Icons.dark_mode,
                         label: AppStrings.t("theme_dark"),
-                        selected:
-                            profile.themeMode == ThemeMode.dark,
+                        selected: profile.themeMode == ThemeMode.dark,
                         onTap: () => ref
                             .read(profileProvider.notifier)
                             .changeTheme(ThemeMode.dark),
@@ -206,7 +212,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   ).animate().fadeIn(delay: 300.ms),
                   const SizedBox(height: 16),
 
-                  // --- Idioma ---
+                  // --- Sección Idioma ---
                   _sectionCard(
                     title: AppStrings.t("language"),
                     icon: Icons.language,
@@ -214,7 +220,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     children: [
                       _SelectTile(
                         icon: Icons.language,
-                        label: "🇪🇸  Español",
+                        label: "🇪🇸   Español",
                         selected: profile.language == "es",
                         onTap: () => ref
                             .read(profileProvider.notifier)
@@ -222,7 +228,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       ),
                       _SelectTile(
                         icon: Icons.language,
-                        label: "🇺🇸  English",
+                        label: "🇺🇸   English",
                         selected: profile.language == "en",
                         onTap: () => ref
                             .read(profileProvider.notifier)
@@ -239,6 +245,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     );
   }
 
+  // Widget para agrupar secciones en tarjetas estéticas
   Widget _sectionCard({
     required String title,
     required IconData icon,
@@ -280,6 +287,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   }
 }
 
+// Widget personalizado para los items de selección (Tema/Idioma)
 class _SelectTile extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -301,8 +309,7 @@ class _SelectTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(10),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding:
-            const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
         decoration: BoxDecoration(
           color: selected
               ? primary.withValues(alpha: 0.08)
@@ -322,8 +329,7 @@ class _SelectTile extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                fontWeight:
-                    selected ? FontWeight.bold : FontWeight.normal,
+                fontWeight: selected ? FontWeight.bold : FontWeight.normal,
                 color: selected ? primary : null,
               ),
             ),

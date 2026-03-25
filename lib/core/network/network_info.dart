@@ -1,4 +1,10 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // Importa Riverpod
+
+// 1. Define el Provider aquí para que sea accesible globalmente
+final networkInfoProvider = Provider<NetworkInfo>((ref) {
+  return NetworkInfo(Connectivity());
+});
 
 class NetworkInfo {
   final Connectivity connectivity;
@@ -7,14 +13,12 @@ class NetworkInfo {
 
   Stream<bool> get onConnectivityChanged {
     return connectivity.onConnectivityChanged.map(
-      // 'results' es una List<ConnectivityResult>
       (results) => !results.contains(ConnectivityResult.none),
     );
   }
 
   Future<bool> get isConnected async {
     final results = await connectivity.checkConnectivity();
-    // Verificamos si en la lista NO está el estado 'none'
     return !results.contains(ConnectivityResult.none);
   }
 }

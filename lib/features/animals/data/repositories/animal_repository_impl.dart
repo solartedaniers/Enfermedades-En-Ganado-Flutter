@@ -1,3 +1,5 @@
+import 'dart:io';
+import '../../../../core/services/storage_service.dart';
 import '../../domain/entities/animal_entity.dart';
 import '../../domain/repositories/animal_repository.dart';
 import '../datasources/animal_local_datasource.dart';
@@ -7,6 +9,7 @@ import '../models/animal_model.dart';
 class AnimalRepositoryImpl implements AnimalRepository {
   final AnimalLocalDataSource localDataSource;
   final AnimalRemoteDataSource remoteDataSource;
+  final StorageService _storageService = StorageService();
 
   AnimalRepositoryImpl({
     required this.localDataSource,
@@ -14,47 +17,93 @@ class AnimalRepositoryImpl implements AnimalRepository {
   });
 
   @override
-  Future<void> addAnimal(AnimalEntity animal) async {
-    final model = AnimalModel.fromEntity(animal, isSynced: false);
-    await localDataSource.saveAnimal(model);
+  Future<void> addAnimal(AnimalEntity animal, {String? localImagePath}) async {
+    // 1. Guardar en Hive primero (offline-first)
+    final localModel = AnimalModel.fromEntity(
+      animal,
+      isSynced: false,
+      pendingImagePath: localImagePath,
+    );
+    await localDataSource.saveAnimal(localModel);
+
+    // 2. Intentar sincronizar con Supabase
     try {
-      await remoteDataSource.insertAnimal(model);
-      await localDataSource.markAsSynced(model.id);
-    } catch (e) {
-      // Sin internet → queda pendiente
+      String? uploadedImageUrl;
+
+      if (localImagePath != null &&
+          (animal.profileImageUrl == null ||
+              animal.profileImageUrl!.isEmpty)) {
+        final file = File(localImagePath);
+        if (await file.exists()) {
+          uploadedImageUrl = await _storageService.uploadAnimalImage(
+            file,
+            animal.userId,
+          );
+        }
+      }
+
+      final syncedModel = localModel.copyWith(
+        profileImageUrl: uploadedImageUrl ?? animal.profileImageUrl,
+        isSynced: true,
+        pendingImagePath: null, 
+      );
+
+      await remoteDataSource.insertAnimal(syncedModel);
+      await localDataSource.saveAnimal(syncedModel);
+    } catch (_) {
+      // El animal queda en Hive con isSynced: false
     }
   }
 
-  // Primero intenta traer desde Supabase y sincroniza local
   @override
   Future<List<AnimalEntity>> getAnimals() async {
     try {
       final remoteAnimals = await remoteDataSource.getAnimals();
       await localDataSource.syncFromRemote(remoteAnimals);
       return remoteAnimals.map((m) => m.toEntity()).toList();
-    } catch (e) {
-      // Sin internet → usa local
+    } catch (_) {
       final localAnimals = await localDataSource.getAnimals();
       return localAnimals.map((m) => m.toEntity()).toList();
     }
   }
 
+  @override // CORRECCIÓN: Se añadió el override faltante
   Future<void> deleteAnimal(String id) async {
     await localDataSource.deleteAnimal(id);
     try {
       await remoteDataSource.deleteAnimal(id);
-    } catch (e) {
-      // Sin internet → se borrará cuando haya conexión
+    } catch (_) {
+      // Reintento pendiente
     }
   }
 
+  @override // CORRECCIÓN: Se añadió el override faltante
   Future<void> syncAnimals() async {
     final unsynced = await localDataSource.getUnsyncedAnimals();
+
     for (final animal in unsynced) {
       try {
-        await remoteDataSource.insertAnimal(animal);
-        await localDataSource.markAsSynced(animal.id);
-      } catch (e) {
+        String? profileImageUrl = animal.profileImageUrl;
+
+        if (animal.pendingImagePath != null) {
+          final file = File(animal.pendingImagePath!);
+          if (await file.exists()) {
+            profileImageUrl = await _storageService.uploadAnimalImage(
+              file,
+              animal.userId,
+            );
+          }
+        }
+
+        final syncedModel = animal.copyWith(
+          profileImageUrl: profileImageUrl,
+          isSynced: true,
+          pendingImagePath: null,
+        );
+
+        await remoteDataSource.upsertAnimal(syncedModel);
+        await localDataSource.saveAnimal(syncedModel);
+      } catch (_) {
         // Reintentará luego
       }
     }

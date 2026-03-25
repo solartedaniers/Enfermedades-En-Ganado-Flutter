@@ -5,20 +5,17 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/services/storage_service.dart';
+import '../../../../core/services/connectivity_service.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../../../animals/domain/entities/animal_entity.dart';
 import '../../../animals/presentation/providers/animal_provider.dart';
 import '../providers/medical_provider.dart';
-import '../../domain/entities/medical_record_entity.dart';
 import '../../data/models/medical_record_model.dart';
 
 class MedicalHistoryPage extends ConsumerStatefulWidget {
   final AnimalEntity animal;
 
-  const MedicalHistoryPage({
-    super.key,
-    required this.animal,
-  });
+  const MedicalHistoryPage({super.key, required this.animal});
 
   @override
   ConsumerState<MedicalHistoryPage> createState() =>
@@ -28,7 +25,6 @@ class MedicalHistoryPage extends ConsumerStatefulWidget {
 class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
   final _storageService = StorageService();
   final _picker = ImagePicker();
-  bool _uploadingProfileImage = false;
   late AnimalEntity _animal;
 
   @override
@@ -37,59 +33,125 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
     _animal = widget.animal;
   }
 
-  // Sube foto de perfil del animal
-  Future<void> _pickProfileImage() async {
-    final picked = await _picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 80,
-    );
-    if (picked == null) return;
+  // ── Navegar al home ────────────────────────────────────────────────────
+  void _goHome() =>
+      Navigator.of(context).popUntil((route) => route.isFirst);
 
-    setState(() => _uploadingProfileImage = true);
+  // ── Cambiar foto de perfil ─────────────────────────────────────────────
+  Future<void> _pickProfileImage() async {
+    final isOnline = await ConnectivityService.checkAndNotify(
+      context,
+      message: 'Necesitas internet para cambiar la foto del animal',
+    );
+    if (!isOnline || !mounted) return;
+
+    // Mostrar opciones: cámara o galería
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius:
+              const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+              ListTile(
+                leading: const Icon(Icons.camera_alt,
+                    color: Color(0xFF2E7D32)),
+                title: Text(AppStrings.t('take_photo')),
+                onTap: () => Navigator.pop(context, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library,
+                    color: Color(0xFF2E7D32)),
+                title: Text(AppStrings.t('choose_gallery')),
+                onTap: () => Navigator.pop(context, ImageSource.gallery),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (source == null || !mounted) return;
+
+    final picked =
+        await _picker.pickImage(source: source, imageQuality: 80);
+    if (picked == null || !mounted) return;
+
     try {
       final user = Supabase.instance.client.auth.currentUser;
       if (user == null) return;
 
-      final file = File(picked.path);
-      final url = await _storageService.uploadAnimalImage(file, user.id);
+      final url = await _storageService.uploadAnimalImage(
+          File(picked.path), user.id);
 
-      // Actualiza en Supabase
+      // Actualiza en Supabase inmediatamente
       await Supabase.instance.client
           .from('animals')
-          .update({'profile_image_url': url})
-          .eq('id', _animal.id);
+          .update({'profile_image_url': url}).eq('id', _animal.id);
 
-      setState(() {
-        _animal = AnimalEntity(
-          id: _animal.id,
-          userId: _animal.userId,
-          name: _animal.name,
-          breed: _animal.breed,
-          age: _animal.age,
-          symptoms: _animal.symptoms,
-          weight: _animal.weight,
-          temperature: _animal.temperature,
-          imageUrl: _animal.imageUrl,
-          profileImageUrl: url,
-          createdAt: _animal.createdAt,
-          updatedAt: DateTime.now(),
-        );
-      });
+      if (!mounted) return;
 
+      // Actualiza el estado local para reflejar el cambio sin recargar
+      final updatedAnimal = AnimalEntity(
+        id: _animal.id,
+        userId: _animal.userId,
+        name: _animal.name,
+        breed: _animal.breed,
+        age: _animal.age,
+        ageLabel: _animal.ageLabel,
+        symptoms: _animal.symptoms,
+        weight: _animal.weight,
+        temperature: _animal.temperature,
+        imageUrl: _animal.imageUrl,
+        profileImageUrl: url,
+        createdAt: _animal.createdAt,
+        updatedAt: DateTime.now(),
+      );
+
+      setState(() => _animal = updatedAnimal);
+
+      // Invalida el provider para que la lista y otras pantallas
+      // reflejen el cambio al volver
       ref.invalidate(animalRepositoryProvider);
-    } catch (e) {
+
+      // Devuelve el animal actualizado al pop para que AnimalDetailPage
+      // actualice su estado sin necesidad de recargar toda la lista
+      // (se usa cuando el usuario hace pop desde aquí)
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error subiendo imagen: $e")),
+          const SnackBar(content: Text('Foto actualizada')),
         );
       }
-    } finally {
-      if (mounted) setState(() => _uploadingProfileImage = false);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
-  // Agrega nuevo registro médico con imagen para IA
+  // ── Agregar registro médico ────────────────────────────────────────────
   Future<void> _addRecord() async {
+    final isOnline = await ConnectivityService.checkAndNotify(
+      context,
+      message: 'Necesitas internet para agregar registros médicos',
+    );
+    if (!isOnline || !mounted) return;
+
     final diagnosisController = TextEditingController();
     File? selectedImage;
 
@@ -100,7 +162,7 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setModalState) => Padding(
+        builder: (ctx, setModal) => Padding(
           padding: EdgeInsets.only(
             left: 16,
             right: 16,
@@ -111,14 +173,12 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                "Nuevo registro médico",
-                style: const TextStyle(
+              const Text(
+                'Nuevo registro médico',
+                style: TextStyle(
                     fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
-
-              // Imagen para IA
               GestureDetector(
                 onTap: () async {
                   final picked = await _picker.pickImage(
@@ -126,8 +186,7 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
                     imageQuality: 80,
                   );
                   if (picked != null) {
-                    setModalState(
-                        () => selectedImage = File(picked.path));
+                    setModal(() => selectedImage = File(picked.path));
                   }
                 },
                 child: Container(
@@ -151,7 +210,7 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
                                 size: 40, color: Colors.grey.shade400),
                             const SizedBox(height: 8),
                             Text(
-                              "Foto para diagnóstico IA\n(toca para tomar)",
+                              'Foto para diagnóstico IA\n(toca para tomar)',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                   color: Colors.grey.shade500,
@@ -162,17 +221,15 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
                 ),
               ),
               const SizedBox(height: 12),
-
               TextField(
                 controller: diagnosisController,
                 decoration: const InputDecoration(
-                  labelText: "Observaciones / Diagnóstico",
+                  labelText: 'Observaciones / Diagnóstico',
                   border: OutlineInputBorder(),
                 ),
                 maxLines: 3,
               ),
               const SizedBox(height: 16),
-
               SizedBox(
                 width: double.infinity,
                 height: 48,
@@ -184,7 +241,7 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
                       imageFile: selectedImage,
                     );
                   },
-                  child: const Text("Guardar registro"),
+                  child: const Text('Guardar registro'),
                 ),
               ),
             ],
@@ -204,8 +261,8 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
 
       String? imageUrl;
       if (imageFile != null) {
-        imageUrl =
-            await _storageService.uploadAnimalImage(imageFile, user.id);
+        imageUrl = await _storageService.uploadAnimalImage(
+            imageFile, user.id);
       }
 
       final record = MedicalRecordModel(
@@ -218,21 +275,17 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
         createdAt: DateTime.now(),
       );
 
-      final repo = ref.read(medicalRepositoryProvider);
-      await repo.addRecord(record);
+      await ref.read(medicalRepositoryProvider).addRecord(record);
 
-      if (mounted) {
-        setState(() {});
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Registro guardado")),
-        );
-      }
+      if (!mounted) return;
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Registro guardado')),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e")),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
@@ -240,41 +293,42 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text("Eliminar registro"),
-        content:
-            const Text("¿Seguro que deseas eliminar este registro médico?"),
+        title: const Text('Eliminar registro'),
+        content: const Text(
+            '¿Seguro que deseas eliminar este registro médico?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text("Cancelar"),
+            child: const Text('Cancelar'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text("Eliminar",
+            child: const Text('Eliminar',
                 style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
     );
-    if (confirm != true) return;
+    if (confirm != true || !mounted) return;
 
     try {
       await Supabase.instance.client
           .from('medical_records')
           .delete()
           .eq('id', recordId);
-      if (mounted) setState(() {});
+      if (!mounted) return;
+      setState(() {});
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text("Error: $e")));
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
-  Future<void> _editRecord(MedicalRecordEntity record) async {
+  Future<void> _editRecord(
+      String recordId, String? currentDiagnosis) async {
     final controller =
-        TextEditingController(text: record.diagnosis ?? '');
+        TextEditingController(text: currentDiagnosis ?? '');
 
     await showModalBottomSheet(
       context: context,
@@ -292,14 +346,14 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text("Editar registro",
-                style:
-                    TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text('Editar registro',
+                style: TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             TextField(
               controller: controller,
               decoration: const InputDecoration(
-                labelText: "Diagnóstico / Observaciones",
+                labelText: 'Diagnóstico / Observaciones',
                 border: OutlineInputBorder(),
               ),
               maxLines: 3,
@@ -315,16 +369,16 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
                     await Supabase.instance.client
                         .from('medical_records')
                         .update({'diagnosis': controller.text.trim()})
-                        .eq('id', record.id);
-                    if (mounted) setState(() {});
+                        .eq('id', recordId);
+                    if (!mounted) return;
+                    setState(() {});
                   } catch (e) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text("Error: $e")));
-                    }
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error: $e')));
                   }
                 },
-                child: const Text("Guardar cambios"),
+                child: const Text('Guardar cambios'),
               ),
             ),
           ],
@@ -333,55 +387,68 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
     );
   }
 
+  // ── BUILD ──────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final repo = ref.watch(medicalRepositoryProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_animal.name),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _addRecord,
-        icon: const Icon(Icons.add),
-        label: const Text("Nuevo registro"),
-      ),
-      body: Column(
-        children: [
-          // --- Header con foto de perfil del animal ---
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF2E7D32), Color(0xFF66BB6A)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+    return PopScope(
+      // Al hacer pop, devuelve el animal actualizado a AnimalDetailPage
+      // para que refleje inmediatamente cualquier cambio de foto
+      onPopInvokedWithResult: (didPop, result) {
+        // No hace falta hacer nada extra: Navigator.pop con result lo maneja
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(_animal.name),
+          actions: [
+            // Icono de casa para ir al panel principal
+            IconButton(
+              icon: const Icon(Icons.home_outlined),
+              tooltip: AppStrings.t('go_home'),
+              onPressed: _goHome,
             ),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: _pickProfileImage,
-                  child: Stack(
-                    children: [
-                      CircleAvatar(
-                        radius: 40,
-                        backgroundColor: Colors.white24,
-                        backgroundImage: _animal.profileImageUrl != null
-                            ? NetworkImage(_animal.profileImageUrl!)
-                            : null,
-                        child: _animal.profileImageUrl == null
-                            ? Icon(Icons.set_meal,
-                                size: 40, color: Colors.white)
-                            : null,
-                      ),
-                      if (_uploadingProfileImage)
-                        const Positioned.fill(
-                          child: CircularProgressIndicator(
-                              color: Colors.white),
-                        )
-                      else
+          ],
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: _addRecord,
+          icon: const Icon(Icons.add),
+          label: const Text('Nuevo registro'),
+        ),
+        body: Column(
+          children: [
+            // ── Header con foto de perfil, nombre, raza, edad y peso ──
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF2E7D32), Color(0xFF66BB6A)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Row(
+                children: [
+                  // Avatar tappable para cambiar foto
+                  GestureDetector(
+                    onTap: _pickProfileImage,
+                    child: Stack(
+                      children: [
+                        CircleAvatar(
+                          radius: 40,
+                          backgroundColor: Colors.white24,
+                          backgroundImage: _animal.profileImageUrl !=
+                                      null &&
+                                  _animal.profileImageUrl!.isNotEmpty
+                              ? NetworkImage(_animal.profileImageUrl!)
+                              : null,
+                          child: _animal.profileImageUrl == null ||
+                                  _animal.profileImageUrl!.isEmpty
+                              ? const Icon(Icons.pets,
+                                  size: 40, color: Colors.white)
+                              : null,
+                        ),
                         Positioned(
                           bottom: 0,
                           right: 0,
@@ -395,154 +462,169 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
                                 size: 14, color: Color(0xFF2E7D32)),
                           ),
                         ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _animal.name,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      _animal.breed,
-                      style: const TextStyle(
-                          color: Colors.white70, fontSize: 14),
-                    ),
-                    Text(
-                      "${_animal.age} ${AppStrings.t("years")}",
-                      style: const TextStyle(
-                          color: Colors.white70, fontSize: 13),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // --- Lista de registros ---
-          Expanded(
-            child: FutureBuilder(
-              future: repo.getRecords(_animal.id),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return Center(
-                      child: Text(
-                          "${AppStrings.t("load_error")}: ${snapshot.error}"));
-                }
-
-                final records = snapshot.data ?? [];
-
-                if (records.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.medical_services_outlined,
-                            size: 64, color: Colors.grey[400]),
-                        const SizedBox(height: 16),
-                        Text(AppStrings.t("no_records"),
-                            style:
-                                const TextStyle(color: Colors.grey)),
-                        const SizedBox(height: 8),
-                        Text(
-                          "Toca + para agregar un registro",
-                          style: TextStyle(color: Colors.grey[400]),
-                        ),
                       ],
                     ),
-                  );
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
-                  itemCount: records.length,
-                  itemBuilder: (context, index) {
-                    final record = records[index];
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.calendar_today,
-                                    size: 14, color: Colors.grey),
-                                const SizedBox(width: 4),
-                                Text(
-                                  "${record.createdAt.day}/${record.createdAt.month}/${record.createdAt.year}",
-                                  style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey),
-                                ),
-                                const Spacer(),
-                                // Editar
-                                IconButton(
-                                  icon: const Icon(Icons.edit,
-                                      size: 18, color: Colors.blue),
-                                  onPressed: () => _editRecord(record),
-                                ),
-                                // Eliminar
-                                IconButton(
-                                  icon: const Icon(Icons.delete,
-                                      size: 18, color: Colors.red),
-                                  onPressed: () =>
-                                      _deleteRecord(record.id),
-                                ),
-                              ],
-                            ),
-
-                            // Imagen para IA si existe
-                            if ((record as dynamic).imageUrl != null) ...[
-                              const SizedBox(height: 8),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.network(
-                                  (record as dynamic).imageUrl!,
-                                  height: 160,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                            ],
-
-                            const SizedBox(height: 8),
-                            Text(
-                              "${AppStrings.t("diagnosis_label")}:",
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold),
-                            ),
-                            Text(record.diagnosis ??
-                                AppStrings.t("no_diagnosis")),
-                            const SizedBox(height: 8),
-                            Text(
-                              "${AppStrings.t("ai_result")}:",
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold),
-                            ),
-                            Text(record.aiResult ??
-                                AppStrings.t("no_ai_result")),
-                          ],
+                  ),
+                  const SizedBox(width: 16),
+                  // Datos del animal
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _animal.name,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold),
+                          overflow: TextOverflow.ellipsis,
                         ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _animal.breed,
+                          style: const TextStyle(
+                              color: Colors.white70, fontSize: 14),
+                        ),
+                        const SizedBox(height: 2),
+                        // Edad usando ageLabel (no age en meses crudo)
+                        Text(
+                          _animal.ageLabel.isNotEmpty
+                              ? _animal.ageLabel
+                              : AnimalEntity.defaultAgeLabel(
+                                  _animal.age),
+                          style: const TextStyle(
+                              color: Colors.white70, fontSize: 13),
+                        ),
+                        // Peso — solo si existe
+                        if (_animal.weight != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            '${_animal.weight} ${AppStrings.t("kg")}',
+                            style: const TextStyle(
+                                color: Colors.white70, fontSize: 13),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Lista de registros médicos ──────────────────────────
+            Expanded(
+              child: FutureBuilder(
+                future: repo.getRecords(_animal.id),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return const Center(
+                        child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return const Center(
+                        child: Text('Error al cargar registros'));
+                  }
+
+                  final records = snapshot.data ?? [];
+
+                  if (records.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.medical_services_outlined,
+                              size: 64, color: Colors.grey[400]),
+                          const SizedBox(height: 16),
+                          const Text('No hay registros médicos aún',
+                              style: TextStyle(color: Colors.grey)),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Toca + para agregar un registro',
+                            style: TextStyle(color: Colors.grey[400]),
+                          ),
+                        ],
                       ),
                     );
-                  },
-                );
-              },
+                  }
+
+                  return ListView.builder(
+                    padding:
+                        const EdgeInsets.fromLTRB(12, 12, 12, 80),
+                    itemCount: records.length,
+                    itemBuilder: (context, index) {
+                      final record = records[index];
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.calendar_today,
+                                      size: 14, color: Colors.grey),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${record.createdAt.day}/${record.createdAt.month}/${record.createdAt.year}',
+                                    style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey),
+                                  ),
+                                  const Spacer(),
+                                  IconButton(
+                                    icon: const Icon(Icons.edit,
+                                        size: 18, color: Colors.blue),
+                                    onPressed: () => _editRecord(
+                                        record.id, record.diagnosis),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete,
+                                        size: 18, color: Colors.red),
+                                    onPressed: () =>
+                                        _deleteRecord(record.id),
+                                  ),
+                                ],
+                              ),
+                              if (record.imageUrl != null &&
+                                  record.imageUrl!.isNotEmpty) ...[
+                                const SizedBox(height: 8),
+                                ClipRRect(
+                                  borderRadius:
+                                      BorderRadius.circular(8),
+                                  child: Image.network(
+                                    record.imageUrl!,
+                                    height: 160,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 8),
+                              const Text('Diagnóstico:',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold)),
+                              Text(record.diagnosis ??
+                                  'Sin diagnóstico'),
+                              const SizedBox(height: 8),
+                              const Text('Resultado IA:',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold)),
+                              Text(record.aiResult ??
+                                  'Sin resultado de IA'),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

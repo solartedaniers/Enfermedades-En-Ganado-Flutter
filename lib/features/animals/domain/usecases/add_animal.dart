@@ -6,7 +6,7 @@ class AddAnimal {
 
   AddAnimal(this.repository);
 
-  Future<void> call(AnimalEntity animal) async {
-    return await repository.addAnimal(animal);
+  Future<void> call(AnimalEntity animal, {String? localImagePath}) async {
+    return await repository.addAnimal(animal, localImagePath: localImagePath);
   }
 }
