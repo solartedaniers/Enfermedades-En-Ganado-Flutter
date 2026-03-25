@@ -47,6 +47,14 @@
   "main_panel": "Main panel",
   "coming_soon_diagnosis": "Coming soon: AI Diagnosis 🤖",
   "coming_soon_vaccines": "Coming soon: Vaccines 💉",
+  "scanner_title": "AI Scanner",
+  "scanner_instruction": "Center the symptom inside the frame to analyze it.",
+  "scanner_capture": "Capture and analyze",
+  "scanner_analyzing": "Analyzing image...",
+  "scanner_ready": "Camera ready to start the analysis.",
+  "scanner_retry": "Retry",
+  "scanner_camera_unavailable": "No rear camera was found on this device.",
+  "scanner_camera_denied": "Camera permission is required to use the scanner.",
   "optional": "optional",
   "take_photo": "Take photo",
   "choose_gallery": "Choose from gallery",
@@ -128,6 +136,7 @@
   "no_notifications": "No scheduled notifications",
   "notification_reminder": "Medication reminder",
   "delete_notification": "Delete notification",
+<<<<<<< HEAD
   "delete_notification_confirm": "Are you sure you want to delete this notification?",
   "select_breed": "Select a breed",
   "select_age": "Select age",
@@ -147,3 +156,7 @@
   "weight_no_data": "No data",
   "change_photo": "Change photo"
 }
+=======
+  "delete_notification_confirm": "Are you sure you want to delete this notification?"
+}
+>>>>>>> origin/main

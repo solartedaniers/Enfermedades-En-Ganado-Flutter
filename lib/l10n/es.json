@@ -47,6 +47,14 @@
   "main_panel": "Panel principal",
   "coming_soon_diagnosis": "Próximamente: Diagnóstico IA 🤖",
   "coming_soon_vaccines": "Próximamente: Vacunas 💉",
+  "scanner_title": "Escáner IA",
+  "scanner_instruction": "Centra el síntoma dentro del recuadro para analizarlo.",
+  "scanner_capture": "Capturar y analizar",
+  "scanner_analyzing": "Analizando imagen...",
+  "scanner_ready": "Cámara lista para iniciar el análisis.",
+  "scanner_retry": "Reintentar",
+  "scanner_camera_unavailable": "No se encontró una cámara trasera disponible.",
+  "scanner_camera_denied": "Se necesita permiso de cámara para usar el escáner.",
   "optional": "opcional",
   "take_photo": "Tomar foto",
   "choose_gallery": "Elegir de galería",
@@ -128,6 +136,7 @@
   "no_notifications": "No hay notificaciones programadas",
   "notification_reminder": "Recordatorio de medicamento",
   "delete_notification": "Eliminar notificación",
+<<<<<<< HEAD
   "delete_notification_confirm": "¿Seguro que deseas eliminar esta notificación?",
   "select_breed": "Selecciona una raza",
   "select_age": "Selecciona la edad",
@@ -147,3 +156,7 @@
   "weight_no_data": "Sin datos",
   "change_photo": "Cambiar foto"
 }
+=======
+  "delete_notification_confirm": "¿Seguro que deseas eliminar esta notificación?"
+}
+>>>>>>> origin/main
