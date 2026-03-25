@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 /// Representa toda la evidencia clínica disponible para que el motor
@@ -81,5 +82,26 @@ class DiagnosisRequest {
       visualFindings: visualFindings ?? this.visualFindings,
       observedAt: observedAt ?? this.observedAt,
     );
+  }
+
+  /// Serializa la evidencia para enviarla a Supabase Edge Functions.
+  Map<String, dynamic> toJson() {
+    return {
+      'animal_id': animalId,
+      'user_id': userId,
+      'animal_name': animalName,
+      'species': species,
+      'breed': breed,
+      'age_in_years': ageInYears,
+      'clinical_question': clinicalQuestion,
+      'reported_symptoms': reportedSymptoms,
+      'temperature': temperature,
+      'weight': weight,
+      'vital_signs': vitalSigns,
+      'image_base64': imageBytes == null ? null : base64Encode(imageBytes!),
+      'image_url': imageUrl,
+      'visual_findings': visualFindings,
+      'observed_at': observedAt.toIso8601String(),
+    };
   }
 }
