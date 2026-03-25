@@ -263,6 +263,9 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   DiagnosisRequest _buildRequest({Uint8List? imageBytes}) {
     final animal = _selectedAnimal;
     final user = Supabase.instance.client.auth.currentUser;
+    final normalizedTemperature = _temperatureController.text
+        .trim()
+        .replaceAll(',', '.');
 
     if (animal == null) {
       throw Exception('Primero debes seleccionar un animal.');
@@ -272,6 +275,13 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
         _symptomsController.text.trim().isEmpty &&
         imageBytes == null) {
       throw Exception('Escribe el motivo o los síntomas antes de analizar.');
+    }
+
+    if (normalizedTemperature.isNotEmpty &&
+        double.tryParse(normalizedTemperature) == null) {
+      throw Exception(
+        'La temperatura debe ser un número válido, por ejemplo 39.5, o dejarse vacía.',
+      );
     }
 
     final symptomLines = _symptomsController.text
@@ -291,9 +301,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       reportedSymptoms: symptomLines.isNotEmpty
           ? symptomLines
           : [animal.symptoms],
-      temperature: double.tryParse(
-        _temperatureController.text.trim().replaceAll(',', '.'),
-      ),
+      temperature: double.tryParse(normalizedTemperature),
       weight: animal.weight,
       imageBytes: imageBytes,
       imageUrl: animal.imageUrl,
