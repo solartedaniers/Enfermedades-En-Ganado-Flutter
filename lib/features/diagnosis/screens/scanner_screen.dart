@@ -5,27 +5,22 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../core/ai/models/diagnosis_request.dart';
 import '../../../core/ai/models/diagnosis_response.dart';
 import '../../../core/ai/providers/ai_diagnosis_provider.dart';
 import '../../../core/utils/app_strings.dart';
-import '../../animals/presentation/pages/animals_page.dart';
+import '../../animals/domain/entities/animal_entity.dart';
+import '../../animals/presentation/pages/add_animal_page.dart';
+import '../../animals/presentation/providers/animal_provider.dart';
+import '../../medical/data/models/medical_record_model.dart';
+import '../../medical/presentation/providers/medical_provider.dart';
 
-enum _ScannerStep {
+enum _DiagnosisStep {
   intake,
   camera,
   result,
-}
-
-class _SelectableOption {
-  final String label;
-  final String value;
-
-  const _SelectableOption({
-    required this.label,
-    required this.value,
-  });
 }
 
 class ScannerScreen extends ConsumerStatefulWidget {
@@ -37,88 +32,37 @@ class ScannerScreen extends ConsumerStatefulWidget {
 
 class _ScannerScreenState extends ConsumerState<ScannerScreen>
     with WidgetsBindingObserver {
-  static const Color _scannerActionColor = Color(0xFFBF22DF);
+  static const Color _primaryColor = Color(0xFFBF22DF);
   static const Color _targetColor = Color(0xFF34C759);
   static const double _targetSize = 260;
-  static const List<_SelectableOption> _concernOptions = [
-    _SelectableOption(
-      label: 'Problema en ubre o leche',
-      value: 'mastitis',
-    ),
-    _SelectableOption(
-      label: 'Problema respiratorio',
-      value: 'neumonia bovina',
-    ),
-    _SelectableOption(
-      label: 'Lesiones en piel',
-      value: 'dermatofitosis',
-    ),
-    _SelectableOption(
-      label: 'Problema digestivo',
-      value: 'gastroenteritis',
-    ),
-    _SelectableOption(
-      label: 'Lesiones en boca o pezuñas',
-      value: 'fiebre aftosa',
-    ),
-  ];
-  static const List<_SelectableOption> _symptomOptions = [
-    _SelectableOption(label: 'Ubre inflamada', value: 'ubre inflamada'),
-    _SelectableOption(label: 'Ubre caliente', value: 'ubre caliente'),
-    _SelectableOption(label: 'Leche grumosa', value: 'leche grumosa'),
-    _SelectableOption(label: 'Tos', value: 'tos'),
-    _SelectableOption(
-      label: 'Dificultad respiratoria',
-      value: 'dificultad respiratoria',
-    ),
-    _SelectableOption(label: 'Secreción nasal', value: 'secrecion nasal'),
-    _SelectableOption(label: 'Diarrea', value: 'diarrea'),
-    _SelectableOption(label: 'Deshidratación', value: 'deshidratacion'),
-    _SelectableOption(label: 'Debilidad', value: 'debilidad'),
-    _SelectableOption(label: 'Cojera', value: 'cojera'),
-    _SelectableOption(label: 'Babeo', value: 'babeo'),
-    _SelectableOption(label: 'Pérdida de pelo', value: 'caida de pelo'),
-  ];
-  static const List<_SelectableOption> _visualFindingOptions = [
-    _SelectableOption(label: 'Lesiones en piel', value: 'lesiones en piel'),
-    _SelectableOption(label: 'Manchas circulares', value: 'manchas circulares'),
-    _SelectableOption(label: 'Costras', value: 'costras'),
-    _SelectableOption(label: 'Llagas en boca', value: 'llagas en boca'),
-    _SelectableOption(label: 'Lesiones en pezuñas', value: 'lesiones pezuñas'),
-    _SelectableOption(label: 'Ubre endurecida', value: 'dolor en ubre'),
-  ];
-  static const List<_SelectableOption> _temperatureOptions = [
-    _SelectableOption(label: 'Sin medir', value: ''),
-    _SelectableOption(label: 'Normal (38.5 °C)', value: '38.5'),
-    _SelectableOption(label: 'Leve fiebre (39.3 °C)', value: '39.3'),
-    _SelectableOption(label: 'Fiebre (39.8 °C)', value: '39.8'),
-    _SelectableOption(label: 'Alta fiebre (40.5 °C)', value: '40.5'),
-  ];
 
+  final TextEditingController _motivoController = TextEditingController();
+  final TextEditingController _symptomsController = TextEditingController();
+  final TextEditingController _temperatureController = TextEditingController();
+
+  late Future<List<AnimalEntity>> _animalsFuture;
   CameraController? _cameraController;
+  AnimalEntity? _selectedAnimal;
   DiagnosisReport? _report;
   Uint8List? _capturedImageBytes;
-  _ScannerStep _step = _ScannerStep.intake;
-  String? _selectedConcern;
-  String _selectedTemperature = '';
-  final Set<String> _selectedSymptoms = {};
-  final Set<String> _selectedVisualFindings = {};
-  DiagnosisNextStep? _pendingNextStep;
-  bool _isInitializing = false;
-  bool _isAnalyzing = false;
+  _DiagnosisStep _step = _DiagnosisStep.intake;
+  bool _isInitializingCamera = false;
+  bool _isSubmitting = false;
+  bool _isSaving = false;
   String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _animalsFuture = _loadAnimals();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final controller = _cameraController;
 
-    if (_step != _ScannerStep.camera ||
+    if (_step != _DiagnosisStep.camera ||
         controller == null ||
         !controller.value.isInitialized) {
       return;
@@ -138,15 +82,36 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _motivoController.dispose();
+    _symptomsController.dispose();
+    _temperatureController.dispose();
     _cameraController?.dispose();
     super.dispose();
   }
 
+  Future<List<AnimalEntity>> _loadAnimals() async {
+    final repo = ref.read(animalRepositoryProvider);
+    final animals = await repo.getAnimals();
+    if (_selectedAnimal == null && animals.isNotEmpty) {
+      _selectedAnimal = animals.first;
+      _prefillFromAnimal(_selectedAnimal!);
+    }
+    return animals;
+  }
+
+  void _prefillFromAnimal(AnimalEntity animal) {
+    _temperatureController.text =
+        animal.temperature?.toStringAsFixed(1) ?? '';
+    if (_symptomsController.text.trim().isEmpty) {
+      _symptomsController.text = animal.symptoms;
+    }
+  }
+
   Future<void> _initializeCamera() async {
-    if (_isAnalyzing || _step != _ScannerStep.camera) return;
+    if (_step != _DiagnosisStep.camera || _isSubmitting) return;
 
     setState(() {
-      _isInitializing = true;
+      _isInitializingCamera = true;
       _errorMessage = null;
     });
 
@@ -187,201 +152,199 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       }
 
       setState(() {
-        _isInitializing = false;
+        _isInitializingCamera = false;
       });
     } on CameraException catch (error) {
       if (!mounted) return;
-
       setState(() {
-        _isInitializing = false;
+        _isInitializingCamera = false;
         _errorMessage = _mapCameraError(error);
       });
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
-
       setState(() {
-        _isInitializing = false;
-        _errorMessage = AppStrings.t('unexpected_error');
+        _isInitializingCamera = false;
+        _errorMessage = error.toString();
       });
     }
   }
 
-  Future<void> _startDiagnosisFlow() async {
+  Future<void> _openCamera() async {
     setState(() {
-      _isAnalyzing = true;
+      _step = _DiagnosisStep.camera;
       _errorMessage = null;
-      _pendingNextStep = null;
     });
-
-    try {
-      final service = ref.read(livestockDiagnosisServiceProvider);
-      final request = _buildRequest();
-      final preparation = await service.prepare(request);
-
-      if (!mounted) return;
-
-      switch (preparation.status) {
-        case DiagnosisStatus.needsInternet:
-          await _showOfflineDialog(preparation.nextStep);
-          break;
-        case DiagnosisStatus.needsClinicalQuestion:
-          setState(() {
-            _pendingNextStep = preparation.nextStep;
-          });
-          break;
-        case DiagnosisStatus.needsVisualEvidence:
-          setState(() {
-            _pendingNextStep = preparation.nextStep;
-          });
-          break;
-        case DiagnosisStatus.readyToAnalyze:
-          await _runDiagnosis(request);
-          break;
-        case DiagnosisStatus.completed:
-          break;
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isAnalyzing = false;
-        });
-      }
-    }
+    await _initializeCamera();
   }
 
   Future<void> _captureAndAnalyze() async {
     final controller = _cameraController;
-
-    if (controller == null || !controller.value.isInitialized || _isAnalyzing) {
+    if (controller == null || !controller.value.isInitialized || _isSubmitting) {
       return;
     }
 
     setState(() {
-      _isAnalyzing = true;
+      _isSubmitting = true;
       _errorMessage = null;
     });
 
     try {
       final picture = await controller.takePicture();
       final bytes = await File(picture.path).readAsBytes();
-      final request = _buildRequest(imageBytes: bytes);
-
-      await _runDiagnosis(request);
+      await _runDiagnosis(imageBytes: bytes);
     } on CameraException catch (error) {
       if (!mounted) return;
-
       setState(() {
         _errorMessage = _mapCameraError(error);
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = error.toString();
       });
     } finally {
       if (mounted) {
         setState(() {
-          _isAnalyzing = false;
+          _isSubmitting = false;
         });
       }
     }
   }
 
-  Future<void> _runDiagnosis(DiagnosisRequest request) async {
+  Future<void> _diagnoseWithoutImage() async {
+    setState(() {
+      _isSubmitting = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await _runDiagnosis();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = error.toString();
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _runDiagnosis({Uint8List? imageBytes}) async {
     final service = ref.read(livestockDiagnosisServiceProvider);
+    final request = _buildRequest(imageBytes: imageBytes);
     final response = await service.analyze(request);
 
     if (!mounted) return;
 
-    if (response.isCompleted) {
-      setState(() {
-        _capturedImageBytes = request.imageBytes;
-        _report = response.report;
-        _step = _ScannerStep.result;
-      });
-      return;
+    switch (response.status) {
+      case DiagnosisStatus.needsConfiguration:
+      case DiagnosisStatus.needsInternet:
+      case DiagnosisStatus.needsClinicalQuestion:
+      case DiagnosisStatus.needsVisualEvidence:
+        _showMessage(response.nextStep.message);
+        break;
+      case DiagnosisStatus.readyToAnalyze:
+        _showMessage(response.nextStep.message);
+        break;
+      case DiagnosisStatus.completed:
+        setState(() {
+          _capturedImageBytes = imageBytes;
+          _report = response.report;
+          _step = _DiagnosisStep.result;
+        });
+        break;
     }
-
-    _showMessage(response.nextStep.message);
   }
 
   DiagnosisRequest _buildRequest({Uint8List? imageBytes}) {
+    final animal = _selectedAnimal;
     final user = Supabase.instance.client.auth.currentUser;
-    String? concernLabel;
-    for (final option in _concernOptions) {
-      if (option.value == _selectedConcern) {
-        concernLabel = option.label;
-        break;
-      }
+
+    if (animal == null) {
+      throw Exception('Primero debes seleccionar un animal.');
     }
 
+    if (_motivoController.text.trim().isEmpty &&
+        _symptomsController.text.trim().isEmpty &&
+        imageBytes == null) {
+      throw Exception('Escribe el motivo o los síntomas antes de analizar.');
+    }
+
+    final symptomLines = _symptomsController.text
+        .split(RegExp(r'[\n,]'))
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
+
     return DiagnosisRequest(
-      animalId: 'scanner_session',
-      userId: user?.id ?? 'guest',
-      animalName: 'Ganado en evaluación',
-      clinicalQuestion: concernLabel ?? '',
-      reportedSymptoms: _selectedSymptoms.toList(),
-      visualFindings: _selectedVisualFindings.toList(),
-      temperature: double.tryParse(_selectedTemperature),
+      animalId: animal.id,
+      userId: user?.id ?? animal.userId,
+      animalName: animal.name,
+      species: 'bovino',
+      breed: animal.breed,
+      ageInYears: animal.age,
+      clinicalQuestion: _motivoController.text.trim(),
+      reportedSymptoms: symptomLines.isNotEmpty
+          ? symptomLines
+          : [animal.symptoms],
+      temperature: double.tryParse(
+        _temperatureController.text.trim().replaceAll(',', '.'),
+      ),
+      weight: animal.weight,
       imageBytes: imageBytes,
+      imageUrl: animal.imageUrl,
+      visualFindings: const [],
     );
   }
 
-  Future<void> _openCameraStep() async {
-    setState(() {
-      _step = _ScannerStep.camera;
-      _pendingNextStep = null;
-    });
-    await _initializeCamera();
-  }
+  Future<void> _saveDiagnosis() async {
+    final animal = _selectedAnimal;
+    final report = _report;
+    final user = Supabase.instance.client.auth.currentUser;
 
-  void _toggleValue(Set<String> source, String value) {
+    if (animal == null || report == null || user == null) {
+      return;
+    }
+
     setState(() {
-      if (source.contains(value)) {
-        source.remove(value);
-      } else {
-        source.add(value);
+      _isSaving = true;
+    });
+
+    try {
+      final repo = ref.read(medicalRepositoryProvider);
+      final record = MedicalRecordModel.fromDiagnosisReport(
+        id: const Uuid().v4(),
+        animalId: animal.id,
+        userId: user.id,
+        report: report,
+      );
+      await repo.addRecord(record);
+
+      if (!mounted) return;
+      _showMessage('Diagnóstico guardado en el historial clínico.');
+    } catch (error) {
+      if (!mounted) return;
+      _showMessage('No se pudo guardar el diagnóstico: $error');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
       }
-    });
+    }
   }
 
-  void _resetDiagnosis() {
+  void _resetFlow() {
     setState(() {
-      _report = null;
       _capturedImageBytes = null;
-      _selectedConcern = null;
-      _selectedTemperature = '';
-      _selectedSymptoms.clear();
-      _selectedVisualFindings.clear();
-      _pendingNextStep = null;
-      _step = _ScannerStep.intake;
+      _report = null;
+      _errorMessage = null;
+      _step = _DiagnosisStep.intake;
     });
-  }
-
-  Future<void> _showOfflineDialog(DiagnosisNextStep nextStep) async {
-    await showDialog<void>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(nextStep.title),
-          content: Text(nextStep.message),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cerrar'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const AnimalsPage()),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _scannerActionColor,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Ir a historial'),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   void _showMessage(String message) {
@@ -410,195 +373,246 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor:
-          _step == _ScannerStep.camera ? Colors.black : const Color(0xFFF8F5FC),
+          _step == _DiagnosisStep.camera ? Colors.black : const Color(0xFFF8F5FC),
       appBar: AppBar(
         title: Text(AppStrings.t('scanner_title')),
         backgroundColor:
-            _step == _ScannerStep.camera ? Colors.black : Colors.transparent,
-        foregroundColor: _step == _ScannerStep.camera ? Colors.white : null,
+            _step == _DiagnosisStep.camera ? Colors.black : Colors.transparent,
+        foregroundColor: _step == _DiagnosisStep.camera ? Colors.white : null,
       ),
       body: switch (_step) {
-        _ScannerStep.intake => _buildIntakeStep(),
-        _ScannerStep.camera => _buildCameraStep(),
-        _ScannerStep.result => _buildResultStep(),
+        _DiagnosisStep.intake => _buildIntakeStep(),
+        _DiagnosisStep.camera => _buildCameraStep(),
+        _DiagnosisStep.result => _buildResultStep(),
       },
-      floatingActionButton: _step == _ScannerStep.camera
+      floatingActionButton: _step == _DiagnosisStep.camera
           ? FloatingActionButton(
-              onPressed: _isInitializing || _errorMessage != null
+              onPressed: _isInitializingCamera || _errorMessage != null
                   ? null
                   : _captureAndAnalyze,
-              tooltip: AppStrings.t('scanner_capture'),
-              backgroundColor: _scannerActionColor,
+              backgroundColor: _primaryColor,
               foregroundColor: Colors.white,
-              shape: const CircleBorder(),
-              child: _isAnalyzing
+              child: _isSubmitting
                   ? const SizedBox(
-                      width: 24,
-                      height: 24,
+                      width: 22,
+                      height: 22,
                       child: CircularProgressIndicator(
-                        strokeWidth: 2.6,
+                        strokeWidth: 2.4,
                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
                     )
-                  : const Icon(Icons.document_scanner_outlined),
+                  : const Icon(Icons.camera_alt),
             )
           : null,
     );
   }
 
   Widget _buildIntakeStep() {
-    return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: _scannerActionColor.withValues(alpha: 0.10),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
+    return FutureBuilder<List<AnimalEntity>>(
+      future: _animalsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text('No se pudieron cargar los animales: ${snapshot.error}'),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Diagnóstico guiado del animal',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
+          );
+        }
+
+        final animals = snapshot.data ?? [];
+        if (animals.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.pets_outlined, size: 64, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Primero necesitas registrar un animal en "Mis animales" para poder hacer un diagnóstico real.',
+                    textAlign: TextAlign.center,
                   ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Ahora el formulario es cerrado para evitar diagnósticos por texto libre. Selecciona el problema principal, los síntomas y, si quieres, agrega foto con cámara.',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(color: Colors.black54),
-                ),
-                const SizedBox(height: 20),
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedConcern,
-                  decoration: const InputDecoration(
-                    labelText: 'Motivo principal del diagnóstico',
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const AddAnimalPage()),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _primaryColor,
+                      foregroundColor: Colors.white,
+                    ),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Registrar animal'),
                   ),
-                  items: _concernOptions
-                      .map(
-                        (option) => DropdownMenuItem<String>(
-                          value: option.value,
-                          child: Text(option.label),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedConcern = value;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                _buildChoiceGroup(
-                  title: 'Síntomas observados',
-                  options: _symptomOptions,
-                  selectedValues: _selectedSymptoms,
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedTemperature,
-                  decoration: const InputDecoration(
-                    labelText: 'Temperatura',
+                ],
+              ),
+            ),
+          );
+        }
+
+        return ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: _primaryColor.withValues(alpha: 0.10),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
                   ),
-                  items: _temperatureOptions
-                      .map(
-                        (option) => DropdownMenuItem<String>(
-                          value: option.value,
-                          child: Text(option.label),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedTemperature = value ?? '';
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                _buildChoiceGroup(
-                  title: 'Hallazgos visibles',
-                  options: _visualFindingOptions,
-                  selectedValues: _selectedVisualFindings,
-                ),
-                const SizedBox(height: 24),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8F0FC),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: _scannerActionColor.withValues(alpha: 0.25),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Diagnóstico con IA real',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  child: Row(
+                  const SizedBox(height: 10),
+                  Text(
+                    'Selecciona un animal de "Mis animales", escribe los síntomas en abierto y la IA analizará el caso. La cámara es opcional.',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: Colors.black54),
+                  ),
+                  const SizedBox(height: 20),
+                  DropdownButtonFormField<String>(
+                    initialValue: _selectedAnimal?.id,
+                    decoration: const InputDecoration(
+                      labelText: 'Animal a diagnosticar',
+                    ),
+                    items: animals
+                        .map(
+                          (animal) => DropdownMenuItem<String>(
+                            value: animal.id,
+                            child: Text('${animal.name} • ${animal.breed}'),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      final animal = animals.firstWhere(
+                        (item) => item.id == value,
+                      );
+                      setState(() {
+                        _selectedAnimal = animal;
+                      });
+                      _prefillFromAnimal(animal);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _motivoController,
+                    decoration: const InputDecoration(
+                      labelText: 'Motivo principal de consulta',
+                      hintText: 'Ej: está decaída, no quiere comer, cojea',
+                    ),
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _symptomsController,
+                    decoration: const InputDecoration(
+                      labelText: 'Síntomas del animal',
+                      hintText:
+                          'Describe los síntomas en detalle. Puedes separarlos por comas o por líneas.',
+                    ),
+                    minLines: 4,
+                    maxLines: 6,
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _temperatureController,
+                    decoration: const InputDecoration(
+                      labelText: 'Temperatura observada (opcional)',
+                      hintText: 'Ej: 39.8',
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  if (_capturedImageBytes != null)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(18),
+                      child: Image.memory(
+                        _capturedImageBytes!,
+                        height: 170,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  const SizedBox(height: 16),
+                  Row(
                     children: [
-                      const Icon(
-                        Icons.camera_alt_outlined,
-                        color: _scannerActionColor,
-                      ),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Text(
-                          'La cámara es opcional. Úsala si el síntoma tiene algo visible como lesiones, piel, boca, pezuñas o ubre.',
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _openCamera,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: _primaryColor,
+                            side: const BorderSide(color: _primaryColor),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          icon: const Icon(Icons.camera_alt),
+                          label: Text(
+                            _capturedImageBytes == null
+                                ? 'Agregar foto'
+                                : 'Cambiar foto',
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
-                      OutlinedButton(
-                        onPressed: _openCameraStep,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: _scannerActionColor,
-                          side: const BorderSide(color: _scannerActionColor),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _isSubmitting ? null : _diagnoseWithoutImage,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _primaryColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          icon: _isSubmitting
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor:
+                                        AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
+                                )
+                              : const Icon(Icons.psychology_alt_outlined),
+                          label: const Text('Analizar'),
                         ),
-                        child: const Text('Abrir cámara'),
                       ),
                     ],
                   ),
-                ),
-                if (_pendingNextStep != null) ...[
-                  const SizedBox(height: 16),
-                  _buildDecisionCard(_pendingNextStep!),
+                  if (_errorMessage != null) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      _errorMessage!,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  ],
                 ],
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: _isAnalyzing ? null : _startDiagnosisFlow,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _scannerActionColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                    icon: _isAnalyzing
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.psychology_alt_outlined),
-                    label: Text(
-                      _isAnalyzing
-                          ? 'Analizando encuesta...'
-                          : 'Diagnosticar con la IA',
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        );
+      },
     );
   }
 
@@ -607,36 +621,36 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       fit: StackFit.expand,
       children: [
         _buildCameraLayer(),
-        _buildOverlay(context),
-        if (_errorMessage == null)
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: 24,
-            child: FilledButton.icon(
-              onPressed: _isAnalyzing
-                  ? null
-                  : () {
-                      setState(() {
-                        _step = _ScannerStep.intake;
-                      });
-                    },
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.black.withValues(alpha: 0.55),
-                foregroundColor: Colors.white,
-              ),
-              icon: const Icon(Icons.arrow_back),
-              label: const Text('Volver al formulario'),
+        _buildCameraOverlay(),
+        Positioned(
+          left: 16,
+          right: 16,
+          bottom: 24,
+          child: FilledButton.icon(
+            onPressed: _isSubmitting
+                ? null
+                : () {
+                    setState(() {
+                      _step = _DiagnosisStep.intake;
+                    });
+                  },
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.black.withValues(alpha: 0.55),
+              foregroundColor: Colors.white,
             ),
+            icon: const Icon(Icons.arrow_back),
+            label: const Text('Volver al diagnóstico'),
           ),
+        ),
       ],
     );
   }
 
   Widget _buildResultStep() {
     final report = _report;
+    final animal = _selectedAnimal;
 
-    if (report == null) {
+    if (report == null || animal == null) {
       return const Center(child: Text('No hay diagnóstico disponible.'));
     }
 
@@ -651,7 +665,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: _scannerActionColor.withValues(alpha: 0.10),
+                  color: _primaryColor.withValues(alpha: 0.10),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
@@ -660,6 +674,13 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text(
+                  'Animal: ${animal.name}',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
                 Text(
                   report.diagnosticStatement,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -671,10 +692,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                   spacing: 12,
                   runSpacing: 12,
                   children: [
-                    _buildMetricChip(
-                      'Severidad',
-                      '${report.severityIndex}/100',
-                    ),
+                    _buildMetricChip('Severidad', '${report.severityIndex}/100'),
                     _buildMetricChip('Urgencia', '${report.urgencyIndex}/100'),
                     _buildMetricChip(
                       'Contagio',
@@ -682,8 +700,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
                 if (_capturedImageBytes != null) ...[
+                  const SizedBox(height: 20),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(18),
                     child: Image.memory(
@@ -693,8 +711,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                       fit: BoxFit.cover,
                     ),
                   ),
-                  const SizedBox(height: 20),
                 ],
+                const SizedBox(height: 20),
                 _buildSection('Razonamiento', [report.reasoning]),
                 _buildSection('Acciones inmediatas', report.immediateActions),
                 _buildSection('Tratamiento sugerido', report.treatmentProtocol),
@@ -702,19 +720,38 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                   _buildSection('Aislamiento', report.isolationMeasures),
                 _buildSection('Monitoreo', report.monitoringPlan),
                 const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      _resetDiagnosis();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _scannerActionColor,
-                      foregroundColor: Colors.white,
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _isSaving ? null : _saveDiagnosis,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _primaryColor,
+                          foregroundColor: Colors.white,
+                        ),
+                        icon: _isSaving
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.save),
+                        label: const Text('Guardar'),
+                      ),
                     ),
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Nuevo diagnóstico'),
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _resetFlow,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: _primaryColor,
+                          side: const BorderSide(color: _primaryColor),
+                        ),
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Nuevo caso'),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -728,7 +765,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: _scannerActionColor.withValues(alpha: 0.08),
+        color: _primaryColor.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
@@ -762,10 +799,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
         children: [
           Text(
             title,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
           const SizedBox(height: 8),
           ...items.map(
@@ -779,88 +813,10 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     );
   }
 
-  Widget _buildChoiceGroup({
-    required String title,
-    required List<_SelectableOption> options,
-    required Set<String> selectedValues,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 15,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: options
-              .map(
-                (option) => FilterChip(
-                  label: Text(option.label),
-                  selected: selectedValues.contains(option.value),
-                  onSelected: (_) => _toggleValue(selectedValues, option.value),
-                  selectedColor: _scannerActionColor.withValues(alpha: 0.18),
-                  checkmarkColor: _scannerActionColor,
-                ),
-              )
-              .toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDecisionCard(DiagnosisNextStep nextStep) {
-    final needsCamera = nextStep.status == DiagnosisStatus.needsVisualEvidence;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: needsCamera
-              ? _targetColor
-              : _scannerActionColor.withValues(alpha: 0.22),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            nextStep.title,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(nextStep.message),
-          if (needsCamera) ...[
-            const SizedBox(height: 14),
-            ElevatedButton.icon(
-              onPressed: _openCameraStep,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _scannerActionColor,
-                foregroundColor: Colors.white,
-              ),
-              icon: const Icon(Icons.camera_alt),
-              label: const Text('Continuar con cámara'),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
   Widget _buildCameraLayer() {
     final controller = _cameraController;
 
-    if (_isInitializing) {
+    if (_isInitializingCamera) {
       return const Center(
         child: CircularProgressIndicator(color: Colors.white),
       );
@@ -888,7 +844,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
               FilledButton.icon(
                 onPressed: _initializeCamera,
                 style: FilledButton.styleFrom(
-                  backgroundColor: _scannerActionColor,
+                  backgroundColor: _primaryColor,
                   foregroundColor: Colors.white,
                 ),
                 icon: const Icon(Icons.refresh),
@@ -918,7 +874,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     );
   }
 
-  Widget _buildOverlay(BuildContext context) {
+  Widget _buildCameraOverlay() {
     return IgnorePointer(
       child: SafeArea(
         child: Column(
@@ -938,45 +894,23 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                   ),
                 ],
               ),
-              child: Stack(
-                children: [
-                  _buildCorner(Alignment.topLeft),
-                  _buildCorner(Alignment.topRight),
-                  _buildCorner(Alignment.bottomLeft),
-                  _buildCorner(Alignment.bottomRight),
-                ],
-              ),
             ),
             const SizedBox(height: 28),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24),
               child: Text(
-                'La IA pidió foto para confirmar el diagnóstico. Centra el síntoma dentro del recuadro.',
+                'La foto es opcional y servirá como evidencia adicional para la IA.',
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
+                  fontSize: 16,
                 ),
               ),
             ),
             const Spacer(),
             const SizedBox(height: 110),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCorner(Alignment alignment) {
-    return Align(
-      alignment: alignment,
-      child: Container(
-        width: 42,
-        height: 42,
-        margin: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _targetColor, width: 3),
         ),
       ),
     );
