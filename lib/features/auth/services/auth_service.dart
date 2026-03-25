@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/utils/app_strings.dart';
 
 class AuthService {
   final SupabaseClient _client = Supabase.instance.client;
@@ -28,7 +29,7 @@ class AuthService {
           .maybeSingle();
 
       if (existing != null) {
-        throw Exception('El nombre de usuario ya esta en uso');
+        throw Exception(AppStrings.t('username_in_use'));
       }
 
       await _client.auth.signUp(
@@ -52,18 +53,16 @@ class AuthService {
       final message = e.message;
 
       if (message.contains('already registered')) {
-        throw Exception('Ya existe una cuenta con este correo');
+        throw Exception(AppStrings.t('account_already_exists'));
       }
 
       if (message.contains('Database error saving new user')) {
-        throw Exception(
-          'Supabase rechazo el guardado inicial del perfil. Revisa la tabla o trigger de profiles, especialmente el campo user_type.',
-        );
+        throw Exception(AppStrings.t('profile_save_error'));
       }
 
       throw Exception(message);
     } catch (e) {
-      throw Exception('Ocurrio un error inesperado: $e');
+      throw Exception('${AppStrings.t('unexpected_error')}: $e');
     }
   }
 
@@ -78,10 +77,10 @@ class AuthService {
       );
     } on AuthException catch (e) {
       if (e.message.contains('Invalid login credentials')) {
-        throw Exception('Correo o contrasena incorrectos');
+        throw Exception(AppStrings.t('invalid_login'));
       }
       if (e.message.contains('Email not confirmed')) {
-        throw Exception('Debes confirmar tu correo antes de iniciar sesion');
+        throw Exception(AppStrings.t('confirm_email_first'));
       }
       throw Exception(e.message);
     }
