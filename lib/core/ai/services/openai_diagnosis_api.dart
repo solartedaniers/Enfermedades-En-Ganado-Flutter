@@ -35,15 +35,19 @@ class OpenAIDiagnosisApi {
         Uri.parse('https://api.openai.com/v1/responses'),
       );
 
+      httpRequest.encoding = utf8;
       httpRequest.headers.set(HttpHeaders.authorizationHeader, 'Bearer $_apiKey');
-      httpRequest.headers.set(HttpHeaders.contentTypeHeader, 'application/json');
+      httpRequest.headers.set(
+        HttpHeaders.contentTypeHeader,
+        'application/json; charset=utf-8',
+      );
       httpRequest.write(jsonEncode(_buildPayload(request)));
 
       final httpResponse = await httpRequest.close();
       final responseBody = await utf8.decodeStream(httpResponse);
 
       if (httpResponse.statusCode >= 400) {
-        throw Exception('Error OpenAI ${httpResponse.statusCode}: $responseBody');
+        throw Exception(_buildFriendlyError(httpResponse.statusCode, responseBody));
       }
 
       final decoded = jsonDecode(responseBody) as Map<String, dynamic>;
@@ -86,8 +90,41 @@ class OpenAIDiagnosisApi {
                 .map((item) => item.toString())
                 .toList(),
       );
+    } on SocketException {
+      throw Exception(
+        'No se pudo conectar con la IA. Revisa tu conexión a internet e intenta de nuevo.',
+      );
+    } on FormatException {
+      throw Exception(
+        'La respuesta de la IA no llegó en un formato válido. Intenta de nuevo.',
+      );
     } finally {
       client.close();
+    }
+  }
+
+  String _buildFriendlyError(int statusCode, String responseBody) {
+    try {
+      final decoded = jsonDecode(responseBody) as Map<String, dynamic>;
+      final error = decoded['error'] as Map<String, dynamic>?;
+      final code = error?['code']?.toString();
+      final message = error?['message']?.toString();
+
+      if (statusCode == 401 || code == 'invalid_api_key') {
+        return 'La API key de OpenAI no es válida. Inicia la app con una clave real en OPENAI_API_KEY.';
+      }
+
+      if (statusCode == 429) {
+        return 'La IA está temporalmente ocupada o alcanzaste el límite de uso. Intenta nuevamente en unos minutos.';
+      }
+
+      if (statusCode >= 500) {
+        return 'OpenAI presentó un problema temporal. Intenta nuevamente en unos minutos.';
+      }
+
+      return message ?? 'Error OpenAI $statusCode';
+    } catch (_) {
+      return 'Error OpenAI $statusCode';
     }
   }
 
