@@ -42,8 +42,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     try {
       final user = Supabase.instance.client.auth.currentUser;
       if (user == null) return;
+
+      // Usa bucket 'users' para avatares
       final url = await StorageService()
-          .uploadAnimalImage(File(picked.path), user.id);
+          .uploadUserAvatar(File(picked.path), user.id);
       ref.read(profileProvider.notifier).changeAvatar(url);
     } catch (e) {
       if (mounted) {
@@ -62,14 +64,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   Widget build(BuildContext context) {
     final profile = ref.watch(profileProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primary = const Color(0xFF2E7D32);
+    const primary = Color(0xFF2E7D32);
 
     return Scaffold(
       appBar: AppBar(title: Text(AppStrings.t("my_profile"))),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // --- Header con gradiente ---
+            // --- Header ---
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(20, 30, 20, 40),
@@ -108,11 +110,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           child: CircleAvatar(
                             radius: 55,
                             backgroundColor: Colors.white24,
-                            backgroundImage:
-                                profile.avatarUrl != null &&
-                                        profile.avatarUrl!.isNotEmpty
-                                    ? NetworkImage(profile.avatarUrl!)
-                                    : null,
+                            backgroundImage: profile.avatarUrl !=
+                                        null &&
+                                    profile.avatarUrl!.isNotEmpty
+                                ? NetworkImage(profile.avatarUrl!)
+                                : null,
                             child: profile.avatarUrl == null ||
                                     profile.avatarUrl!.isEmpty
                                 ? const Icon(Icons.person,
@@ -130,7 +132,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                               color: Colors.white,
                               shape: BoxShape.circle,
                             ),
-                            child: Icon(Icons.camera_alt,
+                            child: const Icon(Icons.camera_alt,
                                 size: 18, color: primary),
                           ),
                       ],
@@ -158,7 +160,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     controller: _nameController,
                     decoration: InputDecoration(
                       labelText: AppStrings.t("name"),
-                      prefixIcon: Icon(Icons.person_outline,
+                      prefixIcon: const Icon(Icons.person_outline,
                           color: primary),
                     ),
                     onChanged: (v) => ref
@@ -172,7 +174,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     title: AppStrings.t("app_theme"),
                     icon: Icons.palette_outlined,
                     isDark: isDark,
-                    primary: primary,
                     children: [
                       _SelectTile(
                         icon: Icons.brightness_auto,
@@ -182,7 +183,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         onTap: () => ref
                             .read(profileProvider.notifier)
                             .changeTheme(ThemeMode.system),
-                        primary: primary,
                       ),
                       _SelectTile(
                         icon: Icons.light_mode,
@@ -192,7 +192,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         onTap: () => ref
                             .read(profileProvider.notifier)
                             .changeTheme(ThemeMode.light),
-                        primary: primary,
                       ),
                       _SelectTile(
                         icon: Icons.dark_mode,
@@ -202,7 +201,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         onTap: () => ref
                             .read(profileProvider.notifier)
                             .changeTheme(ThemeMode.dark),
-                        primary: primary,
                       ),
                     ],
                   ).animate().fadeIn(delay: 300.ms),
@@ -213,7 +211,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     title: AppStrings.t("language"),
                     icon: Icons.language,
                     isDark: isDark,
-                    primary: primary,
                     children: [
                       _SelectTile(
                         icon: Icons.language,
@@ -222,7 +219,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         onTap: () => ref
                             .read(profileProvider.notifier)
                             .changeLanguage("es"),
-                        primary: primary,
                       ),
                       _SelectTile(
                         icon: Icons.language,
@@ -231,7 +227,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         onTap: () => ref
                             .read(profileProvider.notifier)
                             .changeLanguage("en"),
-                        primary: primary,
                       ),
                     ],
                   ).animate().fadeIn(delay: 400.ms),
@@ -248,7 +243,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     required String title,
     required IconData icon,
     required bool isDark,
-    required Color primary,
     required List<Widget> children,
   }) {
     return Container(
@@ -270,13 +264,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           children: [
             Row(
               children: [
-                Icon(icon, color: primary, size: 20),
+                Icon(icon, color: const Color(0xFF2E7D32), size: 20),
                 const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 15),
-                ),
+                Text(title,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 15)),
               ],
             ),
             const SizedBox(height: 8),
@@ -293,18 +285,17 @@ class _SelectTile extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
-  final Color primary;
 
   const _SelectTile({
     required this.icon,
     required this.label,
     required this.selected,
     required this.onTap,
-    required this.primary,
   });
 
   @override
   Widget build(BuildContext context) {
+    const primary = Color(0xFF2E7D32);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
@@ -331,9 +322,8 @@ class _SelectTile extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                fontWeight: selected
-                    ? FontWeight.bold
-                    : FontWeight.normal,
+                fontWeight:
+                    selected ? FontWeight.bold : FontWeight.normal,
                 color: selected ? primary : null,
               ),
             ),
