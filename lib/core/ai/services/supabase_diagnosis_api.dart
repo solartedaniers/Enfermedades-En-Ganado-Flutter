@@ -63,6 +63,8 @@ class SupabaseDiagnosisApi {
     return message.contains('429') ||
         message.contains('quota') ||
         message.contains('limit') ||
+        message.contains('not found') ||
+        message.contains('404') ||
         message.contains('temporarily') ||
         message.contains('ocupada') ||
         message.contains('gemini') ||

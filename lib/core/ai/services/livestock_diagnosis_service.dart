@@ -94,7 +94,7 @@ class LivestockDiagnosisService {
         status: DiagnosisStatus.completed,
         title: 'Diagnostico completado',
         message: connected
-            ? 'La IA remota no estuvo disponible, asi que se uso el motor local de respaldo.'
+            ? 'La IA remota no estuvo disponible o la funcion aun no esta desplegada, asi que se uso el motor local de respaldo.'
             : 'Se completo el diagnostico con el motor local porque no habia internet.',
         canContinueOffline: !connected,
       ),
