@@ -35,13 +35,17 @@ class OpenAIDiagnosisApi {
         Uri.parse('https://api.openai.com/v1/responses'),
       );
 
-      httpRequest.encoding = utf8;
       httpRequest.headers.set(HttpHeaders.authorizationHeader, 'Bearer $_apiKey');
       httpRequest.headers.set(
         HttpHeaders.contentTypeHeader,
         'application/json; charset=utf-8',
       );
-      httpRequest.write(jsonEncode(_buildPayload(request)));
+      final payloadBytes = utf8.encode(jsonEncode(_buildPayload(request)));
+      httpRequest.headers.set(
+        HttpHeaders.contentLengthHeader,
+        payloadBytes.length.toString(),
+      );
+      httpRequest.add(payloadBytes);
 
       final httpResponse = await httpRequest.close();
       final responseBody = await utf8.decodeStream(httpResponse);
