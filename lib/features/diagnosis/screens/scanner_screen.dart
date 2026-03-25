@@ -17,7 +17,7 @@ import '../../animals/presentation/providers/animal_provider.dart';
 import '../../medical/data/models/medical_record_model.dart';
 import '../../medical/presentation/providers/medical_provider.dart';
 
-enum _DiagnosisStep {
+enum _ScannerStep {
   intake,
   camera,
   result,
@@ -36,7 +36,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   static const Color _targetColor = Color(0xFF34C759);
   static const double _targetSize = 260;
 
-  final TextEditingController _motivoController = TextEditingController();
+  final TextEditingController _mainReasonController = TextEditingController();
   final TextEditingController _symptomsController = TextEditingController();
   final TextEditingController _temperatureController = TextEditingController();
 
@@ -45,7 +45,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   AnimalEntity? _selectedAnimal;
   DiagnosisReport? _report;
   Uint8List? _capturedImageBytes;
-  _DiagnosisStep _step = _DiagnosisStep.intake;
+  _ScannerStep _currentStep = _ScannerStep.intake;
   bool _isInitializingCamera = false;
   bool _isSubmitting = false;
   bool _isSaving = false;
@@ -62,7 +62,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final controller = _cameraController;
 
-    if (_step != _DiagnosisStep.camera ||
+    if (_currentStep != _ScannerStep.camera ||
         controller == null ||
         !controller.value.isInitialized) {
       return;
@@ -82,7 +82,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _motivoController.dispose();
+    _mainReasonController.dispose();
     _symptomsController.dispose();
     _temperatureController.dispose();
     _cameraController?.dispose();
@@ -107,7 +107,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   }
 
   Future<void> _initializeCamera() async {
-    if (_step != _DiagnosisStep.camera || _isSubmitting) return;
+    if (_currentStep != _ScannerStep.camera || _isSubmitting) return;
 
     setState(() {
       _isInitializingCamera = true;
@@ -170,7 +170,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
 
   Future<void> _openCamera() async {
     setState(() {
-      _step = _DiagnosisStep.camera;
+      _currentStep = _ScannerStep.camera;
       _errorMessage = null;
     });
     await _initializeCamera();
@@ -253,7 +253,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
         setState(() {
           _capturedImageBytes = imageBytes;
           _report = response.report;
-          _step = _DiagnosisStep.result;
+          _currentStep = _ScannerStep.result;
         });
         break;
     }
@@ -269,7 +269,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       throw Exception(AppStrings.t('diagnosis_select_animal_first'));
     }
 
-    if (_motivoController.text.trim().isEmpty &&
+    if (_mainReasonController.text.trim().isEmpty &&
         _symptomsController.text.trim().isEmpty &&
         imageBytes == null) {
       throw Exception(AppStrings.t('diagnosis_write_case_first'));
@@ -290,10 +290,10 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       animalId: animal.id,
       userId: user?.id ?? animal.userId,
       animalName: animal.name,
-      species: 'bovino',
+      species: 'bovine',
       breed: animal.breed,
       ageInYears: animal.age,
-      clinicalQuestion: _motivoController.text.trim(),
+      clinicalQuestion: _mainReasonController.text.trim(),
       reportedSymptoms:
           symptomLines.isNotEmpty ? symptomLines : [animal.symptoms],
       temperature: double.tryParse(normalizedTemperature),
@@ -371,7 +371,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       _capturedImageBytes = null;
       _report = null;
       _errorMessage = null;
-      _step = _DiagnosisStep.intake;
+      _currentStep = _ScannerStep.intake;
     });
   }
 
@@ -401,19 +401,24 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor:
-          _step == _DiagnosisStep.camera ? Colors.black : const Color(0xFFF8F5FC),
+          _currentStep == _ScannerStep.camera
+              ? Colors.black
+              : const Color(0xFFF8F5FC),
       appBar: AppBar(
         title: Text(AppStrings.t('scanner_title')),
         backgroundColor:
-            _step == _DiagnosisStep.camera ? Colors.black : Colors.transparent,
-        foregroundColor: _step == _DiagnosisStep.camera ? Colors.white : null,
+            _currentStep == _ScannerStep.camera
+                ? Colors.black
+                : Colors.transparent,
+        foregroundColor:
+            _currentStep == _ScannerStep.camera ? Colors.white : null,
       ),
-      body: switch (_step) {
-        _DiagnosisStep.intake => _buildIntakeStep(),
-        _DiagnosisStep.camera => _buildCameraStep(),
-        _DiagnosisStep.result => _buildResultStep(),
+      body: switch (_currentStep) {
+        _ScannerStep.intake => _buildIntakeStep(),
+        _ScannerStep.camera => _buildCameraStep(),
+        _ScannerStep.result => _buildResultStep(),
       },
-      floatingActionButton: _step == _DiagnosisStep.camera
+      floatingActionButton: _currentStep == _ScannerStep.camera
           ? FloatingActionButton(
               onPressed: _isInitializingCamera || _errorMessage != null
                   ? null
@@ -535,18 +540,18 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                         )
                         .toList(),
                     onChanged: (value) {
-                      final animal = animals.firstWhere(
+                      final selectedAnimal = animals.firstWhere(
                         (item) => item.id == value,
                       );
                       setState(() {
-                        _selectedAnimal = animal;
+                        _selectedAnimal = selectedAnimal;
                       });
-                      _prefillFromAnimal(animal);
+                      _prefillFromAnimal(selectedAnimal);
                     },
                   ),
                   const SizedBox(height: 16),
                   TextField(
-                    controller: _motivoController,
+                    controller: _mainReasonController,
                     decoration: InputDecoration(
                       labelText: AppStrings.t('diagnosis_main_reason'),
                       hintText: AppStrings.t('diagnosis_main_reason_hint'),
@@ -660,7 +665,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                 ? null
                 : () {
                     setState(() {
-                      _step = _DiagnosisStep.intake;
+                      _currentStep = _ScannerStep.intake;
                     });
                   },
             style: FilledButton.styleFrom(
