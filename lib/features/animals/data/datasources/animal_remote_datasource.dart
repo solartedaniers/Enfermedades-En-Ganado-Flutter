@@ -14,13 +14,23 @@ class AnimalRemoteDataSource {
         .eq('user_id', user.id)
         .order('created_at', ascending: false);
 
-    return (response as List)
-        .map((json) => AnimalModel.fromJson(json))
+    // FIX: cast seguro de la respuesta
+    final list = response as List<dynamic>;
+    return list
+        .map((json) => AnimalModel.fromJson(json as Map<String, dynamic>))
         .toList();
   }
 
   Future<void> insertAnimal(AnimalModel animal) async {
     await _supabase.from('animals').insert(animal.toJson());
+  }
+
+  /// FIX NUEVO: upsert para sincronización offline → evita duplicate key errors
+  /// cuando el animal ya fue insertado parcialmente en un intento previo.
+  Future<void> upsertAnimal(AnimalModel animal) async {
+    await _supabase
+        .from('animals')
+        .upsert(animal.toJson(), onConflict: 'id');
   }
 
   Future<void> updateAnimal(AnimalModel animal) async {

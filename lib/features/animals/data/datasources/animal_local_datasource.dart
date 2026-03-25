@@ -37,20 +37,8 @@ class AnimalLocalDataSource {
     if (animal != null) {
       await box.put(
         id,
-        AnimalModel(
-          id: animal.id,
-          userId: animal.userId,
-          name: animal.name,
-          breed: animal.breed,
-          age: animal.age,
-          symptoms: animal.symptoms,
-          createdAt: animal.createdAt,
-          updatedAt: animal.updatedAt,
-          weight: animal.weight,
-          temperature: animal.temperature,
-          imageUrl: animal.imageUrl,
-          isSynced: true,
-        ),
+        // Usamos copyWith para no perder ningún campo al marcar como synced
+        animal.copyWith(isSynced: true),
       );
     }
   }

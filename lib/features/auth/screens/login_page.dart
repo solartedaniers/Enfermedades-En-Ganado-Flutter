@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/services/connectivity_service.dart';
+import '../../../../core/services/offline_auth_service.dart';
+import '../../../../core/utils/app_strings.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../services/auth_service.dart';
 import 'register_page.dart';
 import 'forgot_password_page.dart';
 import '../../auth/home/screens/home_page.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../core/utils/app_strings.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../profile/presentation/providers/profile_provider.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -36,21 +38,72 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       _showSnackBar(AppStrings.t("enter_email_password"));
       return;
     }
+
     setState(() => loading = true);
+
+    final isOnline = await ConnectivityService.isConnected();
+
     try {
-      await authService.signIn(
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
-      );
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user?.emailConfirmedAt == null) {
-        throw Exception(AppStrings.t("confirm_email_first"));
+      if (isOnline) {
+        await authService.signIn(
+          email: emailController.text.trim(),
+          password: passwordController.text.trim(),
+        );
+
+        final user = Supabase.instance.client.auth.currentUser;
+
+        if (user?.emailConfirmedAt == null) {
+          throw Exception(AppStrings.t("confirm_email_first"));
+        }
+
+        await OfflineAuthService.saveSession(
+          userId: user!.id,
+          userName: user.userMetadata?['username'] ?? 'Usuario',
+          avatarUrl: user.userMetadata?['avatar_url'],
+        );
+
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomePage()),
+        );
+      } else {
+        final hasLocalSession = await OfflineAuthService.hasSession();
+
+        if (!mounted) return;
+
+        if (hasLocalSession) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.wifi_off, color: Colors.white, size: 18),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "Sin internet — entrando en modo offline",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.orange,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const HomePage()),
+          );
+        } else {
+          _showSnackBar(
+              "Sin conexión. Inicia sesión con internet al menos una vez.");
+        }
       }
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomePage()),
-      );
     } catch (e) {
       if (!mounted) return;
       _showSnackBar(e.toString().replaceAll("Exception: ", ""));
@@ -60,18 +113,19 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   void _showSnackBar(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
-    // Escucha el provider para que el tema se aplique
     ref.watch(profileProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primaryGreen = AppTheme.primaryColor;
-    final darkGreen = const Color(0xFF1B4332);
-    final bgColor = isDark ? const Color(0xFF121212) : const Color(0xFFF1F8F5);
+    const primaryGreen = AppTheme.primaryColor;
+    const darkGreen = Color(0xFF1B4332);
+    final bgColor =
+        isDark ? const Color(0xFF121212) : const Color(0xFFF1F8F5);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -82,22 +136,45 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Image.asset(
-                  'lib/images/logo.webp',
+                // ── BLOQUE DE IMAGEN ACTUALIZADO (CIRCULAR Y DESDE JSON) ──
+                Container(
                   width: 120,
                   height: 120,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                          color: primaryGreen.withValues(alpha: 0.2)),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ClipOval(
+                    child: Image.asset(
+                      AppStrings.t("app_logo_path"), // Ruta desde JSON
+                      width: 120,
+                      height: 120,
+                      fit: BoxFit.cover, // Cubre el círculo sin deformar
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: primaryGreen.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.pets,
+                          size: 60,
+                          color: primaryGreen,
+                        ),
+                      ),
                     ),
-                    child: Icon(Icons.pets, size: 60, color: primaryGreen),
                   ),
                 ),
+                // ──────────────────────────────────────────────────────────
                 const SizedBox(height: 16),
                 Text(
                   AppStrings.t("app_name"),
@@ -118,7 +195,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   label: AppStrings.t("email"),
                   icon: Icons.email_outlined,
                   keyboardType: TextInputType.emailAddress,
-                  primaryGreen: primaryGreen,
+                  isDark: isDark,
                 ),
                 const SizedBox(height: 20),
                 _buildField(
@@ -126,7 +203,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   label: AppStrings.t("password"),
                   icon: Icons.lock_outline,
                   obscure: !showPassword,
-                  primaryGreen: primaryGreen,
+                  isDark: isDark,
                   suffix: IconButton(
                     icon: Icon(showPassword
                         ? Icons.visibility
@@ -145,8 +222,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ),
                     child: Text(
                       AppStrings.t("forgot_password"),
-                      style: TextStyle(
-                          color: primaryGreen, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                          color: primaryGreen, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
@@ -163,9 +240,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             child: CircularProgressIndicator(
                                 color: Colors.white, strokeWidth: 2),
                           )
-                        : Text(AppStrings.t("login"),
+                        : Text(
+                            AppStrings.t("login"),
                             style: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 16)),
+                                fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -179,8 +258,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         MaterialPageRoute(
                             builder: (_) => const RegisterPage()),
                       ),
-                      child: Text(
-                        AppStrings.t("register_here"),
+                      child: const Text(
+                        "Regístrate aquí",
                         style: TextStyle(
                             color: darkGreen, fontWeight: FontWeight.bold),
                       ),
@@ -199,11 +278,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     required TextEditingController controller,
     required String label,
     required IconData icon,
-    required Color primaryGreen,
+    required bool isDark,
     TextInputType keyboardType = TextInputType.text,
     bool obscure = false,
     Widget? suffix,
   }) {
+    const primaryGreen = AppTheme.primaryColor;
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
@@ -213,16 +293,20 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         prefixIcon: Icon(icon, color: primaryGreen),
         labelStyle: const TextStyle(color: Colors.grey),
         filled: true,
+        fillColor: isDark ? const Color(0xFF2A2A2A) : Colors.white,
         suffixIcon: suffix,
         border:
             OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFDEE2E6)),
+          borderSide: BorderSide(
+              color: isDark
+                  ? const Color(0xFF3A3A3A)
+                  : const Color(0xFFDEE2E6)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: primaryGreen, width: 2),
+          borderSide: const BorderSide(color: primaryGreen, width: 2),
         ),
       ),
     );

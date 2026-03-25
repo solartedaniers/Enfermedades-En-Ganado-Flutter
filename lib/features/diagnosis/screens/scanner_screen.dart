@@ -100,8 +100,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   }
 
   void _prefillFromAnimal(AnimalEntity animal) {
-    _temperatureController.text =
-        animal.temperature?.toStringAsFixed(1) ?? '';
+    _temperatureController.text = animal.temperature?.toStringAsFixed(1) ?? '';
     if (_symptomsController.text.trim().isEmpty) {
       _symptomsController.text = animal.symptoms;
     }
@@ -263,25 +262,22 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   DiagnosisRequest _buildRequest({Uint8List? imageBytes}) {
     final animal = _selectedAnimal;
     final user = Supabase.instance.client.auth.currentUser;
-    final normalizedTemperature = _temperatureController.text
-        .trim()
-        .replaceAll(',', '.');
+    final normalizedTemperature =
+        _temperatureController.text.trim().replaceAll(',', '.');
 
     if (animal == null) {
-      throw Exception('Primero debes seleccionar un animal.');
+      throw Exception(AppStrings.t('diagnosis_select_animal_first'));
     }
 
     if (_motivoController.text.trim().isEmpty &&
         _symptomsController.text.trim().isEmpty &&
         imageBytes == null) {
-      throw Exception('Escribe el motivo o los síntomas antes de analizar.');
+      throw Exception(AppStrings.t('diagnosis_write_case_first'));
     }
 
     if (normalizedTemperature.isNotEmpty &&
         double.tryParse(normalizedTemperature) == null) {
-      throw Exception(
-        'La temperatura debe ser un número válido, por ejemplo 39.5, o dejarse vacía.',
-      );
+      throw Exception(AppStrings.t('diagnosis_invalid_temperature'));
     }
 
     final symptomLines = _symptomsController.text
@@ -298,9 +294,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       breed: animal.breed,
       ageInYears: animal.age,
       clinicalQuestion: _motivoController.text.trim(),
-      reportedSymptoms: symptomLines.isNotEmpty
-          ? symptomLines
-          : [animal.symptoms],
+      reportedSymptoms:
+          symptomLines.isNotEmpty ? symptomLines : [animal.symptoms],
       temperature: double.tryParse(normalizedTemperature),
       weight: animal.weight,
       imageBytes: imageBytes,
@@ -323,6 +318,28 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     });
 
     try {
+      final normalizedTemperature =
+          _temperatureController.text.trim().replaceAll(',', '.');
+      final updatedAnimal = AnimalEntity(
+        id: animal.id,
+        userId: animal.userId,
+        name: animal.name,
+        breed: animal.breed,
+        age: animal.age,
+        ageLabel: animal.ageLabel,
+        symptoms: _symptomsController.text.trim().isEmpty
+            ? animal.symptoms
+            : _symptomsController.text.trim(),
+        weight: animal.weight,
+        temperature: double.tryParse(normalizedTemperature) ?? animal.temperature,
+        imageUrl: animal.imageUrl,
+        profileImageUrl: animal.profileImageUrl,
+        createdAt: animal.createdAt,
+        updatedAt: DateTime.now(),
+      );
+
+      await ref.read(animalRepositoryProvider).updateAnimal(updatedAnimal);
+
       final repo = ref.read(medicalRepositoryProvider);
       final record = MedicalRecordModel.fromDiagnosisReport(
         id: const Uuid().v4(),
@@ -333,10 +350,13 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       await repo.addRecord(record);
 
       if (!mounted) return;
-      _showMessage('Diagnóstico guardado en el historial clínico.');
+      setState(() {
+        _selectedAnimal = updatedAnimal;
+      });
+      _showMessage(AppStrings.t('diagnosis_saved_message'));
     } catch (error) {
       if (!mounted) return;
-      _showMessage('No se pudo guardar el diagnóstico: $error');
+      _showMessage('${AppStrings.t('diagnosis_save_error')}: $error');
     } finally {
       if (mounted) {
         setState(() {
@@ -427,7 +447,9 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
           return Center(
             child: Padding(
               padding: const EdgeInsets.all(24),
-              child: Text('No se pudieron cargar los animales: ${snapshot.error}'),
+              child: Text(
+                '${AppStrings.t('diagnosis_load_animals_error')}: ${snapshot.error}',
+              ),
             ),
           );
         }
@@ -442,8 +464,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                 children: [
                   const Icon(Icons.pets_outlined, size: 64, color: Colors.grey),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Primero necesitas registrar un animal en "Mis animales" para poder hacer un diagnóstico real.',
+                  Text(
+                    AppStrings.t('diagnosis_register_animal_first'),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
@@ -458,7 +480,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                       foregroundColor: Colors.white,
                     ),
                     icon: const Icon(Icons.add),
-                    label: const Text('Registrar animal'),
+                    label: Text(AppStrings.t('register_animal')),
                   ),
                 ],
               ),
@@ -486,14 +508,14 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Diagnóstico con IA real',
+                    AppStrings.t('diagnosis_real_title'),
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Selecciona un animal de "Mis animales", escribe los síntomas en abierto y la IA analizará el caso. La cámara es opcional.',
+                    AppStrings.t('diagnosis_real_subtitle'),
                     style: Theme.of(
                       context,
                     ).textTheme.bodyMedium?.copyWith(color: Colors.black54),
@@ -501,8 +523,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                   const SizedBox(height: 20),
                   DropdownButtonFormField<String>(
                     initialValue: _selectedAnimal?.id,
-                    decoration: const InputDecoration(
-                      labelText: 'Animal a diagnosticar',
+                    decoration: InputDecoration(
+                      labelText: AppStrings.t('diagnosis_animal_label'),
                     ),
                     items: animals
                         .map(
@@ -525,19 +547,18 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                   const SizedBox(height: 16),
                   TextField(
                     controller: _motivoController,
-                    decoration: const InputDecoration(
-                      labelText: 'Motivo principal de consulta',
-                      hintText: 'Ej: está decaída, no quiere comer, cojea',
+                    decoration: InputDecoration(
+                      labelText: AppStrings.t('diagnosis_main_reason'),
+                      hintText: AppStrings.t('diagnosis_main_reason_hint'),
                     ),
                     maxLines: 3,
                   ),
                   const SizedBox(height: 16),
                   TextField(
                     controller: _symptomsController,
-                    decoration: const InputDecoration(
-                      labelText: 'Síntomas del animal',
-                      hintText:
-                          'Describe los síntomas en detalle. Puedes separarlos por comas o por líneas.',
+                    decoration: InputDecoration(
+                      labelText: AppStrings.t('diagnosis_symptoms_label'),
+                      hintText: AppStrings.t('diagnosis_symptoms_hint'),
                     ),
                     minLines: 4,
                     maxLines: 6,
@@ -545,9 +566,9 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                   const SizedBox(height: 16),
                   TextField(
                     controller: _temperatureController,
-                    decoration: const InputDecoration(
-                      labelText: 'Temperatura observada (opcional)',
-                      hintText: 'Ej: 39.8',
+                    decoration: InputDecoration(
+                      labelText: AppStrings.t('diagnosis_temperature_label'),
+                      hintText: AppStrings.t('diagnosis_temperature_hint'),
                     ),
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
@@ -578,8 +599,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                           icon: const Icon(Icons.camera_alt),
                           label: Text(
                             _capturedImageBytes == null
-                                ? 'Agregar foto'
-                                : 'Cambiar foto',
+                                ? AppStrings.t('diagnosis_add_photo')
+                                : AppStrings.t('change_photo'),
                           ),
                         ),
                       ),
@@ -603,7 +624,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                                   ),
                                 )
                               : const Icon(Icons.psychology_alt_outlined),
-                          label: const Text('Analizar'),
+                          label: Text(AppStrings.t('diagnosis_analyze')),
                         ),
                       ),
                     ],
@@ -647,7 +668,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
               foregroundColor: Colors.white,
             ),
             icon: const Icon(Icons.arrow_back),
-            label: const Text('Volver al diagnóstico'),
+            label: Text(AppStrings.t('diagnosis_back')),
           ),
         ),
       ],
@@ -659,7 +680,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     final animal = _selectedAnimal;
 
     if (report == null || animal == null) {
-      return const Center(child: Text('No hay diagnóstico disponible.'));
+      return Center(child: Text(AppStrings.t('diagnosis_not_available')));
     }
 
     return SafeArea(
@@ -683,7 +704,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Animal: ${animal.name}',
+                  '${AppStrings.t('diagnosis_animal_prefix')}: ${animal.name}',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -700,11 +721,19 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                   spacing: 12,
                   runSpacing: 12,
                   children: [
-                    _buildMetricChip('Severidad', '${report.severityIndex}/100'),
-                    _buildMetricChip('Urgencia', '${report.urgencyIndex}/100'),
                     _buildMetricChip(
-                      'Contagio',
-                      report.isContagious ? 'Sí' : 'No',
+                      AppStrings.t('diagnosis_severity'),
+                      '${report.severityIndex}/100',
+                    ),
+                    _buildMetricChip(
+                      AppStrings.t('diagnosis_urgency'),
+                      '${report.urgencyIndex}/100',
+                    ),
+                    _buildMetricChip(
+                      AppStrings.t('diagnosis_contagion'),
+                      report.isContagious
+                          ? AppStrings.t('yes')
+                          : AppStrings.t('no'),
                     ),
                   ],
                 ),
@@ -721,12 +750,27 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                   ),
                 ],
                 const SizedBox(height: 20),
-                _buildSection('Razonamiento', [report.reasoning]),
-                _buildSection('Acciones inmediatas', report.immediateActions),
-                _buildSection('Tratamiento sugerido', report.treatmentProtocol),
+                _buildSection(
+                  AppStrings.t('diagnosis_reasoning'),
+                  [report.reasoning],
+                ),
+                _buildSection(
+                  AppStrings.t('diagnosis_immediate_actions'),
+                  report.immediateActions,
+                ),
+                _buildSection(
+                  AppStrings.t('diagnosis_treatment'),
+                  report.treatmentProtocol,
+                ),
                 if (report.isolationMeasures.isNotEmpty)
-                  _buildSection('Aislamiento', report.isolationMeasures),
-                _buildSection('Monitoreo', report.monitoringPlan),
+                  _buildSection(
+                    AppStrings.t('diagnosis_isolation'),
+                    report.isolationMeasures,
+                  ),
+                _buildSection(
+                  AppStrings.t('diagnosis_monitoring'),
+                  report.monitoringPlan,
+                ),
                 const SizedBox(height: 20),
                 Row(
                   children: [
@@ -744,7 +788,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                                 child: CircularProgressIndicator(strokeWidth: 2),
                               )
                             : const Icon(Icons.save),
-                        label: const Text('Guardar'),
+                        label: Text(AppStrings.t('save')),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -756,7 +800,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                           side: const BorderSide(color: _primaryColor),
                         ),
                         icon: const Icon(Icons.refresh),
-                        label: const Text('Nuevo caso'),
+                        label: Text(AppStrings.t('diagnosis_new_case')),
                       ),
                     ),
                   ],
@@ -904,12 +948,12 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
               ),
             ),
             const SizedBox(height: 28),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Text(
-                'La foto es opcional y servirá como evidencia adicional para la IA.',
+                AppStrings.t('diagnosis_camera_optional'),
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
                   fontSize: 16,

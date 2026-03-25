@@ -1,3 +1,4 @@
+import '../../utils/app_strings.dart';
 import '../../network/network_info.dart';
 import '../models/diagnosis_request.dart';
 import '../models/diagnosis_response.dart';
@@ -15,18 +16,16 @@ class LivestockDiagnosisService {
     this.localDiagnosisApi = const LocalDiagnosisApi(),
   });
 
-  /// Evalua que debe pedir primero la app antes de ejecutar el analisis.
   Future<DiagnosisResponse> prepare(DiagnosisRequest request) async {
     if (!request.hasClinicalQuestion &&
         !request.hasSymptoms &&
         !request.hasVisualEvidence) {
       return DiagnosisResponse(
         status: DiagnosisStatus.needsClinicalQuestion,
-        nextStep: const DiagnosisNextStep(
+        nextStep: DiagnosisNextStep(
           status: DiagnosisStatus.needsClinicalQuestion,
-          title: 'Primero describe el caso',
-          message:
-              'Selecciona un animal y escribe sintomas o motivo de consulta antes de analizar.',
+          title: AppStrings.t('diagnosis_prepare_title'),
+          message: AppStrings.t('diagnosis_prepare_message'),
         ),
       );
     }
@@ -35,29 +34,26 @@ class LivestockDiagnosisService {
     if (!connected) {
       return DiagnosisResponse(
         status: DiagnosisStatus.readyToAnalyze,
-        nextStep: const DiagnosisNextStep(
+        nextStep: DiagnosisNextStep(
           status: DiagnosisStatus.readyToAnalyze,
-          title: 'Modo local disponible',
-          message:
-              'No hay internet. El diagnostico seguira con el motor local de respaldo.',
+          title: AppStrings.t('diagnosis_local_mode_title'),
+          message: AppStrings.t('diagnosis_local_mode_message'),
           canContinueOffline: true,
-          suggestedRoutes: ['medical_history', 'animals_page'],
+          suggestedRoutes: const ['medical_history', 'animals_page'],
         ),
       );
     }
 
     return DiagnosisResponse(
       status: DiagnosisStatus.readyToAnalyze,
-      nextStep: const DiagnosisNextStep(
+      nextStep: DiagnosisNextStep(
         status: DiagnosisStatus.readyToAnalyze,
-        title: 'Listo para analizar',
-        message:
-            'La app intentara usar IA remota y, si no esta disponible, cambiara al motor local automaticamente.',
+        title: AppStrings.t('diagnosis_ready_title'),
+        message: AppStrings.t('diagnosis_ready_message'),
       ),
     );
   }
 
-  /// Ejecuta el diagnostico y cae al motor local si la IA remota falla.
   Future<DiagnosisResponse> analyze(DiagnosisRequest request) async {
     final preparation = await prepare(request);
     if (preparation.status != DiagnosisStatus.readyToAnalyze) {
@@ -71,11 +67,10 @@ class LivestockDiagnosisService {
         final report = await remoteDiagnosisApi.createDiagnosisReport(request);
         return DiagnosisResponse(
           status: DiagnosisStatus.completed,
-          nextStep: const DiagnosisNextStep(
+          nextStep: DiagnosisNextStep(
             status: DiagnosisStatus.completed,
-            title: 'Diagnostico completado',
-            message:
-                'La IA remota genero un informe estructurado listo para mostrarse o guardarse en Supabase.',
+            title: AppStrings.t('diagnosis_completed_title'),
+            message: AppStrings.t('diagnosis_remote_completed_message'),
           ),
           report: report,
         );
@@ -92,10 +87,10 @@ class LivestockDiagnosisService {
       status: DiagnosisStatus.completed,
       nextStep: DiagnosisNextStep(
         status: DiagnosisStatus.completed,
-        title: 'Diagnostico completado',
+        title: AppStrings.t('diagnosis_completed_title'),
         message: connected
-            ? 'La IA remota no estuvo disponible o la funcion aun no esta desplegada, asi que se uso el motor local de respaldo.'
-            : 'Se completo el diagnostico con el motor local porque no habia internet.',
+            ? AppStrings.t('diagnosis_fallback_message')
+            : AppStrings.t('diagnosis_offline_completed_message'),
         canContinueOffline: !connected,
       ),
       report: localReport,

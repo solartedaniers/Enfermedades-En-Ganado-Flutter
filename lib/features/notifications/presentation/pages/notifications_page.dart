@@ -4,10 +4,17 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
+
+// --- Servicios y Core ---
 import '../../../../core/services/notification_service.dart';
+import '../../../../core/services/connectivity_service.dart';
 import '../../../../core/utils/app_strings.dart';
+
+// --- Animales ---
 import '../../../animals/data/datasources/animal_remote_datasource.dart';
 import '../../../animals/data/models/animal_model.dart';
+
+// --- Notificaciones ---
 import '../../data/datasources/notification_remote_datasource.dart';
 import '../../data/models/notification_model.dart';
 import '../../domain/entities/notification_entity.dart';
@@ -32,20 +39,35 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
     setState(() => _loading = true);
+    
     try {
       final notifs = await _ds.getNotifications();
       final animals = await AnimalRemoteDataSource().getAnimals();
-      setState(() {
-        _notifications = notifs;
-        _animals = animals;
-      });
+      
+      if (mounted) {
+        setState(() {
+          _notifications = notifs;
+          _animals = animals;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error loading notifications: $e");
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> _addNotification() async {
+    // --- Validación de Internet ---
+    final isOnline = await ConnectivityService.checkAndNotify(
+      context,
+      message: "Necesitas internet para programar notificaciones",
+    );
+    
+    if (!isOnline || !mounted) return;
+
     if (_animals.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Primero registra un animal")),
@@ -192,7 +214,6 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                       return;
                     }
 
-                    // Guardamos referencia al Navigator para evitar el async gap
                     final nav = Navigator.of(ctx);
 
                     await _saveNotification(
@@ -282,6 +303,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
         ],
       ),
     );
+    
     if (confirm != true) return;
 
     await _ds.deleteNotification(n.id);
@@ -323,65 +345,68 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                     ],
                   ),
                 )
-              : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-                  itemCount: _notifications.length,
-                  itemBuilder: (context, index) {
-                    final n = _notifications[index];
-                    final isPast = n.scheduledAt.isBefore(DateTime.now());
+              : RefreshIndicator(
+                  onRefresh: _load,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+                    itemCount: _notifications.length,
+                    itemBuilder: (context, index) {
+                      final n = _notifications[index];
+                      final isPast = n.scheduledAt.isBefore(DateTime.now());
 
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: isPast
-                              ? Colors.grey.shade200
-                              : const Color(0xFFE8F5E9),
-                          child: Icon(
-                            Icons.notifications_active,
-                            color: isPast ? Colors.grey : const Color(0xFF2E7D32),
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: isPast
+                                ? Colors.grey.shade200
+                                : const Color(0xFFE8F5E9),
+                            child: Icon(
+                              Icons.notifications_active,
+                              color: isPast ? Colors.grey : const Color(0xFF2E7D32),
+                            ),
+                          ),
+                          title: Text(n.title,
+                              style: const TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(n.message),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(Icons.set_meal,
+                                      size: 12, color: Colors.grey),
+                                  const SizedBox(width: 4),
+                                  Text(n.animalName,
+                                      style: const TextStyle(
+                                          fontSize: 12, color: Colors.grey)),
+                                  const SizedBox(width: 12),
+                                  const Icon(Icons.access_time,
+                                      size: 12, color: Colors.grey),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    "${n.scheduledAt.day}/${n.scheduledAt.month}/${n.scheduledAt.year} ${n.scheduledAt.hour}:${n.scheduledAt.minute.toString().padLeft(2, '0')}",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: isPast ? Colors.red : Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () => _deleteNotification(n),
                           ),
                         ),
-                        title: Text(n.title,
-                            style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(n.message),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                const Icon(Icons.set_meal,
-                                    size: 12, color: Colors.grey),
-                                const SizedBox(width: 4),
-                                Text(n.animalName,
-                                    style: const TextStyle(
-                                        fontSize: 12, color: Colors.grey)),
-                                const SizedBox(width: 12),
-                                const Icon(Icons.access_time,
-                                    size: 12, color: Colors.grey),
-                                const SizedBox(width: 4),
-                                Text(
-                                  "${n.scheduledAt.day}/${n.scheduledAt.month}/${n.scheduledAt.year} ${n.scheduledAt.hour}:${n.scheduledAt.minute.toString().padLeft(2, '0')}",
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: isPast ? Colors.red : Colors.grey,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => _deleteNotification(n),
-                        ),
-                      ),
-                    ).animate().fadeIn(
-                          duration: 300.ms,
-                          delay: (index * 60).ms,
-                        );
-                  },
+                      ).animate().fadeIn(
+                            duration: 300.ms,
+                            delay: (index * 60).ms,
+                          );
+                    },
+                  ),
                 ),
     );
   }

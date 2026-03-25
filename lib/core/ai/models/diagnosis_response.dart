@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import '../../utils/app_strings.dart';
+
 enum DiagnosisStatus {
   needsConfiguration,
   needsInternet,
@@ -9,7 +11,6 @@ enum DiagnosisStatus {
   completed,
 }
 
-/// Define la siguiente acción que la UI debe solicitar al usuario.
 class DiagnosisNextStep {
   final DiagnosisStatus status;
   final String title;
@@ -36,7 +37,6 @@ class DiagnosisNextStep {
   }
 }
 
-/// Hallazgo individual identificado por la etapa de análisis.
 class DiagnosisFinding {
   final String label;
   final String source;
@@ -61,17 +61,16 @@ class DiagnosisFinding {
 
   factory DiagnosisFinding.fromJson(Map<String, dynamic> json) {
     return DiagnosisFinding(
-      label: json['label'] as String? ?? 'Hallazgo no especificado',
+      label: json['label'] as String? ?? 'Unspecified finding',
       source: json['source'] as String? ?? 'clinical',
       confidence: (json['confidence'] as num?)?.toDouble() ?? 0.5,
       interpretation:
           json['interpretation'] as String? ??
-          'La IA identificó este hallazgo como relevante.',
+          AppStrings.t('diagnosis_default_finding_interpretation'),
     );
   }
 }
 
-/// Salida integral del motor experto.
 class DiagnosisReport {
   final String primaryDiagnosis;
   final String diagnosticStatement;
@@ -129,18 +128,21 @@ class DiagnosisReport {
 
   factory DiagnosisReport.fromJson(Map<String, dynamic> json) {
     return DiagnosisReport(
-      primaryDiagnosis: json['primary_diagnosis'] as String? ?? 'indeterminado',
+      primaryDiagnosis:
+          json['primary_diagnosis'] as String? ??
+          AppStrings.t('diagnosis_preliminary_name'),
       diagnosticStatement:
           json['diagnostic_statement'] as String? ??
-          'La IA no devolvió un diagnóstico textual.',
+          AppStrings.t('diagnosis_default_statement'),
       confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
       severityIndex: (json['severity_index'] as num?)?.toInt() ?? 20,
       urgencyIndex: (json['urgency_index'] as num?)?.toInt() ?? 25,
       isContagious: json['is_contagious'] as bool? ?? false,
-      requiresVeterinarian: json['requires_veterinarian'] as bool? ?? false,
+      requiresVeterinarian:
+          json['requires_veterinarian'] as bool? ?? false,
       reasoning:
           json['reasoning'] as String? ??
-          'La IA no devolvió razonamiento clínico.',
+          AppStrings.t('diagnosis_default_reasoning'),
       findings:
           (json['findings'] as List<dynamic>? ?? [])
               .whereType<Map<String, dynamic>>()
@@ -170,31 +172,38 @@ class DiagnosisReport {
     );
   }
 
-  /// Mantiene compatibilidad con el campo textual `ai_result` actual.
   String toMedicalRecordSummary() {
     final buffer = StringBuffer()
       ..writeln(diagnosticStatement)
-      ..writeln('Severidad: $severityIndex/100')
-      ..writeln('Urgencia: $urgencyIndex/100')
-      ..writeln('Contagiosa: ${isContagious ? "Sí" : "No"}')
-      ..writeln('Razonamiento: $reasoning');
+      ..writeln('${AppStrings.t('diagnosis_severity')}: $severityIndex/100')
+      ..writeln('${AppStrings.t('diagnosis_urgency')}: $urgencyIndex/100')
+      ..writeln(
+        '${AppStrings.t('diagnosis_contagion')}: '
+        '${isContagious ? AppStrings.t('yes') : AppStrings.t('no')}',
+      )
+      ..writeln('${AppStrings.t('diagnosis_reasoning')}: $reasoning');
 
     if (immediateActions.isNotEmpty) {
-      buffer.writeln('Acciones inmediatas: ${immediateActions.join(", ")}');
+      buffer.writeln(
+        '${AppStrings.t('diagnosis_immediate_actions')}: ${immediateActions.join(", ")}',
+      );
     }
 
     if (treatmentProtocol.isNotEmpty) {
-      buffer.writeln('Tratamiento: ${treatmentProtocol.join(", ")}');
+      buffer.writeln(
+        '${AppStrings.t('diagnosis_treatment')}: ${treatmentProtocol.join(", ")}',
+      );
     }
 
     if (isolationMeasures.isNotEmpty) {
-      buffer.writeln('Aislamiento: ${isolationMeasures.join(", ")}');
+      buffer.writeln(
+        '${AppStrings.t('diagnosis_isolation')}: ${isolationMeasures.join(", ")}',
+      );
     }
 
     return buffer.toString().trim();
   }
 
-  /// Deja un payload estructurado listo para la tabla de historial médico.
   Map<String, dynamic> toSupabasePayload({
     required String id,
     required String animalId,
@@ -216,7 +225,6 @@ class DiagnosisReport {
   }
 }
 
-/// Respuesta completa del servicio.
 class DiagnosisResponse {
   final DiagnosisStatus status;
   final DiagnosisNextStep nextStep;

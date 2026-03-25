@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/utils/app_strings.dart';
+import '../../../../core/services/offline_auth_service.dart';
 
 class ProfileState {
   final String name;
@@ -35,7 +36,6 @@ class ProfileState {
     );
   }
 
-  // Estado limpio para cuando no hay sesión o se cierra sesión
   factory ProfileState.empty() => ProfileState(
         name: "Usuario",
         language: "es",
@@ -52,20 +52,18 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
 
   final _supabase = Supabase.instance.client;
 
-  // Escucha cambios de sesión para limpiar/cargar perfil automáticamente
   void _listenToAuthChanges() {
     _supabase.auth.onAuthStateChange.listen((data) async {
       final event = data.event;
       if (event == AuthChangeEvent.signedIn) {
         await _loadFromSupabase();
       } else if (event == AuthChangeEvent.signedOut) {
-        // Limpia el estado completamente al cerrar sesión
         await AppStrings.load('es');
+        await OfflineAuthService.clearSession();
         state = ProfileState.empty();
       }
     });
 
-    // Carga inicial si ya hay sesión activa
     if (_supabase.auth.currentUser != null) {
       _loadFromSupabase();
     }
@@ -87,9 +85,9 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
           .maybeSingle();
 
       if (data == null) {
-        // El perfil aún no existe, usa datos de auth metadata
         final meta = user.userMetadata;
-        final name = meta?['username'] ?? meta?['first_name'] ?? 'Usuario';
+        final name =
+            (meta?['username'] as String?) ?? 'Usuario';
         await AppStrings.load('es');
         state = ProfileState(
           name: name,
@@ -102,13 +100,26 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       }
 
       final lang = (data['language'] as String?) ?? 'es';
+      final theme = (data['theme'] as String?) ?? 'system';
+      final name = (data['username'] as String?) ?? 'Usuario';
+      final avatar = data['avatar_url'] as String?;
+
       await AppStrings.load(lang);
 
-      state = ProfileState(
-        name: (data['username'] as String?) ?? 'Usuario',
-        avatarUrl: data['avatar_url'] as String?,
+      // Guarda sesión offline
+      await OfflineAuthService.saveSession(
+        userId: user.id,
+        userName: name,
+        avatarUrl: avatar,
         language: lang,
-        themeMode: _themeFromString(data['theme'] ?? 'system'),
+        theme: theme,
+      );
+
+      state = ProfileState(
+        name: name,
+        avatarUrl: avatar,
+        language: lang,
+        themeMode: _themeFromString(theme),
         isLoaded: true,
       );
     } catch (e) {

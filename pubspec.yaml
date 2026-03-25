@@ -19,6 +19,7 @@ dependencies:
   # --- Almacenamiento Local (Hive) ---
   hive: ^2.2.3
   hive_flutter: ^1.1.0
+  shared_preferences: ^2.3.2   # <-- agregado aquí
 
   # --- Utilidades y UI ---
   fluttertoast: ^9.0.0
@@ -49,6 +50,7 @@ flutter:
 
   assets:
     - lib/images/logo.webp
+    - lib/images/AgroVet.webp
     - lib/images/icon.webp
     - lib/images/Taureau.webp
     - lib/l10n/es.json
