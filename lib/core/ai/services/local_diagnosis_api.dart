@@ -1,12 +1,8 @@
+import '../../utils/app_strings.dart';
 import '../models/diagnosis_request.dart';
 import '../models/diagnosis_response.dart';
 import 'deep_learning_evidence_processor.dart';
 
-/// Motor local de respaldo para no dejar la app sin diagnostico.
-///
-/// No depende de APIs externas y usa reglas clinicas simples sobre los
-/// sintomas reportados. Sirve como fallback cuando la IA remota no esta
-/// disponible o se queda sin cuota.
 class LocalDiagnosisApi {
   final DeepLearningEvidenceProcessor processor;
 
@@ -21,7 +17,8 @@ class LocalDiagnosisApi {
 
     final top = ranked.isNotEmpty ? ranked.first : null;
     final topScore = top?.value ?? 0.0;
-    final primaryDiagnosis = _formatDiseaseName(top?.key ?? 'caso preliminar');
+    final primaryDiagnosis =
+        _formatDiseaseName(top?.key ?? 'preliminary_evaluation');
     final confidence = _confidenceFor(topScore, request);
     final severity = _severityFor(top?.key, topScore, request.temperature);
     final urgency = _urgencyFor(top?.key, topScore, request.temperature);
@@ -30,8 +27,11 @@ class LocalDiagnosisApi {
         urgency >= 70 || severity >= 75 || topScore < 0.35;
 
     final statement = topScore >= 0.35
-        ? 'Posible $primaryDiagnosis detectada con base en los sintomas reportados.'
-        : 'Caso preliminar: la evidencia actual no permite confirmar una enfermedad concreta.';
+        ? _t(
+            'diagnosis_possible_detected',
+            params: {'diagnosis': primaryDiagnosis},
+          )
+        : _t('diagnosis_preliminary_statement');
 
     final reasoning = _buildReasoning(
       request: request,
@@ -52,13 +52,14 @@ class LocalDiagnosisApi {
       reasoning: reasoning,
       findings: result.findings.isNotEmpty
           ? result.findings
-          : const [
+          : [
               DiagnosisFinding(
-                label: 'Evaluacion clinica inicial',
+                label: _t('diagnosis_initial_evaluation'),
                 source: 'clinical',
                 confidence: 0.55,
-                interpretation:
-                    'El motor local analizo sintomas y datos basicos del animal.',
+                interpretation: _t(
+                  'diagnosis_initial_evaluation_interpretation',
+                ),
               ),
             ],
       differentialDiagnoses: ranked
@@ -69,7 +70,8 @@ class LocalDiagnosisApi {
           .toList(),
       immediateActions: _buildImmediateActions(top?.key, request),
       treatmentProtocol: _buildTreatmentProtocol(top?.key),
-      isolationMeasures: isContagious ? _buildIsolationMeasures(top?.key) : const [],
+      isolationMeasures:
+          isContagious ? _buildIsolationMeasures(top?.key) : const [],
       monitoringPlan: _buildMonitoringPlan(top?.key, request.temperature),
     );
   }
@@ -88,60 +90,70 @@ class LocalDiagnosisApi {
     ].where((item) => item.trim().isNotEmpty).length;
 
     if (topScore < 0.35) {
-      return 'La evidencia actual es limitada para confirmar una enfermedad especifica. '
-          'El motor local encontro $signalCount señales utiles, pero recomienda complementar '
-          'con mas sintomas, exploracion fisica o una imagen si hay lesiones visibles.';
+      return _t(
+        'diagnosis_reasoning_preliminary',
+        params: {'count': signalCount.toString()},
+      );
     }
 
     final evidenceSummary = findings.isEmpty
-        ? 'sintomas generales reportados por el usuario'
+        ? _t('diagnosis_general_symptoms')
         : findings.take(3).map((item) => item.label).join(', ');
 
     final visualAdvice = usedVisualRecommendation
-        ? ' Se recomienda agregar foto si existen lesiones visibles para afinar el caso.'
+        ? ' ${_t('diagnosis_add_photo_advice')}'
         : '';
 
-    return 'El motor local identifico patrones compatibles con $primaryDiagnosis '
-        'a partir de $evidenceSummary.$visualAdvice';
+    return _t(
+          'diagnosis_reasoning_detected',
+          params: {
+            'diagnosis': primaryDiagnosis,
+            'evidence': evidenceSummary,
+          },
+        ) +
+        visualAdvice;
   }
 
-  List<String> _buildImmediateActions(String? diseaseKey, DiagnosisRequest request) {
+  List<String> _buildImmediateActions(
+    String? diseaseKey,
+    DiagnosisRequest request,
+  ) {
     final actions = <String>[
-      'Registrar el caso en el historial clinico del animal.',
-      'Mantener observacion cercana durante las proximas 12 horas.',
+      _t('diagnosis_action_record_case'),
+      _t('diagnosis_action_observe_12h'),
     ];
 
     if ((request.temperature ?? 0) >= 39.5) {
-      actions.add('Vigilar fiebre y repetir toma de temperatura.');
+      actions.add(_t('diagnosis_action_monitor_fever'));
     }
 
     switch (diseaseKey) {
       case 'mastitis':
         actions.addAll([
-          'Revisar calor, dolor y endurecimiento de la ubre.',
-          'Separar la leche afectada y no mezclarla con produccion sana.',
+          _t('diagnosis_action_check_udder'),
+          _t('diagnosis_action_separate_milk'),
         ]);
         break;
       case 'fiebre aftosa':
         actions.addAll([
-          'Separar al animal del resto del lote.',
-          'Evitar movimiento del animal hasta revision veterinaria.',
+          _t('diagnosis_action_isolate_animal'),
+          _t('diagnosis_action_avoid_movement'),
         ]);
         break;
       case 'neumonia bovina':
         actions.addAll([
-          'Reducir el estres y mantener buena ventilacion.',
-          'Observar frecuencia respiratoria y apetito.',
+          _t('diagnosis_action_reduce_stress'),
+          _t('diagnosis_action_watch_breathing'),
         ]);
         break;
       case 'gastroenteritis':
         actions.addAll([
-          'Evaluar hidratacion y disponibilidad de agua limpia.',
-          'Revisar consistencia de heces y frecuencia.',
+          _t('diagnosis_action_check_hydration'),
+          _t('diagnosis_action_check_stool'),
         ]);
         break;
       default:
-        actions.add('Completar mas evidencia clinica si el cuadro persiste.');
+        actions.add(_t('diagnosis_action_collect_more_evidence'));
     }
 
     return actions;
@@ -150,64 +162,60 @@ class LocalDiagnosisApi {
   List<String> _buildTreatmentProtocol(String? diseaseKey) {
     switch (diseaseKey) {
       case 'mastitis':
-        return const [
-          'Tomar muestra de leche si es posible antes del tratamiento.',
-          'Consultar protocolo intramamario segun indicacion veterinaria.',
-          'Mantener higiene estricta antes y despues del ordeño.',
+        return [
+          _t('diagnosis_treatment_mastitis_1'),
+          _t('diagnosis_treatment_mastitis_2'),
+          _t('diagnosis_treatment_mastitis_3'),
         ];
       case 'fiebre aftosa':
-        return const [
-          'Notificar rapidamente a un veterinario o autoridad sanitaria.',
-          'Aplicar manejo de soporte y control del dolor solo bajo indicacion profesional.',
+        return [
+          _t('diagnosis_treatment_foot_mouth_1'),
+          _t('diagnosis_treatment_foot_mouth_2'),
         ];
       case 'neumonia bovina':
-        return const [
-          'Consultar manejo antiinflamatorio y antibiotico segun revision veterinaria.',
-          'Favorecer descanso, agua y ambiente seco.',
+        return [
+          _t('diagnosis_treatment_pneumonia_1'),
+          _t('diagnosis_treatment_pneumonia_2'),
         ];
       case 'gastroenteritis':
-        return const [
-          'Priorizar rehidratacion y soporte electrolitico.',
-          'Evaluar dieta reciente y posible cambio de alimento.',
+        return [
+          _t('diagnosis_treatment_gastro_1'),
+          _t('diagnosis_treatment_gastro_2'),
         ];
       default:
-        return const [
-          'Usar este resultado como orientacion inicial y complementar con revision clinica.',
-        ];
+        return [_t('diagnosis_treatment_general')];
     }
   }
 
   List<String> _buildIsolationMeasures(String? diseaseKey) {
     switch (diseaseKey) {
       case 'fiebre aftosa':
-        return const [
-          'Aislar al animal del resto del lote.',
-          'Desinfectar botas, manos y utensilios despues del contacto.',
-          'Evitar compartir comederos y bebederos.',
+        return [
+          _t('diagnosis_isolation_1'),
+          _t('diagnosis_isolation_2'),
+          _t('diagnosis_isolation_3'),
         ];
       default:
-        return const [
-          'Mantener vigilancia sanitaria si aparecen mas animales con signos similares.',
-        ];
+        return [_t('diagnosis_isolation_general')];
     }
   }
 
   List<String> _buildMonitoringPlan(String? diseaseKey, double? temperature) {
     final plan = <String>[
-      'Registrar cambios clinicos cada 12 horas.',
-      'Comparar evolucion del apetito, energia y movilidad.',
+      _t('diagnosis_monitor_1'),
+      _t('diagnosis_monitor_2'),
     ];
 
     if (temperature != null) {
-      plan.add('Repetir temperatura y compararla con el valor actual.');
+      plan.add(_t('diagnosis_monitor_temperature'));
     }
 
     if (diseaseKey == 'mastitis') {
-      plan.add('Observar cambios en la leche y en la inflamacion de la ubre.');
+      plan.add(_t('diagnosis_monitor_mastitis'));
     }
 
     if (diseaseKey == 'neumonia bovina') {
-      plan.add('Controlar tos, secrecion nasal y esfuerzo respiratorio.');
+      plan.add(_t('diagnosis_monitor_pneumonia'));
     }
 
     return plan;
@@ -247,17 +255,25 @@ class LocalDiagnosisApi {
   String _formatDiseaseName(String diseaseKey) {
     switch (diseaseKey) {
       case 'mastitis':
-        return 'mastitis';
+        return _t('diagnosis_name_mastitis');
       case 'fiebre aftosa':
-        return 'fiebre aftosa';
+        return _t('diagnosis_name_foot_mouth');
       case 'neumonia bovina':
-        return 'neumonia bovina';
+        return _t('diagnosis_name_pneumonia');
       case 'dermatofitosis':
-        return 'dermatofitosis';
+        return _t('diagnosis_name_dermatophytosis');
       case 'gastroenteritis':
-        return 'gastroenteritis';
+        return _t('diagnosis_name_gastroenteritis');
       default:
-        return 'evaluacion preliminar';
+        return _t('diagnosis_preliminary_name');
     }
+  }
+
+  String _t(String key, {Map<String, String> params = const {}}) {
+    var value = AppStrings.t(key);
+    for (final entry in params.entries) {
+      value = value.replaceAll('{${entry.key}}', entry.value);
+    }
+    return value;
   }
 }
