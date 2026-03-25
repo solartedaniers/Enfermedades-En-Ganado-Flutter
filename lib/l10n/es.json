@@ -136,7 +136,6 @@
   "no_notifications": "No hay notificaciones programadas",
   "notification_reminder": "Recordatorio de medicamento",
   "delete_notification": "Eliminar notificación",
-<<<<<<< HEAD
   "delete_notification_confirm": "¿Seguro que deseas eliminar esta notificación?",
   "select_breed": "Selecciona una raza",
   "select_age": "Selecciona la edad",
@@ -156,7 +155,3 @@
   "weight_no_data": "Sin datos",
   "change_photo": "Cambiar foto"
 }
-=======
-  "delete_notification_confirm": "¿Seguro que deseas eliminar esta notificación?"
-}
->>>>>>> origin/main

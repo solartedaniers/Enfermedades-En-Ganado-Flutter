@@ -73,7 +73,6 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   void _onMenuTap(String key) {
     switch (key) {
-      // "Registrar animal" → va directo al formulario de agregar
       case "register_animal":
         Navigator.push(
           context,
@@ -81,7 +80,6 @@ class _HomePageState extends ConsumerState<HomePage> {
         );
         break;
 
-      // "Mis Animales" (antes Historial) → lista de animales registrados
       case "history":
         Navigator.push(
           context,
@@ -89,7 +87,6 @@ class _HomePageState extends ConsumerState<HomePage> {
         );
         break;
 
-      // "Recordatorio" (antes Notificaciones)
       case "notifications":
         Navigator.push(
           context,
@@ -98,15 +95,10 @@ class _HomePageState extends ConsumerState<HomePage> {
         break;
 
       case "diagnosis":
-<<<<<<< HEAD
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(AppStrings.t("coming_soon_diagnosis"))),
-=======
+        // Conflictos resueltos: Navegación al Scanner habilitada
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const ScannerScreen()),
->>>>>>> origin/main
         );
         break;
 
@@ -172,7 +164,6 @@ class _HomePageState extends ConsumerState<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Header de usuario ──────────────────────────────────
             Container(
               width: double.infinity,
               decoration: const BoxDecoration(
@@ -204,8 +195,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                 color: Colors.white, width: 2),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black
-                                    .withValues(alpha: 0.2),
+                                color: Colors.black.withValues(alpha: 0.2),
                                 blurRadius: 8,
                                 offset: const Offset(0, 4),
                               )
@@ -267,8 +257,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                 ],
               ),
             ).animate().fadeIn(duration: 500.ms).slideY(begin: -0.1),
-
-            // ── Título del panel ───────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
               child: Text(
@@ -277,8 +265,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                     ?.copyWith(fontWeight: FontWeight.bold),
               ),
             ).animate().fadeIn(delay: 200.ms),
-
-            // ── Grid de menú ───────────────────────────────────────
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: GridView.count(
