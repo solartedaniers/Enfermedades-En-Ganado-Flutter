@@ -25,6 +25,7 @@ class AnimalModelAdapter extends TypeAdapter<AnimalModel> {
       symptoms: fields[5] as String,
       createdAt: fields[6] as DateTime,
       updatedAt: fields[7] as DateTime,
+      ageLabel: fields[14] as String,
       weight: fields[8] as double?,
       temperature: fields[9] as double?,
       imageUrl: fields[11] as String?,
@@ -37,7 +38,7 @@ class AnimalModelAdapter extends TypeAdapter<AnimalModel> {
   @override
   void write(BinaryWriter writer, AnimalModel obj) {
     writer
-      ..writeByte(14)
+      ..writeByte(15)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -65,7 +66,9 @@ class AnimalModelAdapter extends TypeAdapter<AnimalModel> {
       ..writeByte(12)
       ..write(obj.profileImageUrl)
       ..writeByte(13)
-      ..write(obj.pendingImagePath);
+      ..write(obj.pendingImagePath)
+      ..writeByte(14)
+      ..write(obj.ageLabel);
   }
 
   @override
