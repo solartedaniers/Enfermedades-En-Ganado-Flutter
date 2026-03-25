@@ -16,22 +16,24 @@ class AnimalModelAdapter extends TypeAdapter<AnimalModel> {
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
+    final age = (fields[4] as int?) ?? 0;
     return AnimalModel(
-      id: fields[0] as String,
-      userId: fields[1] as String,
-      name: fields[2] as String,
-      breed: fields[3] as String,
-      age: fields[4] as int,
-      symptoms: fields[5] as String,
-      createdAt: fields[6] as DateTime,
-      updatedAt: fields[7] as DateTime,
-      ageLabel: fields[14] as String,
+      id: (fields[0] as String?) ?? '',
+      userId: (fields[1] as String?) ?? '',
+      name: (fields[2] as String?) ?? 'Sin nombre',
+      breed: (fields[3] as String?) ?? 'Desconocida',
+      age: age,
+      symptoms: (fields[5] as String?) ?? '',
+      createdAt: (fields[6] as DateTime?) ?? DateTime.now(),
+      updatedAt: (fields[7] as DateTime?) ?? DateTime.now(),
+      ageLabel:
+          (fields[14] as String?) ?? AnimalEntity.defaultAgeLabel(age),
       weight: fields[8] as double?,
       temperature: fields[9] as double?,
       imageUrl: fields[11] as String?,
       profileImageUrl: fields[12] as String?,
       pendingImagePath: fields[13] as String?,
-      isSynced: fields[10] as bool,
+      isSynced: (fields[10] as bool?) ?? false,
     );
   }
 
