@@ -33,11 +33,12 @@ class AnimalCard extends StatelessWidget {
           ],
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // --- Imagen de perfil del animal ---
+            // ── Imagen de perfil ────────────────────────────────────
             ClipRRect(
-              borderRadius: const BorderRadius.horizontal(
-                  left: Radius.circular(20)),
+              borderRadius:
+                  const BorderRadius.horizontal(left: Radius.circular(20)),
               child: animal.profileImageUrl != null &&
                       animal.profileImageUrl!.isNotEmpty
                   ? Image.network(
@@ -45,50 +46,65 @@ class AnimalCard extends StatelessWidget {
                       width: 100,
                       height: 100,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, e, s) => _placeholder(),
+                      // CORRECCIÓN: Se usa _ y _ en lugar de __ y ___
+                      errorBuilder: (_, _, _) => _placeholder(),
                     )
                   : _placeholder(),
             ),
 
-            // --- Info ---
+            // ── Info ────────────────────────────────────────────────
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       animal.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 17,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: isDark ? Colors.white : Colors.grey[900],
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
                     Text(
                       animal.breed,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                           color: Colors.grey[600], fontSize: 13),
                     ),
                     const SizedBox(height: 8),
-                    Row(
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
                       children: [
-                        _chip(Icons.cake,
-                            "${animal.age} ${AppStrings.t("years")}"),
-                        if (animal.weight != null) ...[
-                          const SizedBox(width: 8),
-                          _chip(Icons.monitor_weight,
-                              "${animal.weight} kg"),
-                        ],
+                        _chip(
+                          Icons.cake,
+                          animal.ageLabel.isNotEmpty
+                              ? animal.ageLabel
+                              : "${animal.age} ${AppStrings.t("years")}",
+                        ),
+                        if (animal.weight != null)
+                          _chip(
+                            Icons.monitor_weight,
+                            "${animal.weight} ${AppStrings.t("kg")}",
+                          ),
                       ],
                     ),
                   ],
                 ),
               ),
             ),
+
+            // ── Flecha ──────────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.only(right: 10),
               child: Icon(Icons.arrow_forward_ios,
                   size: 14, color: Colors.grey[400]),
             ),
@@ -100,7 +116,7 @@ class AnimalCard extends StatelessWidget {
 
   Widget _chip(IconData icon, String label) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: const Color(0xFFE8F5E9),
         borderRadius: BorderRadius.circular(20),
@@ -110,9 +126,16 @@ class AnimalCard extends StatelessWidget {
         children: [
           Icon(icon, size: 12, color: const Color(0xFF2E7D32)),
           const SizedBox(width: 4),
-          Text(label,
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 120),
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                  fontSize: 11, color: Color(0xFF2E7D32))),
+                  fontSize: 11, color: Color(0xFF2E7D32)),
+            ),
+          ),
         ],
       ),
     );

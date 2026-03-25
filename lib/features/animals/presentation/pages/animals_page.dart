@@ -14,7 +14,18 @@ class AnimalsPage extends ConsumerWidget {
     final animalRepo = ref.watch(animalRepositoryProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(AppStrings.t("my_animals"))),
+      appBar: AppBar(
+        title: Text(AppStrings.t("my_animals")),
+        actions: [
+          // ── Icono casa → volver al panel principal ─────────────
+          IconButton(
+            icon: const Icon(Icons.home_outlined),
+            tooltip: AppStrings.t("go_home"),
+            onPressed: () =>
+                Navigator.of(context).popUntil((r) => r.isFirst),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           await Navigator.push(
@@ -76,12 +87,16 @@ class AnimalsPage extends ConsumerWidget {
               final animal = animals[index];
               return AnimalCard(
                 animal: animal,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => AnimalDetailPage(animal: animal),
-                  ),
-                ),
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => AnimalDetailPage(animal: animal),
+                    ),
+                  );
+                  // Recargar lista tras edición o eliminación
+                  ref.invalidate(animalRepositoryProvider);
+                },
               );
             },
           );
