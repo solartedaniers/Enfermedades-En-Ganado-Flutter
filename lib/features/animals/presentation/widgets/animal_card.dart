@@ -46,8 +46,8 @@ class AnimalCard extends StatelessWidget {
                       width: 100,
                       height: 100,
                       fit: BoxFit.cover,
-                      // CORRECCIÓN: Se usa _ y _ en lugar de __ y ___
-                      errorBuilder: (_, _, _) => _placeholder(),
+                      errorBuilder: (context, error, stackTrace) =>
+                          _placeholder(),
                     )
                   : _placeholder(),
             ),
@@ -76,8 +76,8 @@ class AnimalCard extends StatelessWidget {
                       animal.breed,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                          color: Colors.grey[600], fontSize: 13),
+                      style:
+                          TextStyle(color: Colors.grey[600], fontSize: 13),
                     ),
                     const SizedBox(height: 8),
                     Wrap(
@@ -88,12 +88,12 @@ class AnimalCard extends StatelessWidget {
                           Icons.cake,
                           animal.ageLabel.isNotEmpty
                               ? animal.ageLabel
-                              : "${animal.age} ${AppStrings.t("years")}",
+                              : AnimalEntity.defaultAgeLabel(animal.age),
                         ),
                         if (animal.weight != null)
                           _chip(
                             Icons.monitor_weight,
-                            "${animal.weight} ${AppStrings.t("kg")}",
+                            '${animal.weight} ${AppStrings.t("kg")}',
                           ),
                       ],
                     ),
@@ -132,8 +132,8 @@ class AnimalCard extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                  fontSize: 11, color: Color(0xFF2E7D32)),
+              style:
+                  const TextStyle(fontSize: 11, color: Color(0xFF2E7D32)),
             ),
           ),
         ],
@@ -143,7 +143,7 @@ class AnimalCard extends StatelessWidget {
 
   Widget _placeholder() {
     return Image.asset(
-      AppStrings.t("animal_default_image"),
+      AppStrings.t('animal_default_image'),
       width: 100,
       height: 100,
       fit: BoxFit.cover,
