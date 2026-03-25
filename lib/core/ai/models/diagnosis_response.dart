@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 enum DiagnosisStatus {
+  needsConfiguration,
   needsInternet,
   needsClinicalQuestion,
   needsVisualEvidence,
