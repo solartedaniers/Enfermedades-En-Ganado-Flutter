@@ -49,6 +49,7 @@ flutter:
 
   assets:
     - lib/images/logo.webp
+    - lib/images/AgroVet.webp
     - lib/images/icon.webp
     - lib/images/Taureau.webp
     - lib/l10n/es.json

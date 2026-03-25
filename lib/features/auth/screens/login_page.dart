@@ -136,23 +136,45 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Image.asset(
-                  'lib/images/logo.webp',
+                // ── BLOQUE DE IMAGEN ACTUALIZADO (CIRCULAR Y DESDE JSON) ──
+                Container(
                   width: 120,
                   height: 120,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                          color: primaryGreen.withValues(alpha: 0.2)),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ClipOval(
+                    child: Image.asset(
+                      AppStrings.t("app_logo_path"), // Ruta desde JSON
+                      width: 120,
+                      height: 120,
+                      fit: BoxFit.cover, // Cubre el círculo sin deformar
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: primaryGreen.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.pets,
+                          size: 60,
+                          color: primaryGreen,
+                        ),
+                      ),
                     ),
-                    child:
-                        const Icon(Icons.pets, size: 60, color: primaryGreen),
                   ),
                 ),
+                // ──────────────────────────────────────────────────────────
                 const SizedBox(height: 16),
                 Text(
                   AppStrings.t("app_name"),
