@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 enum DiagnosisStatus {
+  needsConfiguration,
   needsInternet,
   needsClinicalQuestion,
   needsVisualEvidence,
@@ -56,6 +57,17 @@ class DiagnosisFinding {
       'confidence': confidence,
       'interpretation': interpretation,
     };
+  }
+
+  factory DiagnosisFinding.fromJson(Map<String, dynamic> json) {
+    return DiagnosisFinding(
+      label: json['label'] as String? ?? 'Hallazgo no especificado',
+      source: json['source'] as String? ?? 'clinical',
+      confidence: (json['confidence'] as num?)?.toDouble() ?? 0.5,
+      interpretation:
+          json['interpretation'] as String? ??
+          'La IA identificó este hallazgo como relevante.',
+    );
   }
 }
 
@@ -113,6 +125,49 @@ class DiagnosisReport {
       'monitoring_plan': monitoringPlan,
       'generated_at': generatedAt.toIso8601String(),
     };
+  }
+
+  factory DiagnosisReport.fromJson(Map<String, dynamic> json) {
+    return DiagnosisReport(
+      primaryDiagnosis: json['primary_diagnosis'] as String? ?? 'indeterminado',
+      diagnosticStatement:
+          json['diagnostic_statement'] as String? ??
+          'La IA no devolvió un diagnóstico textual.',
+      confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
+      severityIndex: (json['severity_index'] as num?)?.toInt() ?? 20,
+      urgencyIndex: (json['urgency_index'] as num?)?.toInt() ?? 25,
+      isContagious: json['is_contagious'] as bool? ?? false,
+      requiresVeterinarian: json['requires_veterinarian'] as bool? ?? false,
+      reasoning:
+          json['reasoning'] as String? ??
+          'La IA no devolvió razonamiento clínico.',
+      findings:
+          (json['findings'] as List<dynamic>? ?? [])
+              .whereType<Map<String, dynamic>>()
+              .map(DiagnosisFinding.fromJson)
+              .toList(),
+      differentialDiagnoses:
+          (json['differential_diagnoses'] as List<dynamic>? ?? [])
+              .map((item) => item.toString())
+              .toList(),
+      immediateActions:
+          (json['immediate_actions'] as List<dynamic>? ?? [])
+              .map((item) => item.toString())
+              .toList(),
+      treatmentProtocol:
+          (json['treatment_protocol'] as List<dynamic>? ?? [])
+              .map((item) => item.toString())
+              .toList(),
+      isolationMeasures:
+          (json['isolation_measures'] as List<dynamic>? ?? [])
+              .map((item) => item.toString())
+              .toList(),
+      monitoringPlan:
+          (json['monitoring_plan'] as List<dynamic>? ?? [])
+              .map((item) => item.toString())
+              .toList(),
+      generatedAt: DateTime.tryParse(json['generated_at'] as String? ?? ''),
+    );
   }
 
   /// Mantiene compatibilidad con el campo textual `ai_result` actual.
