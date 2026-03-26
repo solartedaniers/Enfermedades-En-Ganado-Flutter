@@ -50,14 +50,14 @@ class AnimalDetailPage extends ConsumerStatefulWidget {
 }
 
 class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
-  late AnimalEntity _current;
+  late AnimalEntity _currentAnimal;
   bool _isEditing = false;
   bool _isSaving = false;
 
-  late TextEditingController _nameCtrl;
-  late TextEditingController _weightCtrl;
-  String? _editBreed;
-  _AgeOption? _editAge;
+  late TextEditingController _nameController;
+  late TextEditingController _weightController;
+  String? _selectedBreedName;
+  _AgeOption? _selectedAgeOption;
 
   /// Imagen nueva seleccionada — se sube al guardar
   File? _newImage;
@@ -68,28 +68,28 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
   @override
   void initState() {
     super.initState();
-    _current = widget.animal;
+    _currentAnimal = widget.animal;
     _resetEditState();
   }
 
   void _resetEditState() {
-    _nameCtrl = TextEditingController(text: _current.name);
-    _weightCtrl = TextEditingController(
-        text: _current.weight != null ? '${_current.weight}' : '');
-    _editBreed = _current.breed;
-    final opts = _buildAgeOptions();
-    _editAge = opts.firstWhere(
-      (o) => o.months == _current.age,
+    _nameController = TextEditingController(text: _currentAnimal.name);
+    _weightController = TextEditingController(
+        text: _currentAnimal.weight != null ? '${_currentAnimal.weight}' : '');
+    _selectedBreedName = _currentAnimal.breed;
+    final ageOptions = _buildAgeOptions();
+    _selectedAgeOption = ageOptions.firstWhere(
+      (ageOption) => ageOption.months == _currentAnimal.age,
       orElse: () =>
-          _AgeOption(label: _current.ageLabel, months: _current.age),
+          _AgeOption(label: _currentAnimal.ageLabel, months: _currentAnimal.age),
     );
     _newImage = null;
   }
 
   @override
   void dispose() {
-    _nameCtrl.dispose();
-    _weightCtrl.dispose();
+    _nameController.dispose();
+    _weightController.dispose();
     super.dispose();
   }
 
@@ -145,7 +145,7 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
   }
 
   // ── Selector de raza ───────────────────────────────────────────────────
-  void _showBreedPicker() {
+  void _showBreedSelector() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -181,17 +181,17 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
                   controller: sc,
                   itemCount: _cattleBreeds.length,
                   itemBuilder: (_, i) {
-                    final b = _cattleBreeds[i];
-                    final sel = b == _editBreed;
+                    final breed = _cattleBreeds[i];
+                    final isSelected = breed == _selectedBreedName;
                     return ListTile(
-                      title: Text(b),
-                      trailing: sel
+                      title: Text(breed),
+                      trailing: isSelected
                           ? const Icon(Icons.check_circle,
                               color: Color(0xFF2E7D32))
                           : null,
-                      tileColor: sel ? const Color(0xFFE8F5E9) : null,
+                      tileColor: isSelected ? const Color(0xFFE8F5E9) : null,
                       onTap: () {
-                        setState(() => _editBreed = b);
+                        setState(() => _selectedBreedName = breed);
                         Navigator.pop(context);
                       },
                     );
@@ -206,8 +206,8 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
   }
 
   // ── Selector de edad ───────────────────────────────────────────────────
-  void _showAgePicker() {
-    final opts = _buildAgeOptions();
+  void _showAgeSelector() {
+    final ageOptions = _buildAgeOptions();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -241,19 +241,20 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
               Expanded(
                 child: ListView.builder(
                   controller: sc,
-                  itemCount: opts.length,
+                  itemCount: ageOptions.length,
                   itemBuilder: (_, i) {
-                    final o = opts[i];
-                    final sel = o.months == _editAge?.months;
+                    final ageOption = ageOptions[i];
+                    final isSelected =
+                        ageOption.months == _selectedAgeOption?.months;
                     return ListTile(
-                      title: Text(o.label),
-                      trailing: sel
+                      title: Text(ageOption.label),
+                      trailing: isSelected
                           ? const Icon(Icons.check_circle,
                               color: Color(0xFF2E7D32))
                           : null,
-                      tileColor: sel ? const Color(0xFFE8F5E9) : null,
+                      tileColor: isSelected ? const Color(0xFFE8F5E9) : null,
                       onTap: () {
-                        setState(() => _editAge = o);
+                        setState(() => _selectedAgeOption = ageOption);
                         Navigator.pop(context);
                       },
                     );
@@ -269,7 +270,7 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
 
   // ── Guardar edición ────────────────────────────────────────────────────
   Future<void> _saveEdit() async {
-    final name = _nameCtrl.text.trim();
+    final name = _nameController.text.trim();
     if (name.isEmpty) {
       _snack(AppStrings.t('required_field'));
       return;
@@ -277,51 +278,52 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
     setState(() => _isSaving = true);
 
     try {
-      final wt = _weightCtrl.text.trim().replaceAll(',', '.');
-      final double? weight = wt.isNotEmpty ? double.tryParse(wt) : null;
+      final weightText = _weightController.text.trim().replaceAll(',', '.');
+      final double? weight =
+          weightText.isNotEmpty ? double.tryParse(weightText) : null;
 
       // Sube la imagen nueva directamente a Supabase si la hay
-      String? newProfileImageUrl = _current.profileImageUrl;
+      String? uploadedProfileImageUrl = _currentAnimal.profileImageUrl;
       if (_newImage != null) {
         final user = Supabase.instance.client.auth.currentUser;
         if (user != null) {
-          newProfileImageUrl =
+          uploadedProfileImageUrl =
               await _storageService.uploadAnimalImage(_newImage!, user.id);
         }
       }
 
-      final updated = AnimalEntity(
-        id: _current.id,
-        userId: _current.userId,
+      final updatedAnimal = AnimalEntity(
+        id: _currentAnimal.id,
+        userId: _currentAnimal.userId,
         name: name,
-        breed: _editBreed ?? _current.breed,
-        age: _editAge?.months ?? _current.age,
-        ageLabel: _editAge?.label ?? _current.ageLabel,
-        symptoms: _current.symptoms,
+        breed: _selectedBreedName ?? _currentAnimal.breed,
+        age: _selectedAgeOption?.months ?? _currentAnimal.age,
+        ageLabel: _selectedAgeOption?.label ?? _currentAnimal.ageLabel,
+        symptoms: _currentAnimal.symptoms,
         weight: weight,
-        temperature: _current.temperature,
-        imageUrl: _current.imageUrl,
-        profileImageUrl: newProfileImageUrl,
-        createdAt: _current.createdAt,
+        temperature: _currentAnimal.temperature,
+        imageUrl: _currentAnimal.imageUrl,
+        profileImageUrl: uploadedProfileImageUrl,
+        createdAt: _currentAnimal.createdAt,
         updatedAt: DateTime.now(),
       );
 
       // Actualiza en Supabase y Hive
-      await ref.read(animalRepositoryProvider).updateAnimal(updated);
+      await ref.read(animalRepositoryProvider).updateAnimal(updatedAnimal);
 
       // También actualiza profile_image_url directamente en Supabase
       // para que otros dispositivos lo vean inmediatamente
-      if (_newImage != null && newProfileImageUrl != null) {
+      if (_newImage != null && uploadedProfileImageUrl != null) {
         await Supabase.instance.client
             .from('animals')
-            .update({'profile_image_url': newProfileImageUrl})
-            .eq('id', _current.id);
+            .update({'profile_image_url': uploadedProfileImageUrl})
+            .eq('id', _currentAnimal.id);
       }
 
       if (!mounted) return;
 
       setState(() {
-        _current = updated;
+        _currentAnimal = updatedAnimal;
         _isEditing = false;
         _isSaving = false;
         _newImage = null;
@@ -364,7 +366,7 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
     if (confirmed != true || !mounted) return;
 
     try {
-      await ref.read(animalRepositoryProvider).deleteAnimal(_current.id);
+      await ref.read(animalRepositoryProvider).deleteAnimal(_currentAnimal.id);
       ref.invalidate(animalRepositoryProvider);
       if (mounted) {
         _snack(AppStrings.t('animal_deleted'));
@@ -396,7 +398,7 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
       appBar: AppBar(
         title: Text(_isEditing
             ? AppStrings.t('edit_animal')
-            : _current.name),
+            : _currentAnimal.name),
         actions: [
           // Icono de casa — siempre visible
           IconButton(
@@ -471,11 +473,11 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
       // Imagen recién seleccionada (antes de guardar)
       imageContent = Image.file(_newImage!,
           width: double.infinity, height: 220, fit: BoxFit.cover);
-    } else if (_current.profileImageUrl != null &&
-        _current.profileImageUrl!.isNotEmpty) {
+    } else if (_currentAnimal.profileImageUrl != null &&
+        _currentAnimal.profileImageUrl!.isNotEmpty) {
       // Imagen guardada en Supabase
       imageContent = Image.network(
-        _current.profileImageUrl!,
+        _currentAnimal.profileImageUrl!,
         width: double.infinity,
         height: 220,
         fit: BoxFit.cover,
@@ -543,27 +545,27 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
 
   // ── Modo VISTA ─────────────────────────────────────────────────────────
   Widget _buildViewMode() {
-    final weightText = _current.weight != null
-        ? '${_current.weight} ${AppStrings.t("kg")}'
+    final weightText = _currentAnimal.weight != null
+        ? '${_currentAnimal.weight} ${AppStrings.t("kg")}'
         : AppStrings.t('weight_no_data');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _infoRow(Icons.pets, AppStrings.t('breed_label'),
-            _current.breed),
+            _currentAnimal.breed),
         _infoRow(
           Icons.cake,
           AppStrings.t('age_label'),
-          _current.ageLabel.isNotEmpty
-              ? _current.ageLabel
-              : AnimalEntity.defaultAgeLabel(_current.age),
+          _currentAnimal.ageLabel.isNotEmpty
+              ? _currentAnimal.ageLabel
+              : AnimalEntity.defaultAgeLabel(_currentAnimal.age),
         ),
         _infoRow(Icons.monitor_weight_outlined,
             AppStrings.t('weight_label'), weightText),
-        if (_current.temperature != null)
+        if (_currentAnimal.temperature != null)
           _infoRow(Icons.thermostat, AppStrings.t('temperature_label'),
-              '${_current.temperature} °C'),
+              '${_currentAnimal.temperature} °C'),
         const SizedBox(height: 24),
 
         SizedBox(
@@ -579,12 +581,12 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
                 context,
                 MaterialPageRoute(
                   builder: (_) =>
-                      MedicalHistoryPage(animal: _current),
+                      MedicalHistoryPage(animal: _currentAnimal),
                 ),
               );
               // Si el historial clínico actualizó la foto, la reflejamos aquí
               if (updated != null && mounted) {
-                setState(() => _current = updated);
+                setState(() => _currentAnimal = updated);
               }
             },
           ),
@@ -620,7 +622,7 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TextFormField(
-          controller: _nameCtrl,
+          controller: _nameController,
           inputFormatters: [
             FilteringTextInputFormatter.allow(
                 RegExp(r'[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9 ]')),
@@ -635,22 +637,22 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
 
         _selectorField(
           label: AppStrings.t('breed_label'),
-          selectedValue: _editBreed,
+          selectedValue: _selectedBreedName,
           icon: Icons.category_outlined,
-          onTap: _showBreedPicker,
+          onTap: _showBreedSelector,
         ),
         const SizedBox(height: 14),
 
         _selectorField(
           label: AppStrings.t('age_label'),
-          selectedValue: _editAge?.label,
+          selectedValue: _selectedAgeOption?.label,
           icon: Icons.cake_outlined,
-          onTap: _showAgePicker,
+          onTap: _showAgeSelector,
         ),
         const SizedBox(height: 14),
 
         TextFormField(
-          controller: _weightCtrl,
+          controller: _weightController,
           keyboardType:
               const TextInputType.numberWithOptions(decimal: true),
           inputFormatters: [

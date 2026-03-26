@@ -14,11 +14,11 @@ final animalRepositoryProvider = Provider((ref) {
 });
 
 final addAnimalProvider = Provider((ref) {
-  final repo = ref.read(animalRepositoryProvider);
-  return AddAnimal(repo);
+  final animalRepository = ref.read(animalRepositoryProvider);
+  return AddAnimal(animalRepository);
 });
 
 final getAnimalsProvider = Provider((ref) {
-  final repo = ref.read(animalRepositoryProvider);
-  return GetAnimals(repo);
+  final animalRepository = ref.read(animalRepositoryProvider);
+  return GetAnimals(animalRepository);
 });
