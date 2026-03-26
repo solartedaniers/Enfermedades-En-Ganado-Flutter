@@ -118,23 +118,23 @@ class AnimalRepositoryImpl implements AnimalRepository {
 
   @override
   Future<void> syncAnimals() async {
-    final unsynced = await localDataSource.getUnsyncedAnimals();
+    final pendingAnimals = await localDataSource.getUnsyncedAnimals();
 
-    for (final animal in unsynced) {
+    for (final pendingAnimal in pendingAnimals) {
       try {
-        String? profileImageUrl = animal.profileImageUrl;
+        String? profileImageUrl = pendingAnimal.profileImageUrl;
 
-        if (animal.pendingImagePath != null) {
-          final file = File(animal.pendingImagePath!);
+        if (pendingAnimal.pendingImagePath != null) {
+          final file = File(pendingAnimal.pendingImagePath!);
           if (await file.exists()) {
             profileImageUrl = await _storageService.uploadAnimalImage(
               file,
-              animal.userId,
+              pendingAnimal.userId,
             );
           }
         }
 
-        final syncedModel = animal.copyWith(
+        final syncedModel = pendingAnimal.copyWith(
           profileImageUrl: profileImageUrl,
           isSynced: true,
           pendingImagePath: null,

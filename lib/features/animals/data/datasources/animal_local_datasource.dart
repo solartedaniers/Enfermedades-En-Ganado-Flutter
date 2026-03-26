@@ -16,8 +16,8 @@ class AnimalLocalDataSource {
   Future<void> syncFromRemote(List<AnimalModel> remoteAnimals) async {
     final box = await _openBox();
     await box.clear();
-    for (final animal in remoteAnimals) {
-      await box.put(animal.id, animal);
+    for (final remoteAnimal in remoteAnimals) {
+      await box.put(remoteAnimal.id, remoteAnimal);
     }
   }
 

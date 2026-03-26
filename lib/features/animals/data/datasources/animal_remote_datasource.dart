@@ -1,46 +1,46 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../models/animal_model.dart';
 
 class AnimalRemoteDataSource {
-  final _supabase = Supabase.instance.client;
+  final _supabaseClient = Supabase.instance.client;
 
   Future<List<AnimalModel>> getAnimals() async {
-    final user = _supabase.auth.currentUser;
-    if (user == null) return [];
+    final currentUser = _supabaseClient.auth.currentUser;
+    if (currentUser == null) return [];
 
-    final response = await _supabase
+    final response = await _supabaseClient
         .from('animals')
         .select()
-        .eq('user_id', user.id)
+        .eq('user_id', currentUser.id)
         .order('created_at', ascending: false);
 
-    // FIX: cast seguro de la respuesta
-    final list = response as List<dynamic>;
-    return list
+    // Cast seguro de la respuesta remota.
+    final responseList = response as List<dynamic>;
+    return responseList
         .map((json) => AnimalModel.fromJson(json as Map<String, dynamic>))
         .toList();
   }
 
   Future<void> insertAnimal(AnimalModel animal) async {
-    await _supabase.from('animals').insert(animal.toJson());
+    await _supabaseClient.from('animals').insert(animal.toJson());
   }
 
-  /// FIX NUEVO: upsert para sincronización offline → evita duplicate key errors
-  /// cuando el animal ya fue insertado parcialmente en un intento previo.
+  /// Upsert para sincronizacion offline y evitar duplicados al reintentar.
   Future<void> upsertAnimal(AnimalModel animal) async {
-    await _supabase
+    await _supabaseClient
         .from('animals')
         .upsert(animal.toJson(), onConflict: 'id');
   }
 
   Future<void> updateAnimal(AnimalModel animal) async {
-    await _supabase
+    await _supabaseClient
         .from('animals')
         .update(animal.toJson())
         .eq('id', animal.id);
   }
 
   Future<void> deleteAnimal(String id) async {
-    await _supabase.from('animals').delete().eq('id', id);
+    await _supabaseClient.from('animals').delete().eq('id', id);
   }
 }

@@ -1,5 +1,7 @@
 import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../../core/network/network_provider.dart';
 import '../../presentation/providers/animal_provider.dart';
 
@@ -10,17 +12,17 @@ class AnimalSyncService {
   AnimalSyncService(this.ref);
 
   void start() {
-    final network = ref.read(networkInfoProvider);
+    final networkInfo = ref.read(networkInfoProvider);
     _subscription?.cancel();
 
     _subscription =
-        network.onConnectivityChanged.listen((isConnected) async {
+        networkInfo.onConnectivityChanged.listen((isConnected) async {
       if (isConnected) {
         try {
-          final repo = ref.read(animalRepositoryProvider);
-          await repo.syncAnimals();
+          final animalRepository = ref.read(animalRepositoryProvider);
+          await animalRepository.syncAnimals();
         } catch (e) {
-          // Fallo silencioso
+          // Fallo silencioso.
         }
       }
     });
