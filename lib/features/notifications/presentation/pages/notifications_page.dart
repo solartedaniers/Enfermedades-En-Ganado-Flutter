@@ -27,10 +27,10 @@ class NotificationsPage extends ConsumerStatefulWidget {
 }
 
 class _NotificationsPageState extends ConsumerState<NotificationsPage> {
-  final _ds = NotificationRemoteDataSource();
+  final _notificationDataSource = NotificationRemoteDataSource();
   List<NotificationEntity> _notifications = [];
   List<AnimalModel> _animals = [];
-  bool _loading = true;
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -40,37 +40,36 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
 
   Future<void> _load() async {
     if (!mounted) return;
-    setState(() => _loading = true);
+    setState(() => _isLoading = true);
     
     try {
-      final notifs = await _ds.getNotifications();
+      final notifications = await _notificationDataSource.getNotifications();
       final animals = await AnimalRemoteDataSource().getAnimals();
       
       if (mounted) {
         setState(() {
-          _notifications = notifs;
+          _notifications = notifications;
           _animals = animals;
         });
       }
     } catch (e) {
       debugPrint("Error loading notifications: $e");
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _addNotification() async {
-    // --- Validación de Internet ---
     final isOnline = await ConnectivityService.checkAndNotify(
       context,
-      message: "Necesitas internet para programar notificaciones",
+      message: AppStrings.t('notifications_need_internet'),
     );
     
     if (!isOnline || !mounted) return;
 
     if (_animals.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Primero registra un animal")),
+        SnackBar(content: Text(AppStrings.t('notifications_register_animal_first'))),
       );
       return;
     }
@@ -209,7 +208,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                         messageCtrl.text.isEmpty ||
                         selectedDate == null) {
                       ScaffoldMessenger.of(ctx).showSnackBar(
-                        const SnackBar(content: Text("Completa todos los campos")),
+                        SnackBar(content: Text(AppStrings.t('notifications_complete_fields'))),
                       );
                       return;
                     }
@@ -259,7 +258,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
         createdAt: DateTime.now(),
       );
 
-      await _ds.insertNotification(model);
+      await _notificationDataSource.insertNotification(model);
 
       await NotificationService.scheduleNotification(
         id: notifId,
@@ -278,7 +277,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e")),
+          SnackBar(content: Text('${AppStrings.t("unexpected_error")}: $e')),
         );
       }
     }
@@ -306,7 +305,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
     
     if (confirm != true) return;
 
-    await _ds.deleteNotification(n.id);
+    await _notificationDataSource.deleteNotification(n.id);
     await _load();
 
     if (mounted) {
@@ -325,7 +324,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
         icon: const Icon(Icons.add_alert),
         label: Text(AppStrings.t("add_notification")),
       ),
-      body: _loading
+      body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _notifications.isEmpty
               ? Center(

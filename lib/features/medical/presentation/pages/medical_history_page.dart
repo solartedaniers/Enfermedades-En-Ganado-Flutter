@@ -41,7 +41,7 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
   Future<void> _pickProfileImage() async {
     final isOnline = await ConnectivityService.checkAndNotify(
       context,
-      message: 'Necesitas internet para cambiar la foto del animal',
+      message: AppStrings.t('medical_need_internet_change_photo'),
     );
     if (!isOnline || !mounted) return;
 
@@ -134,13 +134,14 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
       // (se usa cuando el usuario hace pop desde aquí)
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Foto actualizada')),
+          SnackBar(content: Text(AppStrings.t('medical_photo_updated'))),
         );
       }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error: $e')));
+          .showSnackBar(
+              SnackBar(content: Text('${AppStrings.t("unexpected_error")}: $e')));
     }
   }
 
@@ -148,7 +149,7 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
   Future<void> _addRecord() async {
     final isOnline = await ConnectivityService.checkAndNotify(
       context,
-      message: 'Necesitas internet para agregar registros médicos',
+      message: AppStrings.t('medical_need_internet_add_record'),
     );
     if (!isOnline || !mounted) return;
 
@@ -173,10 +174,10 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Nuevo registro médico',
-                style: TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.bold),
+              Text(
+                AppStrings.t('medical_new_record'),
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
               GestureDetector(
@@ -210,7 +211,7 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
                                 size: 40, color: Colors.grey.shade400),
                             const SizedBox(height: 8),
                             Text(
-                              'Foto para diagnóstico IA\n(toca para tomar)',
+                              AppStrings.t('medical_ai_photo_hint'),
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                   color: Colors.grey.shade500,
@@ -223,9 +224,9 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
               const SizedBox(height: 12),
               TextField(
                 controller: diagnosisController,
-                decoration: const InputDecoration(
-                  labelText: 'Observaciones / Diagnóstico',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: AppStrings.t('medical_diagnosis_observations'),
+                  border: const OutlineInputBorder(),
                 ),
                 maxLines: 3,
               ),
@@ -241,7 +242,7 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
                       imageFile: selectedImage,
                     );
                   },
-                  child: const Text('Guardar registro'),
+                  child: Text(AppStrings.t('medical_save_record')),
                 ),
               ),
             ],
@@ -280,12 +281,13 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
       if (!mounted) return;
       setState(() {});
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Registro guardado')),
+        SnackBar(content: Text(AppStrings.t('medical_record_saved'))),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error: $e')));
+          .showSnackBar(
+              SnackBar(content: Text('${AppStrings.t("unexpected_error")}: $e')));
     }
   }
 
@@ -293,18 +295,17 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Eliminar registro'),
-        content: const Text(
-            '¿Seguro que deseas eliminar este registro médico?'),
+        title: Text(AppStrings.t('medical_delete_record')),
+        content: Text(AppStrings.t('medical_delete_record_confirm')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
+            child: Text(AppStrings.t('cancel')),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Eliminar',
-                style: TextStyle(color: Colors.red)),
+            child: Text(AppStrings.t('delete'),
+                style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -321,13 +322,14 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error: $e')));
+          .showSnackBar(
+              SnackBar(content: Text('${AppStrings.t("unexpected_error")}: $e')));
     }
   }
 
   Future<void> _editRecord(
       String recordId, String? currentDiagnosis) async {
-    final controller =
+    final diagnosisController =
         TextEditingController(text: currentDiagnosis ?? '');
 
     await showModalBottomSheet(
@@ -343,18 +345,18 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
           top: 16,
           bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Editar registro',
-                style: TextStyle(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+            Text(AppStrings.t('medical_edit_record'),
+                style: const TextStyle(
                     fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                labelText: 'Diagnóstico / Observaciones',
-                border: OutlineInputBorder(),
+              controller: diagnosisController,
+              decoration: InputDecoration(
+                labelText: AppStrings.t('medical_diagnosis_observations'),
+                border: const OutlineInputBorder(),
               ),
               maxLines: 3,
             ),
@@ -368,17 +370,19 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
                   try {
                     await Supabase.instance.client
                         .from('medical_records')
-                        .update({'diagnosis': controller.text.trim()})
+                        .update({'diagnosis': diagnosisController.text.trim()})
                         .eq('id', recordId);
                     if (!mounted) return;
                     setState(() {});
                   } catch (e) {
                     if (!mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Error: $e')));
+                        SnackBar(
+                            content: Text(
+                                '${AppStrings.t("unexpected_error")}: $e')));
                   }
                 },
-                child: const Text('Guardar cambios'),
+                child: Text(AppStrings.t('save_changes')),
               ),
             ),
           ],
@@ -413,7 +417,7 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
         floatingActionButton: FloatingActionButton.extended(
           onPressed: _addRecord,
           icon: const Icon(Icons.add),
-          label: const Text('Nuevo registro'),
+          label: Text(AppStrings.t('medical_new_record')),
         ),
         body: Column(
           children: [
@@ -522,8 +526,8 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
                         child: CircularProgressIndicator());
                   }
                   if (snapshot.hasError) {
-                    return const Center(
-                        child: Text('Error al cargar registros'));
+                    return Center(
+                        child: Text(AppStrings.t('medical_load_records_error')));
                   }
 
                   final records = snapshot.data ?? [];
@@ -536,11 +540,11 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
                           Icon(Icons.medical_services_outlined,
                               size: 64, color: Colors.grey[400]),
                           const SizedBox(height: 16),
-                          const Text('No hay registros médicos aún',
-                              style: TextStyle(color: Colors.grey)),
+                          Text(AppStrings.t('no_records'),
+                              style: const TextStyle(color: Colors.grey)),
                           const SizedBox(height: 8),
                           Text(
-                            'Toca + para agregar un registro',
+                            AppStrings.t('medical_add_record_hint'),
                             style: TextStyle(color: Colors.grey[400]),
                           ),
                         ],
@@ -603,17 +607,17 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
                                 ),
                               ],
                               const SizedBox(height: 8),
-                              const Text('Diagnóstico:',
+                              Text('${AppStrings.t("diagnosis_label")}:',
                                   style: TextStyle(
                                       fontWeight: FontWeight.bold)),
                               Text(record.diagnosis ??
-                                  'Sin diagnóstico'),
+                                  AppStrings.t('no_diagnosis')),
                               const SizedBox(height: 8),
-                              const Text('Resultado IA:',
+                              Text('${AppStrings.t("ai_result")}:',
                                   style: TextStyle(
                                       fontWeight: FontWeight.bold)),
                               Text(record.aiResult ??
-                                  'Sin resultado de IA'),
+                                  AppStrings.t('no_ai_result')),
                             ],
                           ),
                         ),
