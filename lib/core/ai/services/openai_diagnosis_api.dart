@@ -1,16 +1,11 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'dart:io';
+import 'dart:typed_data';
 
 import '../../utils/app_strings.dart';
 import '../models/diagnosis_request.dart';
 import '../models/diagnosis_response.dart';
 
-/// Cliente directo para usar una IA real vía OpenAI Responses API.
-///
-/// Nota: para producción, lo ideal es mover esta llamada a un backend
-/// o a una Edge Function. Aquí se deja directo para que el proyecto
-/// funcione ya mismo usando `--dart-define`.
 class OpenAIDiagnosisApi {
   static const String _apiKey = String.fromEnvironment('OPENAI_API_KEY');
   static const String _model = String.fromEnvironment(
@@ -22,25 +17,29 @@ class OpenAIDiagnosisApi {
 
   bool get isConfigured => _apiKey.trim().isNotEmpty;
 
-  Future<DiagnosisReport> createDiagnosisReport(DiagnosisRequest request) async {
+  Future<DiagnosisReport> createDiagnosisReport(
+    DiagnosisRequest request,
+  ) async {
     if (!isConfigured) {
-      throw Exception(
-        'Falta configurar OPENAI_API_KEY con --dart-define para usar el diagnóstico con IA real.',
-      );
+      throw Exception(AppStrings.t('diagnosis_openai_missing_key'));
     }
 
-    final client = HttpClient();
+    final httpClient = HttpClient();
 
     try {
-      final httpRequest = await client.postUrl(
+      final httpRequest = await httpClient.postUrl(
         Uri.parse('https://api.openai.com/v1/responses'),
       );
 
-      httpRequest.headers.set(HttpHeaders.authorizationHeader, 'Bearer $_apiKey');
+      httpRequest.headers.set(
+        HttpHeaders.authorizationHeader,
+        'Bearer $_apiKey',
+      );
       httpRequest.headers.set(
         HttpHeaders.contentTypeHeader,
         'application/json; charset=utf-8',
       );
+
       final payloadBytes = utf8.encode(jsonEncode(_buildPayload(request)));
       httpRequest.headers.set(
         HttpHeaders.contentLengthHeader,
@@ -52,18 +51,21 @@ class OpenAIDiagnosisApi {
       final responseBody = await utf8.decodeStream(httpResponse);
 
       if (httpResponse.statusCode >= 400) {
-        throw Exception(_buildFriendlyError(httpResponse.statusCode, responseBody));
+        throw Exception(
+          _buildFriendlyError(httpResponse.statusCode, responseBody),
+        );
       }
 
-      final decoded = jsonDecode(responseBody) as Map<String, dynamic>;
-      final outputText = _extractOutputText(decoded);
+      final decodedBody = jsonDecode(responseBody) as Map<String, dynamic>;
+      final outputText = _extractOutputText(decodedBody);
       final reportJson = jsonDecode(outputText) as Map<String, dynamic>;
 
       return DiagnosisReport(
-        primaryDiagnosis: reportJson['primary_diagnosis'] as String? ?? 'indeterminado',
+        primaryDiagnosis:
+            reportJson['primary_diagnosis'] as String? ?? 'undetermined',
         diagnosticStatement:
             reportJson['diagnostic_statement'] as String? ??
-            'La IA no devolvió un diagnóstico textual.',
+            AppStrings.t('diagnosis_default_statement'),
         confidence: (reportJson['confidence'] as num?)?.toDouble() ?? 0.0,
         severityIndex: (reportJson['severity_index'] as num?)?.toInt() ?? 20,
         urgencyIndex: (reportJson['urgency_index'] as num?)?.toInt() ?? 25,
@@ -72,7 +74,7 @@ class OpenAIDiagnosisApi {
             reportJson['requires_veterinarian'] as bool? ?? false,
         reasoning:
             reportJson['reasoning'] as String? ??
-            'La IA no devolvió razonamiento clínico.',
+            AppStrings.t('diagnosis_default_reasoning'),
         findings: _parseFindings(reportJson['findings'] as List<dynamic>?),
         differentialDiagnoses:
             (reportJson['differential_diagnoses'] as List<dynamic>? ?? [])
@@ -96,45 +98,41 @@ class OpenAIDiagnosisApi {
                 .toList(),
       );
     } on SocketException {
-      throw Exception(
-        'No se pudo conectar con la IA. Revisa tu conexión a internet e intenta de nuevo.',
-      );
+      throw Exception(AppStrings.t('diagnosis_openai_connection_error'));
     } on FormatException {
-      throw Exception(
-        'La respuesta de la IA no llegó en un formato válido. Intenta de nuevo.',
-      );
+      throw Exception(AppStrings.t('diagnosis_openai_invalid_response'));
     } finally {
-      client.close();
+      httpClient.close();
     }
   }
 
   String _buildFriendlyError(int statusCode, String responseBody) {
     try {
-      final decoded = jsonDecode(responseBody) as Map<String, dynamic>;
-      final error = decoded['error'] as Map<String, dynamic>?;
+      final decodedBody = jsonDecode(responseBody) as Map<String, dynamic>;
+      final error = decodedBody['error'] as Map<String, dynamic>?;
       final code = error?['code']?.toString();
       final message = error?['message']?.toString();
 
       if (statusCode == 401 || code == 'invalid_api_key') {
-        return 'La API key de OpenAI no es válida. Inicia la app con una clave real en OPENAI_API_KEY.';
+        return AppStrings.t('diagnosis_openai_invalid_key');
       }
 
       if (statusCode == 429) {
-        return 'La IA está temporalmente ocupada o alcanzaste el límite de uso. Intenta nuevamente en unos minutos.';
+        return AppStrings.t('diagnosis_openai_rate_limit');
       }
 
       if (statusCode >= 500) {
-        return 'OpenAI presentó un problema temporal. Intenta nuevamente en unos minutos.';
+        return AppStrings.t('diagnosis_openai_server_error');
       }
 
-      return message ?? 'Error OpenAI $statusCode';
+      return message ?? 'OpenAI error $statusCode';
     } catch (_) {
-      return 'Error OpenAI $statusCode';
+      return 'OpenAI error $statusCode';
     }
   }
 
   Map<String, dynamic> _buildPayload(DiagnosisRequest request) {
-    final content = <Map<String, dynamic>>[
+    final inputContent = <Map<String, dynamic>>[
       {
         'type': 'input_text',
         'text': _buildCasePrompt(request),
@@ -143,7 +141,7 @@ class OpenAIDiagnosisApi {
 
     final imageDataUrl = _buildImageDataUrl(request.imageBytes);
     if (imageDataUrl != null) {
-      content.add({
+      inputContent.add({
         'type': 'input_image',
         'image_url': imageDataUrl,
       });
@@ -155,7 +153,7 @@ class OpenAIDiagnosisApi {
       'input': [
         {
           'role': 'user',
-          'content': content,
+          'content': inputContent,
         },
       ],
       'text': {
@@ -170,41 +168,43 @@ class OpenAIDiagnosisApi {
   }
 
   String _buildSystemInstructions() {
+    final language = AppStrings.currentLanguage == 'en' ? 'English' : 'Spanish';
+
     return '''
-Eres AgroVet AI, un asistente clínico veterinario para ganado bovino.
-Analiza síntomas escritos por el usuario y, si existe, evidencia visual.
-Debes entregar únicamente un JSON válido que cumpla exactamente el esquema.
-No inventes hallazgos. Si la evidencia es insuficiente, indícalo claramente.
-Tu salida debe ser prudente, profesional y útil para una app veterinaria.
+You are AgroVet AI, a veterinary clinical assistant for cattle.
+Analyze written symptoms and optional visual evidence.
+Return only valid JSON that matches the schema exactly.
+Do not invent findings. If the evidence is insufficient, state that clearly.
+Write the final clinical content in $language.
 ''';
   }
 
   String _buildCasePrompt(DiagnosisRequest request) {
     return '''
-Analiza este caso clínico de ganado y devuelve un informe estructurado.
+Analyze this livestock clinical case and return a structured report.
 
 Animal:
-- Nombre: ${request.animalName}
-- ID animal: ${request.animalId}
-- Especie: ${request.species}
-- Raza: ${request.breed ?? "No registrada"}
-- Edad: ${request.ageInYears?.toString() ?? "No registrada"} años
-- Peso: ${request.weight?.toString() ?? "No registrado"} kg
-- Temperatura: ${request.temperature?.toString() ?? "No registrada"} °C
+- Name: ${request.animalName}
+- Animal ID: ${request.animalId}
+- Species: ${request.species}
+- Breed: ${request.breed ?? "Not recorded"}
+- Age: ${request.ageInYears?.toString() ?? "Not recorded"} years
+- Weight: ${request.weight?.toString() ?? "Not recorded"} kg
+- Temperature: ${request.temperature?.toString() ?? "Not recorded"} °C
 
-Motivo principal:
-${request.clinicalQuestion.trim().isEmpty ? "No indicado" : request.clinicalQuestion.trim()}
+Main concern:
+${request.clinicalQuestion.trim().isEmpty ? "Not provided" : request.clinicalQuestion.trim()}
 
-Síntomas:
-${request.reportedSymptoms.isEmpty ? "No indicados" : request.reportedSymptoms.join(", ")}
+Reported symptoms:
+${request.reportedSymptoms.isEmpty ? "Not provided" : request.reportedSymptoms.join(", ")}
 
-Hallazgos visuales reportados:
-${request.visualFindings.isEmpty ? "No indicados" : request.visualFindings.join(", ")}
+Reported visual findings:
+${request.visualFindings.isEmpty ? "Not provided" : request.visualFindings.join(", ")}
 
-Notas:
-- Si la imagen no es suficiente o no existe, igual debes razonar con la información textual.
-- Si no hay evidencia bastante para una enfermedad concreta, devuelve un resultado preliminar prudente.
-- Las acciones y tratamiento deben ser orientativos y profesionales.
+Notes:
+- If the image is missing or insufficient, still reason from the text evidence.
+- If there is not enough evidence for a specific disease, return a prudent preliminary result.
+- Actions and treatment must stay orientative and professional.
 ''';
   }
 
@@ -217,15 +217,15 @@ Notas:
     return 'data:image/jpeg;base64,$base64Image';
   }
 
-  String _extractOutputText(Map<String, dynamic> decoded) {
-    final output = decoded['output'] as List<dynamic>? ?? [];
+  String _extractOutputText(Map<String, dynamic> decodedBody) {
+    final outputItems = decodedBody['output'] as List<dynamic>? ?? [];
 
-    for (final item in output) {
-      final message = item as Map<String, dynamic>;
-      final content = message['content'] as List<dynamic>? ?? [];
+    for (final outputItem in outputItems) {
+      final messageBlock = outputItem as Map<String, dynamic>;
+      final contentBlocks = messageBlock['content'] as List<dynamic>? ?? [];
 
-      for (final block in content) {
-        final blockMap = block as Map<String, dynamic>;
+      for (final contentBlock in contentBlocks) {
+        final blockMap = contentBlock as Map<String, dynamic>;
         if (blockMap['type'] == 'output_text') {
           return blockMap['text'] as String? ?? '{}';
         }
@@ -243,12 +243,13 @@ Notas:
     return rawFindings.map((item) {
       final finding = item as Map<String, dynamic>;
       return DiagnosisFinding(
-        label: finding['label'] as String? ?? 'Hallazgo no especificado',
+        label: finding['label'] as String? ??
+            AppStrings.t('diagnosis_finding_unspecified'),
         source: finding['source'] as String? ?? 'clinical',
         confidence: (finding['confidence'] as num?)?.toDouble() ?? 0.5,
         interpretation:
             finding['interpretation'] as String? ??
-            'La IA identificó este hallazgo como relevante.',
+            AppStrings.t('diagnosis_default_finding_interpretation'),
       );
     }).toList();
   }
