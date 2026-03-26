@@ -4,12 +4,12 @@ import '../../../../core/utils/app_strings.dart';
 import '../../domain/entities/animal_entity.dart';
 
 class AnimalCard extends StatelessWidget {
-  final AnimalEntity animal;
+  final AnimalEntity animalData;
   final VoidCallback onTap;
 
   const AnimalCard({
     super.key,
-    required this.animal,
+    required this.animalData,
     required this.onTap,
   });
 
@@ -39,10 +39,10 @@ class AnimalCard extends StatelessWidget {
             ClipRRect(
               borderRadius:
                   const BorderRadius.horizontal(left: Radius.circular(20)),
-              child: animal.profileImageUrl != null &&
-                      animal.profileImageUrl!.isNotEmpty
+              child: animalData.profileImageUrl != null &&
+                      animalData.profileImageUrl!.isNotEmpty
                   ? Image.network(
-                      animal.profileImageUrl!,
+                      animalData.profileImageUrl!,
                       width: 100,
                       height: 100,
                       fit: BoxFit.cover,
@@ -62,7 +62,7 @@ class AnimalCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      animal.name,
+                      animalData.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -73,7 +73,7 @@ class AnimalCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      animal.breed,
+                      animalData.breed,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style:
@@ -86,14 +86,14 @@ class AnimalCard extends StatelessWidget {
                       children: [
                         _chip(
                           Icons.cake,
-                          animal.ageLabel.isNotEmpty
-                              ? animal.ageLabel
-                              : AnimalEntity.defaultAgeLabel(animal.age),
+                          animalData.ageLabel.isNotEmpty
+                              ? animalData.ageLabel
+                              : AnimalEntity.defaultAgeLabel(animalData.age),
                         ),
-                        if (animal.weight != null)
+                        if (animalData.weight != null)
                           _chip(
                             Icons.monitor_weight,
-                            '${animal.weight} ${AppStrings.t("kg")}',
+                            '${animalData.weight} ${AppStrings.t("kg")}',
                           ),
                       ],
                     ),

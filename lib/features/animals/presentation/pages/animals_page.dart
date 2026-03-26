@@ -11,7 +11,7 @@ class AnimalsPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final animalRepo = ref.watch(animalRepositoryProvider);
+    final animalRepository = ref.watch(animalRepositoryProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -37,7 +37,7 @@ class AnimalsPage extends ConsumerWidget {
         child: const Icon(Icons.add),
       ),
       body: FutureBuilder(
-        future: animalRepo.getAnimals(),
+        future: animalRepository.getAnimals(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -84,14 +84,14 @@ class AnimalsPage extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(vertical: 8),
             itemCount: animals.length,
             itemBuilder: (context, index) {
-              final animal = animals[index];
+              final currentAnimal = animals[index];
               return AnimalCard(
-                animal: animal,
+                animalData: currentAnimal,
                 onTap: () async {
                   await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => AnimalDetailPage(animal: animal),
+                      builder: (_) => AnimalDetailPage(animal: currentAnimal),
                     ),
                   );
                   // Recargar lista tras edición o eliminación
