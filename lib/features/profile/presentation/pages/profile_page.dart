@@ -1,13 +1,13 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// --- Servicios y Core ---
-import '../../../../core/services/storage_service.dart';
 import '../../../../core/services/connectivity_service.dart';
+import '../../../../core/services/storage_service.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../providers/profile_provider.dart';
 
@@ -36,31 +36,29 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   }
 
   Future<void> _pickAndUploadAvatar() async {
-    // Verificación de conexión antes de proceder
     final isOnline = await ConnectivityService.checkAndNotify(
       context,
-      message: "Necesitas internet para cambiar tu foto de perfil",
+      message: AppStrings.t("profile_need_internet_avatar"),
     );
     if (!isOnline) return;
 
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: ImageSource.gallery, 
+    final imagePicker = ImagePicker();
+    final pickedImage = await imagePicker.pickImage(
+      source: ImageSource.gallery,
       imageQuality: 80,
     );
-    
-    if (picked == null) return;
+
+    if (pickedImage == null) return;
 
     setState(() => _isUploadingAvatar = true);
     try {
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user == null) return;
+      final currentUser = Supabase.instance.client.auth.currentUser;
+      if (currentUser == null) return;
 
-      // Subida al bucket 'users' de Supabase
-      final url = await StorageService()
-          .uploadUserAvatar(File(picked.path), user.id);
-      
-      ref.read(profileProvider.notifier).changeAvatar(url);
+      final avatarUrl = await StorageService()
+          .uploadUserAvatar(File(pickedImage.path), currentUser.id);
+
+      ref.read(profileProvider.notifier).changeAvatar(avatarUrl);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -78,14 +76,13 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   Widget build(BuildContext context) {
     final profile = ref.watch(profileProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    const primary = Color(0xFF2E7D32);
+    const primaryColor = Color(0xFF2E7D32);
 
     return Scaffold(
       appBar: AppBar(title: Text(AppStrings.t("my_profile"))),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // --- Header con degradado y Avatar ---
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(20, 30, 20, 40),
@@ -128,8 +125,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                 : null,
                             child: profile.avatarUrl == null ||
                                     profile.avatarUrl!.isEmpty
-                                ? const Icon(Icons.person,
-                                    size: 55, color: Colors.white)
+                                ? const Icon(
+                                    Icons.person,
+                                    size: 55,
+                                    color: Colors.white,
+                                  )
                                 : null,
                           ),
                         ),
@@ -142,8 +142,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                               color: Colors.white,
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.camera_alt,
-                                size: 18, color: primary),
+                            child: const Icon(
+                              Icons.camera_alt,
+                              size: 18,
+                              color: primaryColor,
+                            ),
                           ),
                       ],
                     ),
@@ -160,25 +163,20 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 ],
               ),
             ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1),
-
             Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  // --- Campo Nombre ---
                   TextField(
                     controller: _nameController,
-                    decoration: InputDecoration(
-                      labelText: AppStrings.t("name"),
-                      prefixIcon: const Icon(Icons.person_outline, color: primary),
-                    ),
-                    onChanged: (v) => ref
-                        .read(profileProvider.notifier)
-                        .changeName(v),
+                    decoration: const InputDecoration(
+                      prefixIcon:
+                          Icon(Icons.person_outline, color: primaryColor),
+                    ).copyWith(labelText: AppStrings.t("name")),
+                    onChanged: (value) =>
+                        ref.read(profileProvider.notifier).changeName(value),
                   ).animate().fadeIn(delay: 200.ms),
                   const SizedBox(height: 20),
-
-                  // --- Sección Tema ---
                   _sectionCard(
                     title: AppStrings.t("app_theme"),
                     icon: Icons.palette_outlined,
@@ -211,8 +209,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     ],
                   ).animate().fadeIn(delay: 300.ms),
                   const SizedBox(height: 16),
-
-                  // --- Sección Idioma ---
                   _sectionCard(
                     title: AppStrings.t("language"),
                     icon: Icons.language,
@@ -220,7 +216,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     children: [
                       _SelectTile(
                         icon: Icons.language,
-                        label: "🇪🇸   Español",
+                        label: AppStrings.t("profile_language_spanish"),
                         selected: profile.language == "es",
                         onTap: () => ref
                             .read(profileProvider.notifier)
@@ -228,7 +224,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       ),
                       _SelectTile(
                         icon: Icons.language,
-                        label: "🇺🇸   English",
+                        label: AppStrings.t("profile_language_english"),
                         selected: profile.language == "en",
                         onTap: () => ref
                             .read(profileProvider.notifier)
@@ -245,7 +241,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     );
   }
 
-  // Widget para agrupar secciones en tarjetas estéticas
   Widget _sectionCard({
     required String title,
     required IconData icon,
@@ -273,9 +268,13 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               children: [
                 Icon(icon, color: const Color(0xFF2E7D32), size: 20),
                 const SizedBox(width: 8),
-                Text(title,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 15)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 8),
@@ -287,7 +286,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   }
 }
 
-// Widget personalizado para los items de selección (Tema/Idioma)
 class _SelectTile extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -303,7 +301,7 @@ class _SelectTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const primary = Color(0xFF2E7D32);
+    const primaryColor = Color(0xFF2E7D32);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
@@ -312,7 +310,7 @@ class _SelectTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
         decoration: BoxDecoration(
           color: selected
-              ? primary.withValues(alpha: 0.08)
+              ? primaryColor.withValues(alpha: 0.08)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
         ),
@@ -320,7 +318,7 @@ class _SelectTile extends StatelessWidget {
           children: [
             Icon(
               selected ? Icons.check_circle : Icons.circle_outlined,
-              color: selected ? primary : Colors.grey,
+              color: selected ? primaryColor : Colors.grey,
               size: 22,
             ),
             const SizedBox(width: 12),
@@ -330,7 +328,7 @@ class _SelectTile extends StatelessWidget {
               label,
               style: TextStyle(
                 fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-                color: selected ? primary : null,
+                color: selected ? primaryColor : null,
               ),
             ),
           ],

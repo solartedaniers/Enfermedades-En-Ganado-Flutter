@@ -1,4 +1,6 @@
 import 'package:hive/hive.dart';
+
+import '../../../../core/utils/app_strings.dart';
 import '../../domain/entities/animal_entity.dart';
 
 part 'animal_model.g.dart';
@@ -48,8 +50,10 @@ class AnimalModel {
     return AnimalModel(
       id: entity.id,
       userId: entity.userId,
-      name: entity.name.isEmpty ? 'Sin nombre' : entity.name,
-      breed: entity.breed.isEmpty ? 'Desconocida' : entity.breed,
+      name: entity.name.isEmpty ? AppStrings.t('animal_no_name') : entity.name,
+      breed: entity.breed.isEmpty
+          ? AppStrings.t('animal_unknown_breed')
+          : entity.breed,
       age: entity.age,
       ageLabel: entity.ageLabel,
       symptoms: entity.symptoms,
@@ -88,8 +92,8 @@ class AnimalModel {
     return AnimalModel(
       id: _safeString(json['id']) ?? '',
       userId: _safeString(json['user_id']) ?? '',
-      name: _safeString(json['name']) ?? 'Sin nombre',
-      breed: _safeString(json['breed']) ?? 'Desconocida',
+      name: _safeString(json['name']) ?? AppStrings.t('animal_no_name'),
+      breed: _safeString(json['breed']) ?? AppStrings.t('animal_unknown_breed'),
       age: ageValue,
       ageLabel: AnimalEntity.defaultAgeLabel(ageValue),
       symptoms: _safeString(json['symptoms']) ?? '',

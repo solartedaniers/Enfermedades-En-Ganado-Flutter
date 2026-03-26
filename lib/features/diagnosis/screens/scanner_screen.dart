@@ -90,8 +90,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   }
 
   Future<List<AnimalEntity>> _loadAnimals() async {
-    final repo = ref.read(animalRepositoryProvider);
-    final animals = await repo.getAnimals();
+    final animalRepository = ref.read(animalRepositoryProvider);
+    final animals = await animalRepository.getAnimals();
     if (_selectedAnimal == null && animals.isNotEmpty) {
       _selectedAnimal = animals.first;
       _prefillFromAnimal(_selectedAnimal!);
@@ -261,7 +261,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
 
   DiagnosisRequest _buildRequest({Uint8List? imageBytes}) {
     final animal = _selectedAnimal;
-    final user = Supabase.instance.client.auth.currentUser;
+    final currentUser = Supabase.instance.client.auth.currentUser;
     final normalizedTemperature =
         _temperatureController.text.trim().replaceAll(',', '.');
 
@@ -288,7 +288,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
 
     return DiagnosisRequest(
       animalId: animal.id,
-      userId: user?.id ?? animal.userId,
+      userId: currentUser?.id ?? animal.userId,
       animalName: animal.name,
       species: 'bovine',
       breed: animal.breed,
@@ -307,9 +307,9 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   Future<void> _saveDiagnosis() async {
     final animal = _selectedAnimal;
     final report = _report;
-    final user = Supabase.instance.client.auth.currentUser;
+    final currentUser = Supabase.instance.client.auth.currentUser;
 
-    if (animal == null || report == null || user == null) {
+    if (animal == null || report == null || currentUser == null) {
       return;
     }
 
@@ -340,14 +340,14 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
 
       await ref.read(animalRepositoryProvider).updateAnimal(updatedAnimal);
 
-      final repo = ref.read(medicalRepositoryProvider);
+      final medicalRepository = ref.read(medicalRepositoryProvider);
       final record = MedicalRecordModel.fromDiagnosisReport(
         id: const Uuid().v4(),
         animalId: animal.id,
-        userId: user.id,
+        userId: currentUser.id,
         report: report,
       );
-      await repo.addRecord(record);
+      await medicalRepository.addRecord(record);
 
       if (!mounted) return;
       setState(() {
