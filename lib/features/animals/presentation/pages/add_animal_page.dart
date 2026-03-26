@@ -59,8 +59,8 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
   final _picker           = ImagePicker();
 
   File?       _selectedImage;
-  String?     _selectedBreed;
-  _AgeOption? _selectedAge;
+  String?     _selectedBreedName;
+  _AgeOption? _selectedAgeOption;
   bool        _isLoading = false;
 
   @override
@@ -107,7 +107,7 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
     );
   }
 
-  void _showBreedPicker() {
+  void _showBreedSelector() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -136,15 +136,15 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
                   itemCount: _cattleBreeds.length,
                   itemBuilder: (_, i) {
                     final breed = _cattleBreeds[i];
-                    final sel   = breed == _selectedBreed;
+                    final isSelected = breed == _selectedBreedName;
                     return ListTile(
                       title: Text(breed),
-                      trailing: sel
+                      trailing: isSelected
                           ? const Icon(Icons.check_circle, color: Color(0xFF2E7D32))
                           : null,
-                      tileColor: sel ? const Color(0xFFE8F5E9) : null,
+                      tileColor: isSelected ? const Color(0xFFE8F5E9) : null,
                       onTap: () {
-                        setState(() => _selectedBreed = breed);
+                        setState(() => _selectedBreedName = breed);
                         Navigator.pop(context);
                       },
                     );
@@ -158,8 +158,8 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
     );
   }
 
-  void _showAgePicker() {
-    final opts = _buildAgeOptions(context);
+  void _showAgeSelector() {
+    final ageOptions = _buildAgeOptions(context);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -185,18 +185,19 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
               Expanded(
                 child: ListView.builder(
                   controller: sc,
-                  itemCount: opts.length,
+                  itemCount: ageOptions.length,
                   itemBuilder: (_, i) {
-                    final opt = opts[i];
-                    final sel = opt.months == _selectedAge?.months;
+                    final ageOption = ageOptions[i];
+                    final isSelected =
+                        ageOption.months == _selectedAgeOption?.months;
                     return ListTile(
-                      title: Text(opt.label),
-                      trailing: sel
+                      title: Text(ageOption.label),
+                      trailing: isSelected
                           ? const Icon(Icons.check_circle, color: Color(0xFF2E7D32))
                           : null,
-                      tileColor: sel ? const Color(0xFFE8F5E9) : null,
+                      tileColor: isSelected ? const Color(0xFFE8F5E9) : null,
                       onTap: () {
-                        setState(() => _selectedAge = opt);
+                        setState(() => _selectedAgeOption = ageOption);
                         Navigator.pop(context);
                       },
                     );
@@ -213,7 +214,7 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
   // ── MÉTODO SUBMIT ACTUALIZADO Y BLINDADO ──────────────────────────────────
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedBreed == null || _selectedAge == null) {
+    if (_selectedBreedName == null || _selectedAgeOption == null) {
       _showSnack(AppStrings.t("required_field"));
       return;
     }
@@ -241,9 +242,9 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
         id: const Uuid().v4(),
         userId: user.id,
         name: _nameController.text.trim(),
-        breed: _selectedBreed!,
-        age: _selectedAge!.months,
-        ageLabel: _selectedAge!.label,
+        breed: _selectedBreedName!,
+        age: _selectedAgeOption!.months,
+        ageLabel: _selectedAgeOption!.label,
         symptoms: '', // Nunca nulo
         weight: weight,
         temperature: null,
@@ -355,18 +356,18 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
               // Raza
               _buildSelector(
                 label: "${AppStrings.t("breed")} *",
-                value: _selectedBreed,
+                value: _selectedBreedName,
                 icon:  Icons.category_outlined,
-                onTap: _showBreedPicker,
+                onTap: _showBreedSelector,
               ),
               const SizedBox(height: 14),
 
               // Edad
               _buildSelector(
                 label: "${AppStrings.t("age")} *",
-                value: _selectedAge?.label,
+                value: _selectedAgeOption?.label,
                 icon:  Icons.cake_outlined,
-                onTap: _showAgePicker,
+                onTap: _showAgeSelector,
               ),
               const SizedBox(height: 14),
 
