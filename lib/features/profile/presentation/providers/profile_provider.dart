@@ -37,7 +37,7 @@ class ProfileState {
   }
 
   factory ProfileState.empty() => ProfileState(
-        name: "Usuario",
+        name: AppStrings.t('default_username'),
         language: "es",
         themeMode: ThemeMode.system,
         avatarUrl: null,
@@ -71,8 +71,8 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
 
   Future<void> _loadFromSupabase() async {
     try {
-      final user = _supabase.auth.currentUser;
-      if (user == null) {
+      final currentUser = _supabase.auth.currentUser;
+      if (currentUser == null) {
         await AppStrings.load('es');
         state = ProfileState.empty();
         return;
@@ -81,13 +81,13 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       final data = await _supabase
           .from('profiles')
           .select('username, avatar_url, language, theme')
-          .eq('id', user.id)
+          .eq('id', currentUser.id)
           .maybeSingle();
 
       if (data == null) {
-        final meta = user.userMetadata;
+        final meta = currentUser.userMetadata;
         final name =
-            (meta?['username'] as String?) ?? 'Usuario';
+            (meta?['username'] as String?) ?? AppStrings.t('default_username');
         await AppStrings.load('es');
         state = ProfileState(
           name: name,
@@ -101,14 +101,15 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
 
       final lang = (data['language'] as String?) ?? 'es';
       final theme = (data['theme'] as String?) ?? 'system';
-      final name = (data['username'] as String?) ?? 'Usuario';
+      final name =
+          (data['username'] as String?) ?? AppStrings.t('default_username');
       final avatar = data['avatar_url'] as String?;
 
       await AppStrings.load(lang);
 
       // Guarda sesión offline
       await OfflineAuthService.saveSession(
-        userId: user.id,
+        userId: currentUser.id,
         userName: name,
         avatarUrl: avatar,
         language: lang,
@@ -132,9 +133,9 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
 
   Future<void> _saveToSupabase(Map<String, dynamic> data) async {
     try {
-      final user = _supabase.auth.currentUser;
-      if (user == null) return;
-      await _supabase.from('profiles').update(data).eq('id', user.id);
+      final currentUser = _supabase.auth.currentUser;
+      if (currentUser == null) return;
+      await _supabase.from('profiles').update(data).eq('id', currentUser.id);
     } catch (_) {}
   }
 

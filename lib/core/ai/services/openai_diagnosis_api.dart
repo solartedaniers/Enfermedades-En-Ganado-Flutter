@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:io';
 
+import '../../utils/app_strings.dart';
 import '../models/diagnosis_request.dart';
 import '../models/diagnosis_response.dart';
 
@@ -231,7 +232,7 @@ Notas:
       }
     }
 
-    throw Exception('La IA no devolvió texto de salida.');
+    throw Exception(AppStrings.t('diagnosis_remote_no_output'));
   }
 
   List<DiagnosisFinding> _parseFindings(List<dynamic>? rawFindings) {
