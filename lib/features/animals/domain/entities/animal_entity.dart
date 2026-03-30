@@ -3,7 +3,7 @@ class AnimalEntity {
   final String userId;
   final String name;
   final String breed;
-  final int age; 
+  final int age;
   final String ageLabel;
   final double? weight;
   final double? temperature;
@@ -28,14 +28,5 @@ class AnimalEntity {
     this.imageUrl,
     this.profileImageUrl,
   })  : symptoms = symptoms ?? '',
-        ageLabel = ageLabel ?? defaultAgeLabel(age);
-
-  static String defaultAgeLabel(int months) {
-    if (months < 1) return 'Recién nacido';
-    if (months < 12) {
-      return months == 1 ? '1 mes' : '$months meses';
-    }
-    final years = months ~/ 12;
-    return years == 1 ? '1 año' : '$years años';
-  }
+        ageLabel = ageLabel ?? '';
 }

@@ -11,8 +11,8 @@ import '../../../../core/services/connectivity_service.dart';
 import '../../../../core/utils/app_strings.dart';
 
 // --- Animales ---
-import '../../../animals/data/datasources/animal_remote_datasource.dart';
-import '../../../animals/data/models/animal_model.dart';
+import '../../../animals/domain/entities/animal_entity.dart';
+import '../../../animals/presentation/providers/animal_provider.dart';
 
 // --- Notificaciones ---
 import '../../data/datasources/notification_remote_datasource.dart';
@@ -29,7 +29,7 @@ class NotificationsPage extends ConsumerStatefulWidget {
 class _NotificationsPageState extends ConsumerState<NotificationsPage> {
   final _notificationDataSource = NotificationRemoteDataSource();
   List<NotificationEntity> _notifications = [];
-  List<AnimalModel> _animals = [];
+  List<AnimalEntity> _animals = [];
   bool _isLoading = true;
 
   @override
@@ -44,7 +44,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
     
     try {
       final notifications = await _notificationDataSource.getNotifications();
-      final animals = await AnimalRemoteDataSource().getAnimals();
+      final animals = await ref.read(animalRepositoryProvider).getAnimals();
       
       if (mounted) {
         setState(() {
@@ -76,7 +76,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
 
     final titleCtrl = TextEditingController();
     final messageCtrl = TextEditingController();
-    AnimalModel? selectedAnimal;
+    AnimalEntity? selectedAnimal;
     DateTime? selectedDate;
 
     await showModalBottomSheet(
@@ -116,7 +116,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
               ),
               const SizedBox(height: 16),
 
-              DropdownButtonFormField<AnimalModel>(
+              DropdownButtonFormField<AnimalEntity>(
                 decoration: InputDecoration(
                   labelText: AppStrings.t("notification_animal"),
                   border: const OutlineInputBorder(),
@@ -235,21 +235,21 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
   }
 
   Future<void> _saveNotification({
-    required AnimalModel animal,
+    required AnimalEntity animal,
     required String title,
     required String message,
     required DateTime scheduledAt,
   }) async {
     try {
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user == null) return;
+      final userId = ref.read(currentUserIdProvider);
+      if (userId == null) return;
 
       final id = const Uuid().v4();
       final notifId = Random().nextInt(100000);
 
       final model = NotificationModel(
         id: id,
-        userId: user.id,
+        userId: userId,
         animalId: animal.id,
         animalName: animal.name,
         title: title,

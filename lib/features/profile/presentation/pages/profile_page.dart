@@ -7,8 +7,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/services/connectivity_service.dart';
-import '../../../../core/services/storage_service.dart';
 import '../../../../core/utils/app_strings.dart';
+import '../../../animals/presentation/providers/animal_provider.dart';
 import '../providers/profile_provider.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
@@ -55,8 +55,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       final currentUser = Supabase.instance.client.auth.currentUser;
       if (currentUser == null) return;
 
-      final avatarUrl = await StorageService()
-          .uploadUserAvatar(File(pickedImage.path), currentUser.id);
+      final storageService = ref.read(storageServiceProvider);
+      final avatarUrl = await storageService.uploadUserAvatar(
+        File(pickedImage.path),
+        currentUser.id,
+      );
 
       ref.read(profileProvider.notifier).changeAvatar(avatarUrl);
     } catch (e) {

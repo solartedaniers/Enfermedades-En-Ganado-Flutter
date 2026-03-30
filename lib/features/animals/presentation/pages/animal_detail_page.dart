@@ -1,49 +1,25 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../core/services/storage_service.dart';
+
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_strings.dart';
-import '../../domain/entities/animal_entity.dart';
-import '../providers/animal_provider.dart';
 import '../../../medical/presentation/pages/medical_history_page.dart';
+import '../../domain/constants/animal_constants.dart';
+import '../../domain/entities/animal_entity.dart';
+import '../../shared/age_label_formatter.dart';
+import '../providers/animal_provider.dart';
 
-// ── Razas (misma lista que add_animal_page) ────────────────────────────────
-const List<String> _cattleBreeds = [
-  'Aberdeen Angus', 'Beefmaster', 'Belgian Blue', "Blonde d'Aquitaine",
-  'Bonsmara', 'Brahman', 'Brangus', 'Brown Swiss', 'Charolais', 'Chianina',
-  'Criollo', 'Devon', 'Droughtmaster', 'Fleckvieh', 'Gelbvieh', 'Gir',
-  'Guzerá', 'Hereford', 'Holstein Friesian', 'Jersey', 'Limousin', 'Longhorn',
-  'Maine-Anjou', 'Marchigiana', 'Montbéliarde', 'Murray Grey', 'Nelore',
-  'Normande', 'Piedmontese', 'Pinzgauer', 'Red Angus', 'Red Poll',
-  'Romosinuano', 'Sahiwal', 'Salorn', 'Santa Gertrudis', 'Senepol',
-  'Shorthorn', 'Simmental', 'Taurus', 'Zebu (Cebú)',
-];
-
-// ── Opciones de edad ───────────────────────────────────────────────────────
-class _AgeOption {
-  final String label;
-  final int months;
-  const _AgeOption({required this.label, required this.months});
-}
-
-List<_AgeOption> _buildAgeOptions() {
-  return [
-    for (int m = 1; m <= 11; m++)
-      _AgeOption(label: AnimalEntity.defaultAgeLabel(m), months: m),
-    for (int y = 1; y <= 25; y++)
-      _AgeOption(
-          label: AnimalEntity.defaultAgeLabel(y * 12), months: y * 12),
-  ];
-}
-
-// ── Página de detalle ──────────────────────────────────────────────────────
 class AnimalDetailPage extends ConsumerStatefulWidget {
   final AnimalEntity animal;
 
-  const AnimalDetailPage({super.key, required this.animal});
+  const AnimalDetailPage({
+    super.key,
+    required this.animal,
+  });
 
   @override
   ConsumerState<AnimalDetailPage> createState() => _AnimalDetailPageState();
@@ -57,13 +33,11 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
   late TextEditingController _nameController;
   late TextEditingController _weightController;
   String? _selectedBreedName;
-  _AgeOption? _selectedAgeOption;
+  AnimalAgeOption? _selectedAgeOption;
 
-  /// Imagen nueva seleccionada — se sube al guardar
   File? _newImage;
 
   final _picker = ImagePicker();
-  final _storageService = StorageService();
 
   @override
   void initState() {
@@ -75,14 +49,21 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
   void _resetEditState() {
     _nameController = TextEditingController(text: _currentAnimal.name);
     _weightController = TextEditingController(
-        text: _currentAnimal.weight != null ? '${_currentAnimal.weight}' : '');
+      text: _currentAnimal.weight != null ? '${_currentAnimal.weight}' : '',
+    );
     _selectedBreedName = _currentAnimal.breed;
-    final ageOptions = _buildAgeOptions();
+
+    final ageOptions = AgeLabelFormatter.buildAgeOptions();
     _selectedAgeOption = ageOptions.firstWhere(
       (ageOption) => ageOption.months == _currentAnimal.age,
-      orElse: () =>
-          _AgeOption(label: _currentAnimal.ageLabel, months: _currentAnimal.age),
+      orElse: () => AnimalAgeOption(
+        label: _currentAnimal.ageLabel.isNotEmpty
+            ? _currentAnimal.ageLabel
+            : AgeLabelFormatter.format(_currentAnimal.age),
+        months: _currentAnimal.age,
+      ),
     );
+
     _newImage = null;
   }
 
@@ -93,25 +74,27 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
     super.dispose();
   }
 
-  // ── Navegar al home ────────────────────────────────────────────────────
-  void _goHome() =>
-      Navigator.of(context).popUntil((route) => route.isFirst);
+  void _goHome() {
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  }
 
-  // ── Picker de imagen (funciona tanto en vista como en edición) ─────────
   Future<void> _pickImage(ImageSource source) async {
     final picked = await _picker.pickImage(source: source, imageQuality: 80);
-    if (picked != null) setState(() => _newImage = File(picked.path));
+    if (picked != null) {
+      setState(() => _newImage = File(picked.path));
+    }
   }
 
   void _showImageSourceDialog() {
+    final appColors = context.appColors;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (_) => Container(
         decoration: BoxDecoration(
           color: Theme.of(context).scaffoldBackgroundColor,
-          borderRadius:
-              const BorderRadius.vertical(top: Radius.circular(20)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: SafeArea(
           child: Column(
@@ -119,8 +102,7 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
             children: [
               _handle(),
               ListTile(
-                leading: const Icon(Icons.camera_alt,
-                    color: Color(0xFF2E7D32)),
+                leading: Icon(Icons.camera_alt, color: appColors.chipForeground),
                 title: Text(AppStrings.t('take_photo')),
                 onTap: () {
                   Navigator.pop(context);
@@ -128,8 +110,8 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.photo_library,
-                    color: Color(0xFF2E7D32)),
+                leading:
+                    Icon(Icons.photo_library, color: appColors.chipForeground),
                 title: Text(AppStrings.t('choose_gallery')),
                 onTap: () {
                   Navigator.pop(context);
@@ -144,8 +126,9 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
     );
   }
 
-  // ── Selector de raza ───────────────────────────────────────────────────
   void _showBreedSelector() {
+    final appColors = context.appColors;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -155,18 +138,16 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
         minChildSize: 0.4,
         maxChildSize: 0.9,
         expand: false,
-        builder: (_, sc) => Container(
+        builder: (_, scrollController) => Container(
           decoration: BoxDecoration(
             color: Theme.of(context).scaffoldBackgroundColor,
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(
             children: [
               _handle(),
               Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 20, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 child: Text(
                   AppStrings.t('select_breed'),
                   style: Theme.of(context)
@@ -178,18 +159,17 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
               const Divider(height: 1),
               Expanded(
                 child: ListView.builder(
-                  controller: sc,
-                  itemCount: _cattleBreeds.length,
-                  itemBuilder: (_, i) {
-                    final breed = _cattleBreeds[i];
+                  controller: scrollController,
+                  itemCount: AnimalConstants.cattleBreeds.length,
+                  itemBuilder: (_, index) {
+                    final breed = AnimalConstants.cattleBreeds[index];
                     final isSelected = breed == _selectedBreedName;
                     return ListTile(
                       title: Text(breed),
                       trailing: isSelected
-                          ? const Icon(Icons.check_circle,
-                              color: Color(0xFF2E7D32))
+                          ? Icon(Icons.check_circle, color: appColors.chipForeground)
                           : null,
-                      tileColor: isSelected ? const Color(0xFFE8F5E9) : null,
+                      tileColor: isSelected ? appColors.selectionBackground : null,
                       onTap: () {
                         setState(() => _selectedBreedName = breed);
                         Navigator.pop(context);
@@ -205,9 +185,9 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
     );
   }
 
-  // ── Selector de edad ───────────────────────────────────────────────────
   void _showAgeSelector() {
-    final ageOptions = _buildAgeOptions();
+    final ageOptions = AgeLabelFormatter.buildAgeOptions();
+    final appColors = context.appColors;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -217,18 +197,16 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
         minChildSize: 0.35,
         maxChildSize: 0.85,
         expand: false,
-        builder: (_, sc) => Container(
+        builder: (_, scrollController) => Container(
           decoration: BoxDecoration(
             color: Theme.of(context).scaffoldBackgroundColor,
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(
             children: [
               _handle(),
               Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 20, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 child: Text(
                   AppStrings.t('select_age'),
                   style: Theme.of(context)
@@ -240,19 +218,18 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
               const Divider(height: 1),
               Expanded(
                 child: ListView.builder(
-                  controller: sc,
+                  controller: scrollController,
                   itemCount: ageOptions.length,
-                  itemBuilder: (_, i) {
-                    final ageOption = ageOptions[i];
+                  itemBuilder: (_, index) {
+                    final ageOption = ageOptions[index];
                     final isSelected =
                         ageOption.months == _selectedAgeOption?.months;
                     return ListTile(
                       title: Text(ageOption.label),
                       trailing: isSelected
-                          ? const Icon(Icons.check_circle,
-                              color: Color(0xFF2E7D32))
+                          ? Icon(Icons.check_circle, color: appColors.chipForeground)
                           : null,
-                      tileColor: isSelected ? const Color(0xFFE8F5E9) : null,
+                      tileColor: isSelected ? appColors.selectionBackground : null,
                       onTap: () {
                         setState(() => _selectedAgeOption = ageOption);
                         Navigator.pop(context);
@@ -268,29 +245,18 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
     );
   }
 
-  // ── Guardar edición ────────────────────────────────────────────────────
   Future<void> _saveEdit() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
       _snack(AppStrings.t('required_field'));
       return;
     }
+
     setState(() => _isSaving = true);
 
     try {
       final weightText = _weightController.text.trim().replaceAll(',', '.');
-      final double? weight =
-          weightText.isNotEmpty ? double.tryParse(weightText) : null;
-
-      // Sube la imagen nueva directamente a Supabase si la hay
-      String? uploadedProfileImageUrl = _currentAnimal.profileImageUrl;
-      if (_newImage != null) {
-        final user = Supabase.instance.client.auth.currentUser;
-        if (user != null) {
-          uploadedProfileImageUrl =
-              await _storageService.uploadAnimalImage(_newImage!, user.id);
-        }
-      }
+      final weight = weightText.isNotEmpty ? double.tryParse(weightText) : null;
 
       final updatedAnimal = AnimalEntity(
         id: _currentAnimal.id,
@@ -303,22 +269,15 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
         weight: weight,
         temperature: _currentAnimal.temperature,
         imageUrl: _currentAnimal.imageUrl,
-        profileImageUrl: uploadedProfileImageUrl,
+        profileImageUrl: _currentAnimal.profileImageUrl,
         createdAt: _currentAnimal.createdAt,
         updatedAt: DateTime.now(),
       );
 
-      // Actualiza en Supabase y Hive
-      await ref.read(animalRepositoryProvider).updateAnimal(updatedAnimal);
-
-      // También actualiza profile_image_url directamente en Supabase
-      // para que otros dispositivos lo vean inmediatamente
-      if (_newImage != null && uploadedProfileImageUrl != null) {
-        await Supabase.instance.client
-            .from('animals')
-            .update({'profile_image_url': uploadedProfileImageUrl})
-            .eq('id', _currentAnimal.id);
-      }
+      await ref.read(animalRepositoryProvider).updateAnimal(
+            updatedAnimal,
+            localImagePath: _newImage?.path,
+          );
 
       if (!mounted) return;
 
@@ -326,37 +285,34 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
         _currentAnimal = updatedAnimal;
         _isEditing = false;
         _isSaving = false;
-        _newImage = null;
       });
-      _resetEditState();
-      ref.invalidate(animalRepositoryProvider);
+      ref.invalidate(animalsListProvider);
       _snack(AppStrings.t('saved_ok'));
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSaving = false);
-      _snack('${AppStrings.t("save_error")}: $e');
+      _snack('${AppStrings.t('save_error')}: $e');
     }
   }
 
-  // ── Eliminar animal ────────────────────────────────────────────────────
   Future<void> _confirmDelete() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(AppStrings.t('delete_animal'),
-            style: const TextStyle(fontWeight: FontWeight.bold)),
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          AppStrings.t('delete_animal'),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         content: Text(AppStrings.t('delete_animal_confirm')),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: Text(AppStrings.t('cancel')),
           ),
           ElevatedButton(
-            style:
-                ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(dialogContext, true),
             child: Text(AppStrings.t('delete')),
           ),
         ],
@@ -367,40 +323,46 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
 
     try {
       await ref.read(animalRepositoryProvider).deleteAnimal(_currentAnimal.id);
-      ref.invalidate(animalRepositoryProvider);
+      ref.invalidate(animalsListProvider);
       if (mounted) {
         _snack(AppStrings.t('animal_deleted'));
         Navigator.pop(context);
       }
-    } catch (e) {
-      if (mounted) _snack(AppStrings.t('delete_error'));
+    } catch (_) {
+      if (mounted) {
+        _snack(AppStrings.t('delete_error'));
+      }
     }
   }
 
-  void _snack(String msg) => ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(msg)));
+  void _snack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
 
-  Widget _handle() => Container(
-        width: 40,
-        height: 4,
-        margin: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-            color: Colors.grey.shade300,
-            borderRadius: BorderRadius.circular(2)),
-      );
+  Widget _handle() {
+    return Container(
+      width: 40,
+      height: 4,
+      margin: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade300,
+        borderRadius: BorderRadius.circular(2),
+      ),
+    );
+  }
 
-  // ── BUILD ──────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing
-            ? AppStrings.t('edit_animal')
-            : _currentAnimal.name),
+        title: Text(
+          _isEditing ? AppStrings.t('edit_animal') : _currentAnimal.name,
+        ),
         actions: [
-          // Icono de casa — siempre visible
           IconButton(
             icon: const Icon(Icons.home_outlined),
             tooltip: AppStrings.t('go_home'),
@@ -413,8 +375,7 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
               onPressed: () => setState(() => _isEditing = true),
             ),
             IconButton(
-              icon: const Icon(Icons.delete_outline,
-                  color: Colors.redAccent),
+              icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
               tooltip: AppStrings.t('delete_animal'),
               onPressed: _confirmDelete,
             ),
@@ -424,13 +385,14 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
                 _isEditing = false;
                 _resetEditState();
               }),
-              child: Text(AppStrings.t('cancel'),
-                  style: const TextStyle(color: Colors.white)),
+              child: Text(
+                AppStrings.t('cancel'),
+                style: const TextStyle(color: Colors.white),
+              ),
             ),
           ],
         ],
       ),
-
       floatingActionButton: _isEditing
           ? FloatingActionButton.extended(
               onPressed: _isSaving ? null : _saveEdit,
@@ -439,43 +401,39 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(
-                          color: Colors.white, strokeWidth: 2))
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
                   : const Icon(Icons.save_outlined),
               label: Text(AppStrings.t('save_changes')),
             )
           : null,
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Foto de perfil ─────────────────────────────────────
-            // GestureDetector siempre activo — funciona en vista y edición
             _buildProfileImage(isDark),
             const SizedBox(height: 20),
-
-            if (_isEditing)
-              _buildEditForm()
-            else
-              _buildViewMode(),
+            if (_isEditing) _buildEditForm() else _buildViewMode(),
           ],
         ),
       ),
     );
   }
 
-  // ── Foto de perfil ─────────────────────────────────────────────────────
   Widget _buildProfileImage(bool isDark) {
-    // Determina qué imagen mostrar
     Widget imageContent;
     if (_newImage != null) {
-      // Imagen recién seleccionada (antes de guardar)
-      imageContent = Image.file(_newImage!,
-          width: double.infinity, height: 220, fit: BoxFit.cover);
+      imageContent = Image.file(
+        _newImage!,
+        width: double.infinity,
+        height: 220,
+        fit: BoxFit.cover,
+      );
     } else if (_currentAnimal.profileImageUrl != null &&
         _currentAnimal.profileImageUrl!.isNotEmpty) {
-      // Imagen guardada en Supabase
       imageContent = Image.network(
         _currentAnimal.profileImageUrl!,
         width: double.infinity,
@@ -487,18 +445,14 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
       imageContent = _defaultImageAsset();
     }
 
-    // Overlay diferente según modo
     final overlayColor = _isEditing
         ? Colors.black.withValues(alpha: 0.40)
         : Colors.black.withValues(alpha: 0.28);
-
     final overlayIcon =
         _isEditing ? Icons.camera_alt : Icons.add_a_photo_outlined;
-    final overlayText = _isEditing
-        ? AppStrings.t('change_photo')
-        : AppStrings.t('add_photo');
+    final overlayText =
+        _isEditing ? AppStrings.t('change_photo') : AppStrings.t('add_photo');
 
-    // La foto SIEMPRE es tappable para cambiarla
     return GestureDetector(
       onTap: _showImageSourceDialog,
       child: Stack(
@@ -507,7 +461,6 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
             borderRadius: BorderRadius.circular(16),
             child: imageContent,
           ),
-          // Overlay con icono — visible siempre para indicar que es tappable
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -521,8 +474,7 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
                   const SizedBox(height: 6),
                   Text(
                     overlayText,
-                    style: const TextStyle(
-                        color: Colors.white, fontSize: 13),
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
                   ),
                 ],
               ),
@@ -533,41 +485,46 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
     );
   }
 
-  Widget _defaultImageAsset() => ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Image.asset(
-          AppStrings.t('animal_default_image'),
-          width: double.infinity,
-          height: 220,
-          fit: BoxFit.cover,
-        ),
-      );
+  Widget _defaultImageAsset() {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Image.asset(
+        AppStrings.t('animal_default_image'),
+        width: double.infinity,
+        height: 220,
+        fit: BoxFit.cover,
+      ),
+    );
+  }
 
-  // ── Modo VISTA ─────────────────────────────────────────────────────────
   Widget _buildViewMode() {
     final weightText = _currentAnimal.weight != null
-        ? '${_currentAnimal.weight} ${AppStrings.t("kg")}'
+        ? '${_currentAnimal.weight} ${AppStrings.t('kg')}'
         : AppStrings.t('weight_no_data');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _infoRow(Icons.pets, AppStrings.t('breed_label'),
-            _currentAnimal.breed),
+        _infoRow(Icons.pets, AppStrings.t('breed_label'), _currentAnimal.breed),
         _infoRow(
           Icons.cake,
           AppStrings.t('age_label'),
           _currentAnimal.ageLabel.isNotEmpty
               ? _currentAnimal.ageLabel
-              : AnimalEntity.defaultAgeLabel(_currentAnimal.age),
+              : AgeLabelFormatter.format(_currentAnimal.age),
         ),
-        _infoRow(Icons.monitor_weight_outlined,
-            AppStrings.t('weight_label'), weightText),
+        _infoRow(
+          Icons.monitor_weight_outlined,
+          AppStrings.t('weight_label'),
+          weightText,
+        ),
         if (_currentAnimal.temperature != null)
-          _infoRow(Icons.thermostat, AppStrings.t('temperature_label'),
-              '${_currentAnimal.temperature} °C'),
+          _infoRow(
+            Icons.thermostat,
+            AppStrings.t('temperature_label'),
+            '${_currentAnimal.temperature} °C',
+          ),
         const SizedBox(height: 24),
-
         SizedBox(
           width: double.infinity,
           height: 50,
@@ -575,16 +532,13 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
             icon: const Icon(Icons.medical_services),
             label: Text(AppStrings.t('view_medical_history')),
             onPressed: () async {
-              // Esperamos el resultado: MedicalHistoryPage puede devolver
-              // un AnimalEntity actualizado si se cambió la foto desde ahí.
               final updated = await Navigator.push<AnimalEntity>(
                 context,
                 MaterialPageRoute(
-                  builder: (_) =>
-                      MedicalHistoryPage(animal: _currentAnimal),
+                  builder: (_) => MedicalHistoryPage(animal: _currentAnimal),
                 ),
               );
-              // Si el historial clínico actualizó la foto, la reflejamos aquí
+
               if (updated != null && mounted) {
                 setState(() => _currentAnimal = updated);
               }
@@ -596,28 +550,34 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
   }
 
   Widget _infoRow(IconData icon, String label, String value) {
+    final appColors = context.appColors;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: const Color(0xFF2E7D32), size: 20),
+          Icon(icon, color: appColors.chipForeground, size: 20),
           const SizedBox(width: 10),
-          Text('$label: ',
-              style: const TextStyle(
-                  fontWeight: FontWeight.bold, fontSize: 15)),
+          Text(
+            '$label: ',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          ),
           Expanded(
-            child: Text(value,
-                style: const TextStyle(fontSize: 15),
-                overflow: TextOverflow.visible),
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 15),
+              overflow: TextOverflow.visible,
+            ),
           ),
         ],
       ),
     );
   }
 
-  // ── Modo EDICIÓN ───────────────────────────────────────────────────────
   Widget _buildEditForm() {
+    final appColors = context.appColors;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -625,16 +585,15 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
           controller: _nameController,
           inputFormatters: [
             FilteringTextInputFormatter.allow(
-                RegExp(r'[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9 ]')),
+              RegExp(r'[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9 ]'),
+            ),
           ],
           decoration: InputDecoration(
-            labelText: '${AppStrings.t("name")} *',
-            prefixIcon:
-                const Icon(Icons.pets, color: Color(0xFF2E7D32)),
+            labelText: '${AppStrings.t('name')} *',
+            prefixIcon: Icon(Icons.pets, color: appColors.chipForeground),
           ),
         ),
         const SizedBox(height: 14),
-
         _selectorField(
           label: AppStrings.t('breed_label'),
           selectedValue: _selectedBreedName,
@@ -642,7 +601,6 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
           onTap: _showBreedSelector,
         ),
         const SizedBox(height: 14),
-
         _selectorField(
           label: AppStrings.t('age_label'),
           selectedValue: _selectedAgeOption?.label,
@@ -650,20 +608,19 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
           onTap: _showAgeSelector,
         ),
         const SizedBox(height: 14),
-
         TextFormField(
           controller: _weightController,
-          keyboardType:
-              const TextInputType.numberWithOptions(decimal: true),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
           inputFormatters: [
             FilteringTextInputFormatter.allow(RegExp(r'[\d.,]')),
           ],
           decoration: InputDecoration(
-            labelText:
-                '${AppStrings.t("weight")} — ${AppStrings.t("optional")}',
+            labelText: '${AppStrings.t('weight')} — ${AppStrings.t('optional')}',
             hintText: AppStrings.t('weight_hint'),
-            prefixIcon: const Icon(Icons.monitor_weight_outlined,
-                color: Color(0xFF2E7D32)),
+            prefixIcon: Icon(
+              Icons.monitor_weight_outlined,
+              color: appColors.chipForeground,
+            ),
             suffixText: AppStrings.t('kg'),
           ),
         ),
@@ -678,18 +635,19 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
     required IconData icon,
     required VoidCallback onTap,
   }) {
+    final appColors = context.appColors;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
         decoration: BoxDecoration(
           border: Border.all(color: Colors.grey.shade400),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           children: [
-            Icon(icon, color: const Color(0xFF2E7D32)),
+            Icon(icon, color: appColors.chipForeground),
             const SizedBox(width: 12),
             Expanded(
               child: Text(

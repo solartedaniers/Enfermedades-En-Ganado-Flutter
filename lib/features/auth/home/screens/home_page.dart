@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/network/network_provider.dart';
 import '../../../animals/data/services/animal_sync_service.dart';
 import '../../../animals/presentation/pages/add_animal_page.dart';
 import '../../../animals/presentation/pages/animals_page.dart';
+import '../../../animals/presentation/providers/animal_provider.dart';
 import '../../../diagnosis/screens/scanner_screen.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
 import '../../../profile/presentation/pages/profile_page.dart';
@@ -26,7 +28,10 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   void initState() {
     super.initState();
-    syncService = AnimalSyncService(ref);
+    syncService = AnimalSyncService(
+      animalRepository: ref.read(animalRepositoryProvider),
+      networkInfo: ref.read(networkInfoProvider),
+    );
     syncService?.start();
   }
 

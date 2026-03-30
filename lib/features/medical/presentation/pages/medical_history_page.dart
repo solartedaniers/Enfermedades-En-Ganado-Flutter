@@ -4,11 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
-import '../../../../core/services/storage_service.dart';
 import '../../../../core/services/connectivity_service.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../../../animals/domain/entities/animal_entity.dart';
 import '../../../animals/presentation/providers/animal_provider.dart';
+import '../../../animals/shared/age_label_formatter.dart';
 import '../providers/medical_provider.dart';
 import '../../data/models/medical_record_model.dart';
 
@@ -23,7 +24,6 @@ class MedicalHistoryPage extends ConsumerStatefulWidget {
 }
 
 class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
-  final _storageService = StorageService();
   final _picker = ImagePicker();
   late AnimalEntity _animal;
 
@@ -39,6 +39,8 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
 
   // ── Cambiar foto de perfil ─────────────────────────────────────────────
   Future<void> _pickProfileImage() async {
+    final appColors = context.appColors;
+
     final isOnline = await ConnectivityService.checkAndNotify(
       context,
       message: AppStrings.t('medical_need_internet_change_photo'),
@@ -68,14 +70,13 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
                     borderRadius: BorderRadius.circular(2)),
               ),
               ListTile(
-                leading: const Icon(Icons.camera_alt,
-                    color: Color(0xFF2E7D32)),
+                leading: Icon(Icons.camera_alt, color: appColors.chipForeground),
                 title: Text(AppStrings.t('take_photo')),
                 onTap: () => Navigator.pop(context, ImageSource.camera),
               ),
               ListTile(
-                leading: const Icon(Icons.photo_library,
-                    color: Color(0xFF2E7D32)),
+                leading:
+                    Icon(Icons.photo_library, color: appColors.chipForeground),
                 title: Text(AppStrings.t('choose_gallery')),
                 onTap: () => Navigator.pop(context, ImageSource.gallery),
               ),
@@ -96,7 +97,8 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
       final user = Supabase.instance.client.auth.currentUser;
       if (user == null) return;
 
-      final url = await _storageService.uploadAnimalImage(
+      final storageService = ref.read(storageServiceProvider);
+      final url = await storageService.uploadAnimalImage(
           File(picked.path), user.id);
 
       // Actualiza en Supabase inmediatamente
@@ -262,7 +264,8 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
 
       String? imageUrl;
       if (imageFile != null) {
-        imageUrl = await _storageService.uploadAnimalImage(
+        final storageService = ref.read(storageServiceProvider);
+        imageUrl = await storageService.uploadAnimalImage(
             imageFile, user.id);
       }
 
@@ -394,6 +397,7 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
   // ── BUILD ──────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final appColors = context.appColors;
     final repo = ref.watch(medicalRepositoryProvider);
 
     return PopScope(
@@ -425,9 +429,9 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFF2E7D32), Color(0xFF66BB6A)],
+                  colors: [appColors.medicalHeaderStart, appColors.medicalHeaderEnd],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -462,8 +466,11 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
                               color: Colors.white,
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.camera_alt,
-                                size: 14, color: Color(0xFF2E7D32)),
+                            child: Icon(
+                              Icons.camera_alt,
+                              size: 14,
+                              color: appColors.chipForeground,
+                            ),
                           ),
                         ),
                       ],
@@ -494,8 +501,7 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
                         Text(
                           _animal.ageLabel.isNotEmpty
                               ? _animal.ageLabel
-                              : AnimalEntity.defaultAgeLabel(
-                                  _animal.age),
+                              : AgeLabelFormatter.format(_animal.age),
                           style: const TextStyle(
                               color: Colors.white70, fontSize: 13),
                         ),

@@ -3,8 +3,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 class StorageService {
-  final _supabase = Supabase.instance.client;
+  final SupabaseClient _supabase;
   final _uuid = const Uuid();
+
+  StorageService(this._supabase);
 
   // Fotos de animales y registros médicos → bucket 'animals'
   Future<String> uploadAnimalImage(File file, String userId) async {

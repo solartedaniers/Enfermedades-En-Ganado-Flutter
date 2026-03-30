@@ -1,11 +1,10 @@
 import 'package:hive/hive.dart';
+import '../../domain/constants/animal_constants.dart';
 import '../models/animal_model.dart';
 
 class AnimalLocalDataSource {
-  static const String boxName = 'animals_box';
-
   Future<Box<AnimalModel>> _openBox() async {
-    return await Hive.openBox<AnimalModel>(boxName);
+    return await Hive.openBox<AnimalModel>(AnimalConstants.localBoxName);
   }
 
   Future<void> saveAnimal(AnimalModel animal) async {

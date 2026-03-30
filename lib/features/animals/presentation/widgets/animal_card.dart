@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../../domain/entities/animal_entity.dart';
+import '../../shared/age_label_formatter.dart';
 
 class AnimalCard extends StatelessWidget {
   final AnimalEntity animalData;
@@ -16,13 +18,15 @@ class AnimalCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final appColors = context.appColors;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          color: isDark ? appColors.cardDark : colorScheme.surface,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
@@ -85,13 +89,15 @@ class AnimalCard extends StatelessWidget {
                       runSpacing: 4,
                       children: [
                         _chip(
+                          context,
                           Icons.cake,
                           animalData.ageLabel.isNotEmpty
                               ? animalData.ageLabel
-                              : AnimalEntity.defaultAgeLabel(animalData.age),
+                              : AgeLabelFormatter.format(animalData.age),
                         ),
                         if (animalData.weight != null)
                           _chip(
+                            context,
                             Icons.monitor_weight,
                             '${animalData.weight} ${AppStrings.t("kg")}',
                           ),
@@ -114,17 +120,19 @@ class AnimalCard extends StatelessWidget {
     ).animate().fadeIn(duration: 300.ms).slideX(begin: 0.05);
   }
 
-  Widget _chip(IconData icon, String label) {
+  Widget _chip(BuildContext context, IconData icon, String label) {
+    final appColors = context.appColors;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFFE8F5E9),
+        color: appColors.selectionBackground,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: const Color(0xFF2E7D32)),
+          Icon(icon, size: 12, color: appColors.chipForeground),
           const SizedBox(width: 4),
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 120),
@@ -132,8 +140,7 @@ class AnimalCard extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style:
-                  const TextStyle(fontSize: 11, color: Color(0xFF2E7D32)),
+              style: TextStyle(fontSize: 11, color: appColors.chipForeground),
             ),
           ),
         ],
