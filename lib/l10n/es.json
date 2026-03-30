@@ -64,7 +64,7 @@
   "upload_avatar_error": "Error subiendo avatar",
   "profile_need_internet_avatar": "Necesitas internet para cambiar tu foto de perfil",
   "profile_language_spanish": "Español",
-  "profile_language_english": "English",
+  "profile_language_english": "Ingles",
   "years": "años",
   "kg": "kg",
   "no_session": "Sin sesión",
@@ -326,5 +326,8 @@
   "weekday_thu": "Jue",
   "weekday_fri": "Vie",
   "weekday_sat": "Sab",
-  "weekday_sun": "Dom"
+  "weekday_sun": "Dom",
+  "role_title": "Rol",
+  "role_farmer": "Ganadero",
+  "role_veterinarian": "Veterinario"
 }

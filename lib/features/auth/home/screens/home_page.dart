@@ -402,6 +402,9 @@ class _HomePageState extends ConsumerState<HomePage> {
     final colorScheme = theme.colorScheme;
     final appColors = context.appColors;
     final isDark = theme.brightness == Brightness.dark;
+    final roleLabel = profile.isVeterinarian
+        ? AppStrings.t('role_veterinarian')
+        : AppStrings.t('role_farmer');
 
     final menuItems = [
       _HomeMenuItem(
@@ -453,15 +456,21 @@ class _HomePageState extends ConsumerState<HomePage> {
             Container(
               width: double.infinity,
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [appColors.heroGradientStart, appColors.heroGradientEnd],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: isDark ? appColors.cardDark : colorScheme.surface,
                 borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(32),
                   bottomRight: Radius.circular(32),
                 ),
+                border: Border.all(
+                  color: appColors.chipForeground.withValues(alpha: 0.18),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: appColors.lightShadow,
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
               ),
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
               child: Row(
@@ -476,10 +485,13 @@ class _HomePageState extends ConsumerState<HomePage> {
                         Container(
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: Border.all(color: appColors.onSolid, width: 2),
+                            border: Border.all(
+                              color: appColors.chipForeground,
+                              width: 2,
+                            ),
                             boxShadow: [
                               BoxShadow(
-                                color: appColors.darkShadow.withValues(alpha: 0.3),
+                                color: appColors.darkShadow.withValues(alpha: 0.12),
                                 blurRadius: 8,
                                 offset: const Offset(0, 4),
                               ),
@@ -497,7 +509,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                 ? Icon(
                                     Icons.person,
                                     size: 36,
-                                    color: appColors.onSolid,
+                                    color: appColors.chipForeground,
                                   )
                                 : null,
                           ),
@@ -508,8 +520,11 @@ class _HomePageState extends ConsumerState<HomePage> {
                           child: Container(
                             padding: const EdgeInsets.all(3),
                             decoration: BoxDecoration(
-                              color: appColors.onSolid,
+                              color: isDark ? appColors.cardDark : colorScheme.surface,
                               shape: BoxShape.circle,
+                              border: Border.all(
+                                color: appColors.chipForeground.withValues(alpha: 0.3),
+                              ),
                             ),
                             child: Icon(
                               Icons.edit,
@@ -529,18 +544,38 @@ class _HomePageState extends ConsumerState<HomePage> {
                         Text(
                           AppStrings.t('hello'),
                           style: TextStyle(
-                            color: appColors.onSolid.withValues(alpha: 0.75),
+                            color: appColors.mutedForeground,
                             fontSize: 14,
                           ),
                         ),
                         Text(
                           profile.name,
                           style: TextStyle(
-                            color: appColors.onSolid,
+                            color: colorScheme.onSurface,
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                           ),
                           overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: appColors.chipForeground.withValues(alpha: 0.35),
+                            ),
+                          ),
+                          child: Text(
+                            roleLabel,
+                            style: TextStyle(
+                              color: appColors.chipForeground,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ],
                     ),

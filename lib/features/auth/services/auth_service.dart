@@ -20,7 +20,7 @@ class AuthService {
       final normalizedUsername = username.trim();
       final normalizedPhone = phone.trim();
       final normalizedLocation = location.trim();
-      final normalizedUserType = _normalizeUserType(userType);
+      final localizedUserType = _localizedUserType(userType);
 
       final existing = await _client
           .from('profiles')
@@ -44,8 +44,8 @@ class AuthService {
           'username': normalizedUsername,
           'phone': normalizedPhone,
           'location': normalizedLocation,
-          'user_type': normalizedUserType,
-          'language': 'es',
+          'user_type': localizedUserType,
+          'language': AppStrings.currentLanguage,
           'theme': 'system',
         },
       );
@@ -101,16 +101,15 @@ class AuthService {
     await _client.auth.signOut();
   }
 
-  String _normalizeUserType(String value) {
-    switch (value.trim().toLowerCase()) {
-      case 'ganadero':
-      case 'farmer':
-        return 'farmer';
-      case 'veterinario':
-      case 'veterinarian':
-        return 'veterinarian';
-      default:
-        return value.trim().toLowerCase();
+  String _localizedUserType(String value) {
+    final normalizedValue = value.trim().toLowerCase();
+    final isVeterinarian =
+        normalizedValue == 'veterinarian' || normalizedValue == 'veterinario';
+
+    if (AppStrings.isEnglish) {
+      return isVeterinarian ? 'veterinarian' : 'farmer';
     }
+
+    return isVeterinarian ? 'veterinario' : 'ganadero';
   }
 }

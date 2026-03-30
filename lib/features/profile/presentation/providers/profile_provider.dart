@@ -49,13 +49,16 @@ class ProfileState {
         name: AppStrings.t('default_username'),
         email: '',
         language: 'es',
-        userType: 'farmer',
+        userType: 'ganadero',
         themeMode: ThemeMode.system,
         avatarUrl: null,
         isLoaded: false,
       );
 
-  bool get isVeterinarian => userType == 'veterinarian';
+  bool get isVeterinarian {
+    final normalized = userType.trim().toLowerCase();
+    return normalized == 'veterinarian' || normalized == 'veterinario';
+  }
 }
 
 class ProfileNotifier extends StateNotifier<ProfileState> {
@@ -101,7 +104,9 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
         final meta = currentUser.userMetadata;
         final name =
             (meta?['username'] as String?) ?? AppStrings.t('default_username');
-        final userType = (meta?['user_type'] as String?) ?? 'farmer';
+        final userType =
+            (meta?['user_type'] as String?) ??
+            (AppStrings.isEnglish ? 'farmer' : 'ganadero');
         await AppStrings.load('es');
         state = ProfileState(
           name: name,
@@ -117,7 +122,9 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
 
       final language = (data['language'] as String?) ?? 'es';
       final theme = (data['theme'] as String?) ?? 'system';
-      final userType = (data['user_type'] as String?) ?? 'farmer';
+      final userType =
+          (data['user_type'] as String?) ??
+          (language == 'en' ? 'farmer' : 'ganadero');
       final name =
           (data['username'] as String?) ?? AppStrings.t('default_username');
       final avatar = data['avatar_url'] as String?;

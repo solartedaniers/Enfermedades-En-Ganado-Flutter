@@ -84,6 +84,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     final profile = ref.watch(profileProvider);
+    final roleLabel = profile.isVeterinarian
+        ? AppStrings.t('role_veterinarian')
+        : AppStrings.t('role_farmer');
 
     return Scaffold(
       appBar: AppBar(title: Text(AppStrings.t("my_profile"))),
@@ -92,6 +95,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           children: [
             ProfileHeader(
               name: profile.name,
+              roleLabel: roleLabel,
               avatarUrl: profile.avatarUrl,
               isUploadingAvatar: _isUploadingAvatar,
               onAvatarTap: _pickAndUploadAvatar,
@@ -112,6 +116,21 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         ref.read(profileProvider.notifier).changeName(value),
                   ).animate().fadeIn(delay: 200.ms),
                   const SizedBox(height: 20),
+                  ProfileSectionCard(
+                    title: AppStrings.t("role_title"),
+                    icon: Icons.badge_outlined,
+                    children: [
+                      ProfileSelectTile(
+                        icon: profile.isVeterinarian
+                            ? Icons.medical_services_outlined
+                            : Icons.agriculture_outlined,
+                        label: roleLabel,
+                        selected: true,
+                        onTap: () {},
+                      ),
+                    ],
+                  ).animate().fadeIn(delay: 250.ms),
+                  const SizedBox(height: 16),
                   ProfileSectionCard(
                     title: AppStrings.t("app_theme"),
                     icon: Icons.palette_outlined,

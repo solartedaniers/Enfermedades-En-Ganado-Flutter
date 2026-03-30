@@ -326,5 +326,8 @@
   "weekday_thu": "Thu",
   "weekday_fri": "Fri",
   "weekday_sat": "Sat",
-  "weekday_sun": "Sun"
+  "weekday_sun": "Sun",
+  "role_title": "Role",
+  "role_farmer": "Farmer",
+  "role_veterinarian": "Veterinarian"
 }

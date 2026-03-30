@@ -19,6 +19,9 @@ class ProfileSelectTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appColors = context.appColors;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
     return InkWell(
       onTap: onTap,
@@ -27,10 +30,15 @@ class ProfileSelectTile extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
         decoration: BoxDecoration(
-          color: selected
-              ? appColors.chipForeground.withValues(alpha: 0.08)
-              : Colors.transparent,
+          color: Colors.transparent,
           borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: selected
+                ? appColors.chipForeground.withValues(alpha: 0.35)
+                : (isDark
+                    ? appColors.inputBorderDark
+                    : appColors.inputBorderLight.withValues(alpha: 0.7)),
+          ),
         ),
         child: Row(
           children: [
@@ -46,7 +54,9 @@ class ProfileSelectTile extends StatelessWidget {
               label,
               style: TextStyle(
                 fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-                color: selected ? appColors.chipForeground : null,
+                color: selected
+                    ? appColors.chipForeground
+                    : colorScheme.onSurface,
               ),
             ),
           ],
