@@ -201,10 +201,17 @@ ${request.reportedSymptoms.isEmpty ? "Not provided" : request.reportedSymptoms.j
 Reported visual findings:
 ${request.visualFindings.isEmpty ? "Not provided" : request.visualFindings.join(", ")}
 
+Regional context:
+- Region: ${request.geolocationContext?.regionLabel ?? "Not available"}
+- Climate zone: ${request.geolocationContext?.climateZone ?? "Not available"}
+- Epidemiology notes: ${request.geolocationContext?.epidemiologySummary ?? "Not available"}
+- Common regional disease keys: ${request.geolocationContext?.commonDiseaseKeys.join(", ") ?? "Not available"}
+
 Notes:
 - If the image is missing or insufficient, still reason from the text evidence.
 - If there is not enough evidence for a specific disease, return a prudent preliminary result.
 - Actions and treatment must stay orientative and professional.
+- Use regional context only as supporting evidence, never as a sole reason to confirm a disease.
 ''';
   }
 

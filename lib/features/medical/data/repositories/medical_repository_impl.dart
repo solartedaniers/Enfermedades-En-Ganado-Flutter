@@ -25,4 +25,17 @@ class MedicalRepositoryImpl implements MedicalRepository {
   Future<List<MedicalRecordEntity>> getRecords(String animalId) async {
     return await remote.getRecords(animalId);
   }
+
+  @override
+  Future<void> updateRecord({
+    required String recordId,
+    required String diagnosis,
+  }) async {
+    await remote.updateRecord(recordId: recordId, diagnosis: diagnosis);
+  }
+
+  @override
+  Future<void> deleteRecord(String recordId) async {
+    await remote.deleteRecord(recordId);
+  }
 }

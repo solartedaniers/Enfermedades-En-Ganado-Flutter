@@ -27,7 +27,9 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>AgroVet AI necesita acceso a la cámara para analizar síntomas en el ganado.</string>
+	<string>AgroVet AI needs camera access to analyze livestock symptoms.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>AgroVet AI uses your location to enrich the regional disease context for livestock diagnosis.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

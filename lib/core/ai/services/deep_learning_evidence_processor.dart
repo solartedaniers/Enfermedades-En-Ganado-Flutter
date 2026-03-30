@@ -131,6 +131,20 @@ class LivestockEvidenceProcessor implements DeepLearningEvidenceProcessor {
         }
       }
 
+      if (request.geolocationContext?.commonDiseaseKeys.contains(entry.key) ??
+          false) {
+        score += 0.10;
+        findings.add(
+          DiagnosisFinding(
+            label: request.geolocationContext!.regionLabel,
+            source: 'regional',
+            confidence: 0.64,
+            interpretation:
+                'Regional epidemiology increases the relevance of ${entry.key}.',
+          ),
+        );
+      }
+
       diseaseScores[entry.key] = score.clamp(0.0, 0.98).toDouble();
     }
 

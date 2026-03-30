@@ -1,31 +1,41 @@
 import 'dart:async';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../../core/network/network_provider.dart';
-import '../../presentation/providers/animal_provider.dart';
+import '../../../../core/services/offline_auth_service.dart';
+import '../../../../core/network/network_info.dart';
+import '../../domain/repositories/animal_repository.dart';
 
 class AnimalSyncService {
-  final WidgetRef ref;
+  final AnimalRepository animalRepository;
+  final NetworkInfo networkInfo;
   StreamSubscription? _subscription;
 
-  AnimalSyncService(this.ref);
+  AnimalSyncService({
+    required this.animalRepository,
+    required this.networkInfo,
+  });
 
   void start() {
-    final networkInfo = ref.read(networkInfoProvider);
     _subscription?.cancel();
-
+    _syncIfConnected();
     _subscription =
         networkInfo.onConnectivityChanged.listen((isConnected) async {
       if (isConnected) {
-        try {
-          final animalRepository = ref.read(animalRepositoryProvider);
-          await animalRepository.syncAnimals();
-        } catch (e) {
-          // Fallo silencioso.
-        }
+        await _syncIfConnected();
       }
     });
+  }
+
+  Future<void> _syncIfConnected() async {
+    try {
+      if (!await networkInfo.isConnected) {
+        return;
+      }
+
+      await OfflineAuthService.restoreCloudSessionIfPossible();
+      await animalRepository.syncAnimals();
+    } catch (_) {
+      // Fallo silencioso.
+    }
   }
 
   void stop() {
