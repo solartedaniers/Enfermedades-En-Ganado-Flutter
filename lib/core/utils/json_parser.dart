@@ -1,4 +1,6 @@
 class JsonParser {
+  JsonParser._();
+
   static String? asString(dynamic value) {
     if (value == null) {
       return null;

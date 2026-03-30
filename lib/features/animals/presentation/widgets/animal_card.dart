@@ -31,7 +31,7 @@ class AnimalCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.07),
+              color: appColors.lightShadow,
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -69,7 +69,7 @@ class AnimalCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : appColors.subduedForeground,
+                        color: isDark ? appColors.onSolid : appColors.subduedForeground,
                       ),
                     ),
                     const SizedBox(height: 3),

@@ -1,6 +1,8 @@
 import 'app_strings.dart';
 
 class AppDateFormatter {
+  AppDateFormatter._();
+
   static String shortDate(DateTime value) {
     if (AppStrings.isEnglish) {
       return '${_pad(value.month)}/${_pad(value.day)}/${value.year}';

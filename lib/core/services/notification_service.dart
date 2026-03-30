@@ -7,6 +7,8 @@ import 'notification_schedule_policy.dart';
 import '../utils/app_strings.dart';
 
 class NotificationService {
+  static const String _launcherIconPath = '@mipmap/ic_launcher';
+  static const String _channelId = 'agrovet_channel';
   static final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
   static const NotificationSchedulePolicy _schedulePolicy =
@@ -19,7 +21,7 @@ class NotificationService {
 
     tz.initializeTimeZones();
 
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(_launcherIconPath);
     const settings = InitializationSettings(android: androidSettings);
 
     await _plugin.initialize(settings);
@@ -61,7 +63,7 @@ class NotificationService {
 
   static NotificationChannelConfig _buildChannelConfig() {
     return NotificationChannelConfig(
-      channelId: 'agrovet_channel',
+      channelId: _channelId,
       channelName: AppStrings.t('notification_channel_name'),
       channelDescription: AppStrings.t('notification_channel_description'),
     );

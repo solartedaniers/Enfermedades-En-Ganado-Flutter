@@ -15,15 +15,15 @@ class AppThemeFactory {
         seedColor: primaryColor,
         brightness: Brightness.light,
       ),
-      scaffoldBackgroundColor: const Color(0xFFF5F6FA),
+      scaffoldBackgroundColor: colors.scaffoldBackgroundLight,
       extensions: [colors],
       appBarTheme: AppBarTheme(
         elevation: 0,
         backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
+        foregroundColor: colors.onSolid,
         centerTitle: true,
-        titleTextStyle: const TextStyle(
-          color: Colors.white,
+        titleTextStyle: TextStyle(
+          color: colors.onSolid,
           fontSize: 20,
           fontWeight: FontWeight.bold,
           letterSpacing: 0.5,
@@ -31,7 +31,7 @@ class AppThemeFactory {
       ),
       cardTheme: CardThemeData(
         elevation: 4,
-        shadowColor: Colors.black12,
+        shadowColor: colors.lightShadow,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),
@@ -56,7 +56,7 @@ class AppThemeFactory {
       elevatedButtonTheme: _buildElevatedButtonTheme(primaryColor),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
+        foregroundColor: colors.onSolid,
         elevation: 6,
       ),
       listTileTheme: const ListTileThemeData(
@@ -83,10 +83,10 @@ class AppThemeFactory {
       appBarTheme: AppBarTheme(
         elevation: 0,
         backgroundColor: colors.appBarDark,
-        foregroundColor: Colors.white,
+        foregroundColor: colors.onSolid,
         centerTitle: true,
-        titleTextStyle: const TextStyle(
-          color: Colors.white,
+        titleTextStyle: TextStyle(
+          color: colors.onSolid,
           fontSize: 20,
           fontWeight: FontWeight.bold,
           letterSpacing: 0.5,
@@ -95,7 +95,7 @@ class AppThemeFactory {
       cardTheme: CardThemeData(
         elevation: 4,
         color: colors.cardDark,
-        shadowColor: Colors.black38,
+        shadowColor: colors.darkShadow,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),
@@ -121,7 +121,7 @@ class AppThemeFactory {
       elevatedButtonTheme: _buildElevatedButtonTheme(primaryColor),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
+        foregroundColor: colors.onSolid,
         elevation: 6,
       ),
     );
@@ -131,7 +131,7 @@ class AppThemeFactory {
     return ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
+        foregroundColor: colors.onSolid,
         elevation: 3,
         shadowColor: primaryColor.withValues(alpha: 0.4),
         shape: RoundedRectangleBorder(

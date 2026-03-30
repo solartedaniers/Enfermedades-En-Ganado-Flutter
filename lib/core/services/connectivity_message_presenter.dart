@@ -22,12 +22,12 @@ class ConnectivityMessagePresenter {
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.wifi_off, color: Colors.white, size: 20),
+            Icon(Icons.wifi_off, color: appColors.onSolid, size: 20),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 resolveMessage(message),
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: appColors.onSolid),
               ),
             ),
           ],

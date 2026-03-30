@@ -130,7 +130,7 @@ class ScannerResultView extends StatelessWidget {
                         onPressed: isSaving ? null : onSave,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: context.appColors.scannerAccent,
-                          foregroundColor: Colors.white,
+                          foregroundColor: context.appColors.onSolid,
                         ),
                         icon: isSaving
                             ? const SizedBox(

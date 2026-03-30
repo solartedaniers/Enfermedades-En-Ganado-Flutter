@@ -86,7 +86,7 @@ class ScannerIntakeView extends StatelessWidget {
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: context.appColors.scannerAccent,
-                      foregroundColor: Colors.white,
+                      foregroundColor: context.appColors.onSolid,
                     ),
                     icon: const Icon(Icons.add),
                     label: Text(AppStrings.t('register_animal')),
@@ -225,17 +225,19 @@ class ScannerIntakeView extends StatelessWidget {
                           onPressed: isSubmitting ? null : onDiagnoseWithoutImage,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: context.appColors.scannerAccent,
-                            foregroundColor: Colors.white,
+                            foregroundColor: context.appColors.onSolid,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
                           icon: isSubmitting
-                              ? const SizedBox(
+                              ? SizedBox(
                                   width: 18,
                                   height: 18,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
                                     valueColor:
-                                        AlwaysStoppedAnimation<Color>(Colors.white),
+                                        AlwaysStoppedAnimation<Color>(
+                                          context.appColors.onSolid,
+                                        ),
                                   ),
                                 )
                               : const Icon(Icons.psychology_alt_outlined),

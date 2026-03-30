@@ -5,6 +5,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'storage_path_builder.dart';
 
 class StorageService {
+  static const String _animalImagesBucket = 'animals';
+  static const String _userAvatarsBucket = 'users';
+
   final SupabaseClient _supabase;
   final StoragePathBuilder _pathBuilder;
 
@@ -15,13 +18,13 @@ class StorageService {
 
   Future<String> uploadAnimalImage(File file, String userId) async {
     final filePath = _pathBuilder.buildAnimalImagePath(userId);
-    await _supabase.storage.from('animals').upload(filePath, file);
-    return _supabase.storage.from('animals').getPublicUrl(filePath);
+    await _supabase.storage.from(_animalImagesBucket).upload(filePath, file);
+    return _supabase.storage.from(_animalImagesBucket).getPublicUrl(filePath);
   }
 
   Future<String> uploadUserAvatar(File file, String userId) async {
     final filePath = _pathBuilder.buildUserAvatarPath(userId);
-    await _supabase.storage.from('users').upload(filePath, file);
-    return _supabase.storage.from('users').getPublicUrl(filePath);
+    await _supabase.storage.from(_userAvatarsBucket).upload(filePath, file);
+    return _supabase.storage.from(_userAvatarsBucket).getPublicUrl(filePath);
   }
 }

@@ -84,18 +84,19 @@ class AnimalImageCard extends StatelessWidget {
 
   Widget _buildOverlay(BuildContext context) {
     final appColors = context.appColors;
+    final overlaySubtitleColor = appColors.onSolid.withValues(alpha: 0.8);
 
     return Container(
       color: appColors.cameraOverlay,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(overlayIcon, size: 44, color: Colors.white),
+          Icon(overlayIcon, size: 44, color: appColors.onSolid),
           const SizedBox(height: 8),
           Text(
             overlayLabel,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: appColors.onSolid,
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
@@ -105,7 +106,7 @@ class AnimalImageCard extends StatelessWidget {
             Text(
               overlaySubtitle!,
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.8),
+                color: overlaySubtitleColor,
                 fontSize: 12,
               ),
             ),

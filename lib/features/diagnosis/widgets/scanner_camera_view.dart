@@ -39,7 +39,7 @@ class ScannerCameraView extends StatelessWidget {
             onPressed: isSubmitting ? null : onBack,
             style: FilledButton.styleFrom(
               backgroundColor: context.appColors.cameraOverlay,
-              foregroundColor: Colors.white,
+              foregroundColor: context.appColors.onSolid,
             ),
             icon: const Icon(Icons.arrow_back),
             label: Text(AppStrings.t('diagnosis_back')),
@@ -54,7 +54,7 @@ class ScannerCameraView extends StatelessWidget {
 
     if (isInitializingCamera) {
       return const Center(
-        child: CircularProgressIndicator(color: Colors.white),
+        child: CircularProgressIndicator(),
       );
     }
 
@@ -74,14 +74,17 @@ class ScannerCameraView extends StatelessWidget {
               Text(
                 errorMessage!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
+                style: TextStyle(
+                  color: context.appColors.onSolid,
+                  fontSize: 16,
+                ),
               ),
               const SizedBox(height: 20),
               FilledButton.icon(
                 onPressed: onRetry,
                 style: FilledButton.styleFrom(
                   backgroundColor: context.appColors.scannerAccent,
-                  foregroundColor: Colors.white,
+                  foregroundColor: context.appColors.onSolid,
                 ),
                 icon: const Icon(Icons.refresh),
                 label: Text(AppStrings.t('scanner_retry')),

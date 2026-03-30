@@ -1,6 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Guarda datos mínimos de sesión para permitir uso offline
+/// Guarda datos minimos de sesion para permitir uso offline.
 class OfflineAuthService {
   static const _keyUserId = 'offline_user_id';
   static const _keyUserName = 'offline_user_name';
@@ -20,6 +20,7 @@ class OfflineAuthService {
     await prefs.setString(_keyUserName, userName);
     await prefs.setString(_keyLanguage, language);
     await prefs.setString(_keyTheme, theme);
+
     if (avatarUrl != null) {
       await prefs.setString(_keyAvatarUrl, avatarUrl);
     }
@@ -46,5 +47,7 @@ class OfflineAuthService {
     await prefs.remove(_keyUserId);
     await prefs.remove(_keyUserName);
     await prefs.remove(_keyAvatarUrl);
+    await prefs.remove(_keyLanguage);
+    await prefs.remove(_keyTheme);
   }
 }

@@ -445,7 +445,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                 ? Colors.black
                 : Colors.transparent,
         foregroundColor:
-            _currentStep == _ScannerStep.camera ? Colors.white : null,
+            _currentStep == _ScannerStep.camera ? appColors.onSolid : null,
       ),
       body: switch (_currentStep) {
         _ScannerStep.intake => ScannerIntakeView(
@@ -486,7 +486,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                   ? null
                   : _captureAndAnalyze,
               backgroundColor: appColors.scannerAccent,
-              foregroundColor: Colors.white,
+              foregroundColor: appColors.onSolid,
               child: _isSubmitting
                   ? const SizedBox(
                       width: 22,

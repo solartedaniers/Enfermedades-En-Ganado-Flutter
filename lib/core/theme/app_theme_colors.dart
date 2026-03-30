@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 @immutable
 class AppThemeColors extends ThemeExtension<AppThemeColors> {
   final Color accent;
+  final Color onSolid;
   final Color appBarDark;
   final Color cardDark;
+  final Color scaffoldBackgroundLight;
   final Color inputBorderLight;
   final Color inputBorderDark;
   final Color authBackgroundLight;
@@ -26,11 +28,15 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
   final Color cameraOverlay;
   final Color medicalHeaderStart;
   final Color medicalHeaderEnd;
+  final Color lightShadow;
+  final Color darkShadow;
 
   const AppThemeColors({
     required this.accent,
+    required this.onSolid,
     required this.appBarDark,
     required this.cardDark,
+    required this.scaffoldBackgroundLight,
     required this.inputBorderLight,
     required this.inputBorderDark,
     required this.authBackgroundLight,
@@ -52,13 +58,17 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
     required this.cameraOverlay,
     required this.medicalHeaderStart,
     required this.medicalHeaderEnd,
+    required this.lightShadow,
+    required this.darkShadow,
   });
 
   @override
   AppThemeColors copyWith({
     Color? accent,
+    Color? onSolid,
     Color? appBarDark,
     Color? cardDark,
+    Color? scaffoldBackgroundLight,
     Color? inputBorderLight,
     Color? inputBorderDark,
     Color? authBackgroundLight,
@@ -80,11 +90,16 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
     Color? cameraOverlay,
     Color? medicalHeaderStart,
     Color? medicalHeaderEnd,
+    Color? lightShadow,
+    Color? darkShadow,
   }) {
     return AppThemeColors(
       accent: accent ?? this.accent,
+      onSolid: onSolid ?? this.onSolid,
       appBarDark: appBarDark ?? this.appBarDark,
       cardDark: cardDark ?? this.cardDark,
+      scaffoldBackgroundLight:
+          scaffoldBackgroundLight ?? this.scaffoldBackgroundLight,
       inputBorderLight: inputBorderLight ?? this.inputBorderLight,
       inputBorderDark: inputBorderDark ?? this.inputBorderDark,
       authBackgroundLight: authBackgroundLight ?? this.authBackgroundLight,
@@ -106,6 +121,8 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
       cameraOverlay: cameraOverlay ?? this.cameraOverlay,
       medicalHeaderStart: medicalHeaderStart ?? this.medicalHeaderStart,
       medicalHeaderEnd: medicalHeaderEnd ?? this.medicalHeaderEnd,
+      lightShadow: lightShadow ?? this.lightShadow,
+      darkShadow: darkShadow ?? this.darkShadow,
     );
   }
 
@@ -117,8 +134,16 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
 
     return AppThemeColors(
       accent: Color.lerp(accent, other.accent, t) ?? accent,
+      onSolid: Color.lerp(onSolid, other.onSolid, t) ?? onSolid,
       appBarDark: Color.lerp(appBarDark, other.appBarDark, t) ?? appBarDark,
       cardDark: Color.lerp(cardDark, other.cardDark, t) ?? cardDark,
+      scaffoldBackgroundLight:
+          Color.lerp(
+            scaffoldBackgroundLight,
+            other.scaffoldBackgroundLight,
+            t,
+          ) ??
+          scaffoldBackgroundLight,
       inputBorderLight:
           Color.lerp(inputBorderLight, other.inputBorderLight, t) ??
               inputBorderLight,
@@ -170,6 +195,9 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
       medicalHeaderEnd:
           Color.lerp(medicalHeaderEnd, other.medicalHeaderEnd, t) ??
               medicalHeaderEnd,
+      lightShadow:
+          Color.lerp(lightShadow, other.lightShadow, t) ?? lightShadow,
+      darkShadow: Color.lerp(darkShadow, other.darkShadow, t) ?? darkShadow,
     );
   }
 }
