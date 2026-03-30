@@ -123,6 +123,7 @@
   "cancel_process": "Cancelar proceso",
   "password_min_8": "La contraseña debe tener al menos 8 caracteres",
   "password_updated": "Contraseña actualizada con éxito.",
+  "reset_password_redirecting": "Redirigiendo al inicio de sesión...",
   "unexpected_error": "Ocurrió un error inesperado",
   "view_medical_history": "Ver historial clínico",
   "breed_label": "Raza",

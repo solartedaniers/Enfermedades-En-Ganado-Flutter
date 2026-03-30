@@ -10,6 +10,7 @@ import 'package:uuid/uuid.dart';
 import '../../../core/ai/models/diagnosis_request.dart';
 import '../../../core/ai/models/diagnosis_response.dart';
 import '../../../core/ai/providers/ai_diagnosis_provider.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/app_strings.dart';
 import '../../animals/domain/entities/animal_entity.dart';
 import '../../animals/presentation/pages/add_animal_page.dart';
@@ -32,8 +33,6 @@ class ScannerScreen extends ConsumerStatefulWidget {
 
 class _ScannerScreenState extends ConsumerState<ScannerScreen>
     with WidgetsBindingObserver {
-  static const Color _primaryColor = Color(0xFFBF22DF);
-  static const Color _targetColor = Color(0xFF34C759);
   static const double _targetSize = 260;
 
   final TextEditingController _mainReasonController = TextEditingController();
@@ -399,11 +398,13 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
 
   @override
   Widget build(BuildContext context) {
+    final appColors = context.appColors;
+
     return Scaffold(
       backgroundColor:
           _currentStep == _ScannerStep.camera
               ? Colors.black
-              : const Color(0xFFF8F5FC),
+              : appColors.scannerBackground,
       appBar: AppBar(
         title: Text(AppStrings.t('scanner_title')),
         backgroundColor:
@@ -423,7 +424,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
               onPressed: _isInitializingCamera || _errorMessage != null
                   ? null
                   : _captureAndAnalyze,
-              backgroundColor: _primaryColor,
+              backgroundColor: appColors.scannerAccent,
               foregroundColor: Colors.white,
               child: _isSubmitting
                   ? const SizedBox(
@@ -467,7 +468,11 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.pets_outlined, size: 64, color: Colors.grey),
+                  Icon(
+                    Icons.pets_outlined,
+                    size: 64,
+                    color: context.appColors.mutedForeground,
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     AppStrings.t('diagnosis_register_animal_first'),
@@ -481,7 +486,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                       );
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _primaryColor,
+                      backgroundColor: context.appColors.scannerAccent,
                       foregroundColor: Colors.white,
                     ),
                     icon: const Icon(Icons.add),
@@ -503,7 +508,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: _primaryColor.withValues(alpha: 0.10),
+                    color: context.appColors.scannerAccent.withValues(alpha: 0.10),
                     blurRadius: 20,
                     offset: const Offset(0, 8),
                   ),
@@ -523,7 +528,9 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                     AppStrings.t('diagnosis_real_subtitle'),
                     style: Theme.of(
                       context,
-                    ).textTheme.bodyMedium?.copyWith(color: Colors.black54),
+                    ).textTheme.bodyMedium?.copyWith(
+                      color: context.appColors.subduedForeground,
+                    ),
                   ),
                   const SizedBox(height: 20),
                   DropdownButtonFormField<String>(
@@ -597,8 +604,10 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                         child: OutlinedButton.icon(
                           onPressed: _openCamera,
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: _primaryColor,
-                            side: const BorderSide(color: _primaryColor),
+                            foregroundColor: context.appColors.scannerAccent,
+                            side: BorderSide(
+                              color: context.appColors.scannerAccent,
+                            ),
                             padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
                           icon: const Icon(Icons.camera_alt),
@@ -614,7 +623,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                         child: ElevatedButton.icon(
                           onPressed: _isSubmitting ? null : _diagnoseWithoutImage,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _primaryColor,
+                            backgroundColor: context.appColors.scannerAccent,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
@@ -638,7 +647,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                     const SizedBox(height: 16),
                     Text(
                       _errorMessage!,
-                      style: const TextStyle(color: Colors.red),
+                      style: TextStyle(color: context.appColors.danger),
                     ),
                   ],
                 ],
@@ -669,7 +678,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                     });
                   },
             style: FilledButton.styleFrom(
-              backgroundColor: Colors.black.withValues(alpha: 0.55),
+              backgroundColor: context.appColors.cameraOverlay,
               foregroundColor: Colors.white,
             ),
             icon: const Icon(Icons.arrow_back),
@@ -699,7 +708,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: _primaryColor.withValues(alpha: 0.10),
+                    color: context.appColors.scannerAccent.withValues(alpha: 0.10),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
@@ -783,7 +792,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                       child: ElevatedButton.icon(
                         onPressed: _isSaving ? null : _saveDiagnosis,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _primaryColor,
+                          backgroundColor: context.appColors.scannerAccent,
                           foregroundColor: Colors.white,
                         ),
                         icon: _isSaving
@@ -801,8 +810,10 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                       child: OutlinedButton.icon(
                         onPressed: _resetFlow,
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: _primaryColor,
-                          side: const BorderSide(color: _primaryColor),
+                          foregroundColor: context.appColors.scannerAccent,
+                          side: BorderSide(
+                            color: context.appColors.scannerAccent,
+                          ),
                         ),
                         icon: const Icon(Icons.refresh),
                         label: Text(AppStrings.t('diagnosis_new_case')),
@@ -822,7 +833,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: _primaryColor.withValues(alpha: 0.08),
+        color: context.appColors.scannerAccent.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
@@ -830,8 +841,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
         children: [
           Text(
             title,
-            style: const TextStyle(
-              color: Colors.black54,
+            style: TextStyle(
+              color: context.appColors.subduedForeground,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -901,7 +912,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
               FilledButton.icon(
                 onPressed: _initializeCamera,
                 style: FilledButton.styleFrom(
-                  backgroundColor: _primaryColor,
+                  backgroundColor: context.appColors.scannerAccent,
                   foregroundColor: Colors.white,
                 ),
                 icon: const Icon(Icons.refresh),
@@ -942,10 +953,10 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
               height: _targetSize,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(28),
-                border: Border.all(color: _targetColor, width: 3),
+                border: Border.all(color: context.appColors.scannerTarget, width: 3),
                 boxShadow: [
                   BoxShadow(
-                    color: _targetColor.withValues(alpha: 0.28),
+                    color: context.appColors.scannerTarget.withValues(alpha: 0.28),
                     blurRadius: 18,
                     spreadRadius: 3,
                   ),

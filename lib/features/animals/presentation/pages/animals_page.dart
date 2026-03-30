@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../providers/animal_provider.dart';
 import '../widgets/animal_card.dart';
@@ -13,6 +14,7 @@ class AnimalsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final animalsAsync = ref.watch(animalsListProvider);
+    final appColors = context.appColors;
 
     return Scaffold(
       appBar: AppBar(
@@ -42,7 +44,7 @@ class AnimalsPage extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, size: 64, color: Colors.redAccent),
+              Icon(Icons.error_outline, size: 64, color: appColors.danger),
               const SizedBox(height: 16),
               Text(
                 AppStrings.t('load_error'),
@@ -62,16 +64,16 @@ class AnimalsPage extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.pets, size: 80, color: Colors.grey[400]),
+                  Icon(Icons.pets, size: 80, color: appColors.inputBorderLight),
                   const SizedBox(height: 16),
                   Text(
                     AppStrings.t('no_animals'),
-                    style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                    style: TextStyle(fontSize: 16, color: appColors.mutedForeground),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     AppStrings.t('add_first'),
-                    style: TextStyle(color: Colors.grey[400]),
+                    style: TextStyle(color: appColors.inputBorderLight),
                   ),
                 ],
               ),

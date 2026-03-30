@@ -278,7 +278,7 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
       height: 4,
       margin: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.grey.shade300,
+        color: context.appColors.inputBorderLight,
         borderRadius: BorderRadius.circular(2),
       ),
     );
@@ -304,7 +304,10 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
                   height: 180,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.grey.shade300, width: 1.5),
+                    border: Border.all(
+                      color: appColors.inputBorderLight,
+                      width: 1.5,
+                    ),
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(20),
@@ -434,7 +437,7 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade400),
+          border: Border.all(color: appColors.inputBorderLight),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
@@ -446,11 +449,11 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
                 hasValue ? value : label,
                 style: TextStyle(
                   fontSize: 16,
-                  color: hasValue ? null : Colors.grey.shade600,
+                  color: hasValue ? null : appColors.mutedForeground,
                 ),
               ),
             ),
-            Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
+            Icon(Icons.arrow_drop_down, color: appColors.mutedForeground),
           ],
         ),
       ),

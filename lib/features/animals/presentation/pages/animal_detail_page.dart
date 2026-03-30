@@ -311,7 +311,9 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
             child: Text(AppStrings.t('cancel')),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: context.appColors.danger,
+            ),
             onPressed: () => Navigator.pop(dialogContext, true),
             child: Text(AppStrings.t('delete')),
           ),
@@ -347,7 +349,7 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
       height: 4,
       margin: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.grey.shade300,
+        color: context.appColors.inputBorderLight,
         borderRadius: BorderRadius.circular(2),
       ),
     );
@@ -375,7 +377,7 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
               onPressed: () => setState(() => _isEditing = true),
             ),
             IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+              icon: Icon(Icons.delete_outline, color: context.appColors.danger),
               tooltip: AppStrings.t('delete_animal'),
               onPressed: _confirmDelete,
             ),
@@ -642,7 +644,7 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade400),
+          border: Border.all(color: appColors.inputBorderLight),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
@@ -656,11 +658,11 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
                   fontSize: 16,
                   color: selectedValue != null
                       ? Theme.of(context).textTheme.bodyLarge?.color
-                      : Colors.grey.shade600,
+                      : appColors.mutedForeground,
                 ),
               ),
             ),
-            Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
+            Icon(Icons.arrow_drop_down, color: appColors.mutedForeground),
           ],
         ),
       ),

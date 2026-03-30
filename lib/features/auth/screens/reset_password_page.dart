@@ -1,11 +1,15 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../core/utils/app_strings.dart';
+
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/app_strings.dart';
 import '../../profile/presentation/providers/profile_provider.dart';
+import '../widgets/auth_page_shell.dart';
+import '../widgets/auth_text_field.dart';
 import 'login_page.dart';
 
 class ResetPasswordPage extends ConsumerStatefulWidget {
@@ -49,7 +53,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
 
     try {
       await _supabase.auth.updateUser(UserAttributes(password: pass));
-      
+
       if (!mounted) return;
 
       setState(() {
@@ -70,11 +74,11 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
         MaterialPageRoute(builder: (_) => const LoginPage()),
         (route) => false,
       );
-    } on AuthException catch (e) {
+    } on AuthException catch (error) {
       if (!mounted) return;
       setState(() => _loading = false);
-      _showSnackBar(e.message);
-    } catch (e) {
+      _showSnackBar(error.message);
+    } catch (_) {
       if (!mounted) return;
       setState(() => _loading = false);
       _showSnackBar(AppStrings.t("unexpected_error"));
@@ -84,6 +88,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
   Future<void> _cancel() async {
     await _supabase.auth.signOut();
     if (!mounted) return;
+
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (_) => const LoginPage()),
@@ -93,6 +98,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
 
   void _showSnackBar(String message) {
     if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -104,180 +110,126 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
   @override
   Widget build(BuildContext context) {
     ref.watch(profileProvider);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primary = AppTheme.primaryColor;
-    const darkGreen = Color(0xFF1B4332);
-    final bgColor = isDark ? const Color(0xFF121212) : const Color(0xFFF1F8F5);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final appColors = context.appColors;
+    final isDark = theme.brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor: bgColor,
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
+    return AuthPageShell(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
             padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // --- Ícono Animado ---
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: _passwordUpdated
-                        ? Colors.green.withValues(alpha: 0.1)
-                        : primary.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    _passwordUpdated
-                        ? Icons.check_circle_rounded
-                        : Icons.lock_reset_rounded,
-                    size: 70,
-                    color: _passwordUpdated ? Colors.green : primary,
-                  ),
-                )
-                    .animate(target: _passwordUpdated ? 1 : 0)
-                    .scale(
-                      begin: const Offset(1, 1),
-                      end: const Offset(1.1, 1.1),
-                      duration: 300.ms,
-                    ),
-                const SizedBox(height: 28),
-
-                Text(
-                  _passwordUpdated
-                      ? AppStrings.t("password_updated")
-                      : AppStrings.t("new_password"),
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : darkGreen,
-                  ),
-                  textAlign: TextAlign.center,
-                ).animate().fadeIn(duration: 400.ms),
-
-                const SizedBox(height: 8),
-                Text(
-                  _passwordUpdated
-                      ? "Redirigiendo al inicio de sesión..."
-                      : AppStrings.t("new_password_subtitle"),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.grey, fontSize: 14),
-                ).animate().fadeIn(delay: 100.ms),
-
-                if (!_passwordUpdated) ...[
-                  const SizedBox(height: 36),
-                  _buildField(
-                    controller: _passwordController,
-                    label: AppStrings.t("new_password_field"),
-                    icon: Icons.lock_outline,
-                    obscure: !_showPassword,
-                    suffix: IconButton(
-                      icon: Icon(_showPassword
-                          ? Icons.visibility
-                          : Icons.visibility_off),
-                      onPressed: () =>
-                          setState(() => _showPassword = !_showPassword),
-                    ),
-                    isDark: isDark,
-                  ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.05),
-
-                  const SizedBox(height: 16),
-                  _buildField(
-                    controller: _confirmController,
-                    label: AppStrings.t("confirm_password_field"),
-                    icon: Icons.verified_user_outlined,
-                    obscure: !_showConfirm,
-                    suffix: IconButton(
-                      icon: Icon(_showConfirm
-                          ? Icons.visibility
-                          : Icons.visibility_off),
-                      onPressed: () =>
-                          setState(() => _showConfirm = !_showConfirm),
-                    ),
-                    isDark: isDark,
-                  ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.05),
-
-                  const SizedBox(height: 32),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 55,
-                    child: ElevatedButton(
-                      onPressed: _loading ? null : _updatePassword,
-                      child: _loading
-                          ? const SizedBox(
-                              height: 24,
-                              width: 24,
-                              child: CircularProgressIndicator(
-                                  color: Colors.white, strokeWidth: 2),
-                            )
-                          : Text(
-                              AppStrings.t("update_exit"),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                    ),
-                  ).animate().fadeIn(delay: 400.ms),
-
-                  const SizedBox(height: 20),
-                  // Botón de Cancelar vinculado correctamente
-                  TextButton(
-                    onPressed: _cancel,
-                    child: Text(
-                      AppStrings.t("cancel_process"),
-                      style: TextStyle(
-                        color: Colors.red.shade400,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-
-                if (_passwordUpdated)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 24),
-                    child: CircularProgressIndicator(),
-                  ),
-              ],
+            decoration: BoxDecoration(
+              color: (_passwordUpdated ? appColors.success : AppTheme.primaryColor)
+                  .withValues(alpha: 0.1),
+              shape: BoxShape.circle,
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    bool obscure = false,
-    Widget? suffix,
-    required bool isDark,
-  }) {
-    final primary = AppTheme.primaryColor;
-    return TextField(
-      controller: controller,
-      obscureText: obscure,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, color: primary),
-        labelStyle: const TextStyle(color: Colors.grey),
-        filled: true,
-        fillColor: isDark ? const Color(0xFF2A2A2A) : Colors.white,
-        suffixIcon: suffix,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(
-              color: isDark
-                  ? const Color(0xFF3A3A3A)
-                  : const Color(0xFFDEE2E6)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: primary, width: 2),
-        ),
+            child: Icon(
+              _passwordUpdated
+                  ? Icons.check_circle_rounded
+                  : Icons.lock_reset_rounded,
+              size: 70,
+              color: _passwordUpdated ? appColors.success : AppTheme.primaryColor,
+            ),
+          )
+              .animate(target: _passwordUpdated ? 1 : 0)
+              .scale(
+                begin: const Offset(1, 1),
+                end: const Offset(1.1, 1.1),
+                duration: 300.ms,
+              ),
+          const SizedBox(height: 28),
+          Text(
+            _passwordUpdated
+                ? AppStrings.t("password_updated")
+                : AppStrings.t("new_password"),
+            textAlign: TextAlign.center,
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: isDark ? colorScheme.onSurface : appColors.heroGradientStart,
+            ),
+          ).animate().fadeIn(duration: 400.ms),
+          const SizedBox(height: 8),
+          Text(
+            _passwordUpdated
+                ? AppStrings.t("reset_password_redirecting")
+                : AppStrings.t("new_password_subtitle"),
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: appColors.mutedForeground,
+            ),
+          ).animate().fadeIn(delay: 100.ms),
+          if (!_passwordUpdated) ...[
+            const SizedBox(height: 36),
+            AuthTextField(
+              controller: _passwordController,
+              label: AppStrings.t("new_password_field"),
+              icon: Icons.lock_outline,
+              obscureText: !_showPassword,
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _showPassword ? Icons.visibility : Icons.visibility_off,
+                ),
+                onPressed: () => setState(() => _showPassword = !_showPassword),
+              ),
+            ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.05),
+            const SizedBox(height: 16),
+            AuthTextField(
+              controller: _confirmController,
+              label: AppStrings.t("confirm_password_field"),
+              icon: Icons.verified_user_outlined,
+              obscureText: !_showConfirm,
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _showConfirm ? Icons.visibility : Icons.visibility_off,
+                ),
+                onPressed: () => setState(() => _showConfirm = !_showConfirm),
+              ),
+            ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.05),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              height: 55,
+              child: ElevatedButton(
+                onPressed: _loading ? null : _updatePassword,
+                child: _loading
+                    ? const SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : Text(
+                        AppStrings.t("update_exit"),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+              ),
+            ).animate().fadeIn(delay: 400.ms),
+            const SizedBox(height: 20),
+            TextButton(
+              onPressed: _cancel,
+              child: Text(
+                AppStrings.t("cancel_process"),
+                style: TextStyle(
+                  color: appColors.danger,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+          if (_passwordUpdated)
+            Padding(
+              padding: const EdgeInsets.only(top: 24),
+              child: CircularProgressIndicator(color: AppTheme.primaryColor),
+            ),
+        ],
       ),
     );
   }

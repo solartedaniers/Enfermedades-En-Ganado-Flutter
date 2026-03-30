@@ -72,7 +72,7 @@ class AnimalCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : Colors.grey[900],
+                        color: isDark ? Colors.white : appColors.subduedForeground,
                       ),
                     ),
                     const SizedBox(height: 3),
@@ -80,8 +80,10 @@ class AnimalCard extends StatelessWidget {
                       animalData.breed,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style:
-                          TextStyle(color: Colors.grey[600], fontSize: 13),
+                      style: TextStyle(
+                        color: appColors.mutedForeground,
+                        fontSize: 13,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Wrap(
@@ -111,8 +113,11 @@ class AnimalCard extends StatelessWidget {
             // ── Flecha ──────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.only(right: 10),
-              child: Icon(Icons.arrow_forward_ios,
-                  size: 14, color: Colors.grey[400]),
+              child: Icon(
+                Icons.arrow_forward_ios,
+                size: 14,
+                color: appColors.inputBorderLight,
+              ),
             ),
           ],
         ),
