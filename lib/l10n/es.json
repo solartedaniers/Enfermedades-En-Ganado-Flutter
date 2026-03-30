@@ -310,6 +310,7 @@
   "veterinarian_active_client": "Usuario activo",
   "veterinarian_client_name": "Nombre del usuario",
   "veterinarian_client_location": "Ubicacion",
+  "veterinarian_save_client": "Guardar usuario",
   "veterinarian_client_saved": "Usuario guardado correctamente.",
   "veterinarian_workspace_hint": "Primero crea o selecciona un usuario para seguir trabajando.",
   "dashboard_title": "Resumen del mes",

@@ -105,12 +105,13 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Future<void> _openManagedClientDialog() async {
-    final clientNameController = TextEditingController();
     final geolocationContext =
         ref.read(currentGeolocationContextProvider).valueOrNull;
     final defaultLocation = geolocationContext?.regionLabel ?? '';
+    final messenger = ScaffoldMessenger.of(context);
+    var clientName = '';
 
-    await showDialog<void>(
+    final newClientDraft = await showDialog<_ManagedClientDraft>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
@@ -119,7 +120,23 @@ class _HomePageState extends ConsumerState<HomePage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
-                controller: clientNameController,
+                autofocus: true,
+                onChanged: (value) => clientName = value.trim(),
+                onSubmitted: (value) {
+                  final normalizedName = value.trim();
+                  if (normalizedName.isEmpty) {
+                    return;
+                  }
+
+                  FocusScope.of(dialogContext).unfocus();
+                  Navigator.pop(
+                    dialogContext,
+                    _ManagedClientDraft(
+                      name: normalizedName,
+                      location: defaultLocation,
+                    ),
+                  );
+                },
                 decoration: InputDecoration(
                   labelText: AppStrings.t('veterinarian_client_name'),
                 ),
@@ -141,36 +158,57 @@ class _HomePageState extends ConsumerState<HomePage> {
               child: Text(AppStrings.t('cancel')),
             ),
             FilledButton(
-              onPressed: () async {
-                final clientName = clientNameController.text.trim();
+              onPressed: () {
                 if (clientName.isEmpty) {
                   return;
                 }
 
-                await ref.read(managedClientProvider.notifier).createClient(
-                      name: clientName,
-                      location: defaultLocation,
-                    );
-
-                if (!mounted || !dialogContext.mounted) {
-                  return;
-                }
-
-                Navigator.pop(dialogContext);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(AppStrings.t('veterinarian_client_saved')),
+                FocusScope.of(dialogContext).unfocus();
+                Navigator.pop(
+                  dialogContext,
+                  _ManagedClientDraft(
+                    name: clientName,
+                    location: defaultLocation,
                   ),
                 );
               },
-              child: Text(AppStrings.t('save')),
+              child: Text(AppStrings.t('veterinarian_save_client')),
             ),
           ],
         );
       },
     );
 
-    clientNameController.dispose();
+    if (newClientDraft == null || !mounted) {
+      return;
+    }
+
+    try {
+      await ref.read(managedClientProvider.notifier).createClient(
+            name: newClientDraft.name,
+            location: newClientDraft.location,
+          );
+
+      if (!mounted) {
+        return;
+      }
+
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(AppStrings.t('veterinarian_client_saved')),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('${AppStrings.t('unexpected_error')}: $error'),
+        ),
+      );
+    }
   }
 
   void _onMenuTap(String key) {
@@ -652,6 +690,16 @@ class _HomePageState extends ConsumerState<HomePage> {
       ),
     );
   }
+}
+
+class _ManagedClientDraft {
+  final String name;
+  final String location;
+
+  const _ManagedClientDraft({
+    required this.name,
+    required this.location,
+  });
 }
 
 class _HomeMenuItem {

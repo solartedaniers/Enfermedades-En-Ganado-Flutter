@@ -78,8 +78,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   Future<void> _importPendingVeterinarianClient(User currentUser) async {
-    final userType = currentUser.userMetadata?['user_type'] as String? ?? 'farmer';
-    if (userType != 'veterinarian') {
+    final userType = (currentUser.userMetadata?['user_type'] as String?)
+            ?.trim()
+            .toLowerCase() ??
+        'farmer';
+    if (userType != 'veterinarian' && userType != 'veterinario') {
       return;
     }
 

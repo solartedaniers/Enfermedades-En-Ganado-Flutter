@@ -54,7 +54,7 @@ class ManagedClientNotifier extends AsyncNotifier<ManagedClientState> {
     final profile = ref.watch(profileProvider);
     final currentUserId = _supabase.auth.currentUser?.id;
 
-    if (currentUserId == null || profile.userType != 'veterinarian') {
+    if (currentUserId == null || !profile.isVeterinarian) {
       return ManagedClientState.empty();
     }
 

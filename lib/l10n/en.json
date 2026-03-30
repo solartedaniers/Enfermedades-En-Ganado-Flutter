@@ -310,6 +310,7 @@
   "veterinarian_active_client": "Active client",
   "veterinarian_client_name": "Client name",
   "veterinarian_client_location": "Location",
+  "veterinarian_save_client": "Save client",
   "veterinarian_client_saved": "Client saved successfully.",
   "veterinarian_workspace_hint": "Create or select a client before continuing.",
   "dashboard_title": "Monthly dashboard",
