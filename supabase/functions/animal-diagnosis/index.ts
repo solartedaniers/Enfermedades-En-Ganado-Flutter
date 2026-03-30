@@ -177,6 +177,16 @@ function buildPrompt(body: Record<string, unknown>) {
   const visualFindings = Array.isArray(body.visual_findings)
     ? body.visual_findings.join(', ')
     : 'No indicados';
+  const geolocationContext =
+    typeof body.geolocation_context === 'object' &&
+    body.geolocation_context !== null
+      ? (body.geolocation_context as Record<string, unknown>)
+      : null;
+  const regionalDiseaseKeys = Array.isArray(
+    geolocationContext?.common_disease_keys,
+  )
+    ? geolocationContext.common_disease_keys.join(', ')
+    : 'Not available';
 
   return `
 Analiza este caso clinico de ganado bovino y devuelve un informe estructurado.
@@ -200,10 +210,17 @@ ${symptoms || 'No indicados'}
 Hallazgos visuales reportados:
 ${visualFindings || 'No indicados'}
 
+Contexto geografico:
+- Region: ${asString(geolocationContext?.locality) || 'Not available'}, ${asString(geolocationContext?.administrative_area) || 'Not available'}, ${asString(geolocationContext?.country) || 'Not available'}
+- Zona climatica: ${asString(geolocationContext?.climate_zone) || 'Not available'}
+- Notas epidemiologicas: ${asString(geolocationContext?.epidemiology_summary) || 'Not available'}
+- Enfermedades regionales relevantes: ${regionalDiseaseKeys}
+
 Reglas:
 - Si no hay evidencia suficiente, marca el caso como preliminar.
 - No inventes enfermedades ni tratamientos cerrados como si fueran confirmados.
 - Las acciones deben ser orientativas y prudentes para una app estudiantil veterinaria.
+- Usa el contexto geografico solo como apoyo epidemiologico y no como evidencia unica.
 `.trim();
 }
 

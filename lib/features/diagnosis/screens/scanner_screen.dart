@@ -12,6 +12,7 @@ import '../../../core/ai/models/diagnosis_response.dart';
 import '../../../core/ai/providers/ai_diagnosis_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/app_strings.dart';
+import '../../../geolocation/presentation/providers/geolocation_provider.dart';
 import '../../animals/domain/entities/animal_entity.dart';
 import '../../animals/presentation/pages/add_animal_page.dart';
 import '../../animals/presentation/providers/animal_provider.dart';
@@ -55,6 +56,11 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _animalsFuture = _loadAnimals();
+    Future.microtask(
+      () => ref
+          .read(currentGeolocationContextProvider.notifier)
+          .loadCurrentContext(),
+    );
   }
 
   @override
@@ -261,6 +267,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   DiagnosisRequest _buildRequest({Uint8List? imageBytes}) {
     final animal = _selectedAnimal;
     final currentUser = Supabase.instance.client.auth.currentUser;
+    final geolocationContext =
+        ref.read(currentGeolocationContextProvider).valueOrNull;
     final normalizedTemperature =
         _temperatureController.text.trim().replaceAll(',', '.');
 
@@ -300,6 +308,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       imageBytes: imageBytes,
       imageUrl: animal.imageUrl,
       visualFindings: const [],
+      geolocationContext: geolocationContext,
     );
   }
 
@@ -442,6 +451,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   }
 
   Widget _buildIntakeStep() {
+    final geolocationState = ref.watch(currentGeolocationContextProvider);
+
     return FutureBuilder<List<AnimalEntity>>(
       future: _animalsFuture,
       builder: (context, snapshot) {
@@ -533,6 +544,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                     ),
                   ),
                   const SizedBox(height: 20),
+                  _buildGeolocationCard(geolocationState),
+                  const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
                     initialValue: _selectedAnimal?.id,
                     decoration: InputDecoration(
@@ -853,6 +866,64 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
               fontWeight: FontWeight.bold,
               fontSize: 16,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGeolocationCard(AsyncValue<dynamic> geolocationState) {
+    final appColors = context.appColors;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: appColors.selectionBackground,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.location_on_outlined, color: appColors.chipForeground),
+          const SizedBox(width: 12),
+          Expanded(
+            child: geolocationState.when(
+              data: (contextValue) {
+                if (contextValue == null) {
+                  return Text(AppStrings.t('geolocation_unavailable'));
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppStrings.t('geolocation_region_ready'),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${AppStrings.t('geolocation_region_label')}: ${contextValue.regionLabel}',
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${AppStrings.t('geolocation_climate_label')}: ${contextValue.climateZone}',
+                    ),
+                  ],
+                );
+              },
+              loading: () => Text(AppStrings.t('geolocation_loading')),
+              error: (error, _) => Text(
+                '${AppStrings.t('geolocation_unavailable')}: $error',
+                style: TextStyle(color: appColors.danger),
+              ),
+            ),
+          ),
+          IconButton(
+            onPressed: () => ref
+                .read(currentGeolocationContextProvider.notifier)
+                .loadCurrentContext(),
+            tooltip: AppStrings.t('geolocation_refresh'),
+            icon: const Icon(Icons.refresh),
           ),
         ],
       ),
