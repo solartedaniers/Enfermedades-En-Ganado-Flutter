@@ -3,7 +3,7 @@ class AnimalEntity {
   final String userId;
   final String name;
   final String breed;
-  final int age; // Meses
+  final int age; 
   final String ageLabel;
   final double? weight;
   final double? temperature;
