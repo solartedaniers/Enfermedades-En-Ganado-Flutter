@@ -48,11 +48,13 @@ final managedClientProvider =
 class ManagedClientNotifier extends AsyncNotifier<ManagedClientState> {
   ManagedClientService get _service => ref.read(managedClientServiceProvider);
   SupabaseClient get _supabase => Supabase.instance.client;
+  String? get _currentUserId =>
+      _supabase.auth.currentUser?.id ?? ref.read(profileProvider).userId;
 
   @override
   Future<ManagedClientState> build() async {
     final profile = ref.watch(profileProvider);
-    final currentUserId = _supabase.auth.currentUser?.id;
+    final currentUserId = _currentUserId;
 
     if (currentUserId == null || !profile.isVeterinarian) {
       return ManagedClientState.empty();
@@ -79,7 +81,7 @@ class ManagedClientNotifier extends AsyncNotifier<ManagedClientState> {
     required String name,
     required String location,
   }) async {
-    final currentUserId = _supabase.auth.currentUser?.id;
+    final currentUserId = _currentUserId;
     final currentState = state.valueOrNull ?? ManagedClientState.empty();
 
     if (currentUserId == null) {
@@ -102,7 +104,7 @@ class ManagedClientNotifier extends AsyncNotifier<ManagedClientState> {
   }
 
   Future<void> setActiveClient(String clientId) async {
-    final currentUserId = _supabase.auth.currentUser?.id;
+    final currentUserId = _currentUserId;
     final currentState = state.valueOrNull;
 
     if (currentUserId == null || currentState == null) {
@@ -120,7 +122,7 @@ class ManagedClientNotifier extends AsyncNotifier<ManagedClientState> {
   }
 
   Future<void> assignAnimalToActiveClient(String animalId) async {
-    final currentUserId = _supabase.auth.currentUser?.id;
+    final currentUserId = _currentUserId;
     final currentState = state.valueOrNull;
     final activeClientId = currentState?.activeClientId;
 

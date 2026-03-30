@@ -7,7 +7,6 @@ import 'package:logger/logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/services/notification_service.dart';
-import 'core/services/offline_auth_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/app_strings.dart';
 import 'features/animals/data/models/animal_model.dart';
@@ -44,8 +43,6 @@ Future<void> main() async {
 
   await AppStrings.load('es');
   await NotificationService.init();
-  await OfflineAuthService.clearSession();
-  await Supabase.instance.client.auth.signOut();
 
   runApp(const ProviderScope(child: AgrovetAI()));
 }
@@ -57,32 +54,15 @@ class AgrovetAI extends ConsumerStatefulWidget {
   ConsumerState<AgrovetAI> createState() => _AgrovetAIState();
 }
 
-class _AgrovetAIState extends ConsumerState<AgrovetAI>
-    with WidgetsBindingObserver {
+class _AgrovetAIState extends ConsumerState<AgrovetAI> {
   final AppLinks _appLinks = AppLinks();
   final _supabase = Supabase.instance.client;
-  bool _isClosingSession = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     _listenToAuthEvents();
     _initDeepLinks();
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.detached) {
-      _closeSessionAndRedirect();
-    }
   }
 
   void _listenToAuthEvents() {
@@ -123,18 +103,6 @@ class _AgrovetAIState extends ConsumerState<AgrovetAI>
     } catch (error) {
       logger.e('Error processing deep link: $error');
     }
-  }
-
-  Future<void> _closeSessionAndRedirect() async {
-    if (_isClosingSession) {
-      return;
-    }
-
-    _isClosingSession = true;
-    await OfflineAuthService.clearSession();
-    await _supabase.auth.signOut();
-    navigatorKey.currentState?.pushNamedAndRemoveUntil('/login', (route) => false);
-    _isClosingSession = false;
   }
 
   @override

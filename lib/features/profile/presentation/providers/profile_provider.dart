@@ -6,6 +6,7 @@ import '../../../../core/services/offline_auth_service.dart';
 import '../../../../core/utils/app_strings.dart';
 
 class ProfileState {
+  final String? userId;
   final String name;
   final String email;
   final String language;
@@ -15,6 +16,7 @@ class ProfileState {
   final bool isLoaded;
 
   const ProfileState({
+    required this.userId,
     required this.name,
     required this.email,
     required this.language,
@@ -25,6 +27,8 @@ class ProfileState {
   });
 
   ProfileState copyWith({
+    String? userId,
+    bool clearUserId = false,
     String? name,
     String? email,
     String? language,
@@ -35,6 +39,7 @@ class ProfileState {
     bool clearAvatar = false,
   }) {
     return ProfileState(
+      userId: clearUserId ? null : userId ?? this.userId,
       name: name ?? this.name,
       email: email ?? this.email,
       language: language ?? this.language,
@@ -46,6 +51,7 @@ class ProfileState {
   }
 
   factory ProfileState.empty() => ProfileState(
+        userId: null,
         name: AppStrings.t('default_username'),
         email: '',
         language: 'es',
@@ -77,7 +83,6 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
         final currentLanguage = state.language;
         final currentThemeMode = state.themeMode;
         await AppStrings.load(currentLanguage);
-        await OfflineAuthService.clearSession();
         state = ProfileState.empty().copyWith(
           language: currentLanguage,
           themeMode: currentThemeMode,
@@ -124,6 +129,7 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
             (currentLanguage == 'en' ? 'farmer' : 'ganadero');
 
         state = ProfileState(
+          userId: currentUser.id,
           name: name,
           email: currentUser.email ?? '',
           language: currentLanguage,
@@ -145,10 +151,12 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       await OfflineAuthService.saveSession(
         userId: currentUser.id,
         userName: name,
+        userType: userType,
         avatarUrl: avatar,
       );
 
       state = ProfileState(
+        userId: currentUser.id,
         name: name,
         email: currentUser.email ?? '',
         avatarUrl: avatar,
@@ -197,6 +205,54 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
   Future<void> changeAvatar(String url) async {
     state = state.copyWith(avatarUrl: url);
     await _saveToSupabase({'avatar_url': url});
+  }
+
+  Future<void> cacheOfflineAccess({
+    required String email,
+    required String password,
+  }) async {
+    final currentUser = _supabase.auth.currentUser;
+    if (currentUser == null) {
+      return;
+    }
+
+    await OfflineAuthService.saveOfflineAccess(
+      userId: currentUser.id,
+      userName: state.name,
+      userType: state.userType,
+      email: email,
+      password: password,
+      avatarUrl: state.avatarUrl,
+    );
+  }
+
+  Future<bool> activateOfflineSession({
+    required String email,
+    required String password,
+  }) async {
+    final offlineSnapshot = await OfflineAuthService.authenticateOffline(
+      email: email,
+      password: password,
+    );
+
+    if (offlineSnapshot == null || offlineSnapshot['userId'] == null) {
+      return false;
+    }
+
+    await AppStrings.load(state.language);
+
+    state = state.copyWith(
+      userId: offlineSnapshot['userId'],
+      name: offlineSnapshot['userName'] ?? AppStrings.t('default_username'),
+      email: offlineSnapshot['email'] ?? email.trim(),
+      userType:
+          offlineSnapshot['userType'] ??
+          (state.language == 'en' ? 'farmer' : 'ganadero'),
+      avatarUrl: offlineSnapshot['avatarUrl'],
+      isLoaded: true,
+    );
+
+    return true;
   }
 }
 

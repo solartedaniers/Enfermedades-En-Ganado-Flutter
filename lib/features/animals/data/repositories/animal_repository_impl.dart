@@ -51,12 +51,18 @@ class AnimalRepositoryImpl implements AnimalRepository {
   Future<List<AnimalEntity>> getAnimals() async {
     try {
       final remoteAnimals = await remoteDataSource.getAnimals();
-      await localDataSource.syncFromRemote(
-        remoteAnimals
-            .map((animal) => AnimalModel.fromEntity(animal, isSynced: true))
-            .toList(),
-      );
-      return remoteAnimals;
+      final pendingLocalAnimals = await localDataSource.getUnsyncedAnimals();
+      final mergedAnimals = <String, AnimalModel>{
+        for (final animal in remoteAnimals)
+          animal.id: AnimalModel.fromEntity(animal, isSynced: true),
+      };
+
+      for (final pendingAnimal in pendingLocalAnimals) {
+        mergedAnimals[pendingAnimal.id] = pendingAnimal;
+      }
+
+      await localDataSource.syncFromRemote(mergedAnimals.values.toList());
+      return mergedAnimals.values.map((animal) => animal.toEntity()).toList();
     } catch (_) {
       final localAnimals = await localDataSource.getAnimals();
       return localAnimals.map((model) => model.toEntity()).toList();

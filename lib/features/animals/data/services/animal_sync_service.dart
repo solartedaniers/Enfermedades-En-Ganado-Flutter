@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../../../../core/services/offline_auth_service.dart';
 import '../../../../core/network/network_info.dart';
 import '../../domain/repositories/animal_repository.dart';
 
@@ -15,16 +16,26 @@ class AnimalSyncService {
 
   void start() {
     _subscription?.cancel();
+    _syncIfConnected();
     _subscription =
         networkInfo.onConnectivityChanged.listen((isConnected) async {
       if (isConnected) {
-        try {
-          await animalRepository.syncAnimals();
-        } catch (_) {
-          // Fallo silencioso.
-        }
+        await _syncIfConnected();
       }
     });
+  }
+
+  Future<void> _syncIfConnected() async {
+    try {
+      if (!await networkInfo.isConnected) {
+        return;
+      }
+
+      await OfflineAuthService.restoreCloudSessionIfPossible();
+      await animalRepository.syncAnimals();
+    } catch (_) {
+      // Fallo silencioso.
+    }
   }
 
   void stop() {

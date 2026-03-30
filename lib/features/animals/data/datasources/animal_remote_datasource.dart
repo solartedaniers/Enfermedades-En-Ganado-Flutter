@@ -11,7 +11,9 @@ class AnimalRemoteDataSource {
 
   Future<List<AnimalEntity>> getAnimals() async {
     final currentUser = _supabaseClient.auth.currentUser;
-    if (currentUser == null) return [];
+    if (currentUser == null) {
+      throw StateError('Remote session unavailable');
+    }
 
     final response = await _supabaseClient
         .from(AnimalConstants.tableName)

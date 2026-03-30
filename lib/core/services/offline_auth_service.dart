@@ -1,23 +1,103 @@
-import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
-/// Guarda datos minimos de sesion para permitir uso offline.
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+/// Guarda datos minimos de sesion y acceso local para permitir uso offline.
 class OfflineAuthService {
   static const _keyUserId = 'offline_user_id';
   static const _keyUserName = 'offline_user_name';
   static const _keyAvatarUrl = 'offline_avatar_url';
+  static const _keyUserType = 'offline_user_type';
+  static const _keyEmail = 'offline_auth_email';
+  static const _keySecret = 'offline_auth_secret';
 
   static Future<void> saveSession({
     required String userId,
     required String userName,
+    required String userType,
     String? avatarUrl,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyUserId, userId);
     await prefs.setString(_keyUserName, userName);
+    await prefs.setString(_keyUserType, userType);
 
     if (avatarUrl != null) {
       await prefs.setString(_keyAvatarUrl, avatarUrl);
     }
+  }
+
+  static Future<void> saveOfflineAccess({
+    required String userId,
+    required String userName,
+    required String userType,
+    required String email,
+    required String password,
+    String? avatarUrl,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await saveSession(
+      userId: userId,
+      userName: userName,
+      userType: userType,
+      avatarUrl: avatarUrl,
+    );
+    await prefs.setString(_keyEmail, email.trim().toLowerCase());
+    await prefs.setString(
+      _keySecret,
+      _encodeSecret(email: email, password: password),
+    );
+  }
+
+  static Future<Map<String, String?>?> authenticateOffline({
+    required String email,
+    required String password,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedEmail = prefs.getString(_keyEmail);
+    final savedSecret = prefs.getString(_keySecret);
+    final candidateSecret = _encodeSecret(email: email, password: password);
+
+    if (savedEmail == null ||
+        savedSecret == null ||
+        savedEmail != email.trim().toLowerCase() ||
+        savedSecret != candidateSecret) {
+      return null;
+    }
+
+    return {
+      'userId': prefs.getString(_keyUserId),
+      'userName': prefs.getString(_keyUserName),
+      'avatarUrl': prefs.getString(_keyAvatarUrl),
+      'userType': prefs.getString(_keyUserType),
+      'email': savedEmail,
+    };
+  }
+
+  static Future<void> restoreCloudSessionIfPossible() async {
+    final prefs = await SharedPreferences.getInstance();
+    final email = prefs.getString(_keyEmail);
+    final secret = prefs.getString(_keySecret);
+    final supabase = Supabase.instance.client;
+
+    if (email == null ||
+        secret == null ||
+        supabase.auth.currentUser != null) {
+      return;
+    }
+
+    final decoded = utf8.decode(base64Url.decode(secret));
+    final separatorIndex = decoded.indexOf('::');
+    if (separatorIndex == -1) {
+      return;
+    }
+
+    final password = decoded.substring(separatorIndex + 2);
+    await supabase.auth.signInWithPassword(
+      email: email,
+      password: password,
+    );
   }
 
   static Future<Map<String, String?>> getSession() async {
@@ -26,6 +106,8 @@ class OfflineAuthService {
       'userId': prefs.getString(_keyUserId),
       'userName': prefs.getString(_keyUserName),
       'avatarUrl': prefs.getString(_keyAvatarUrl),
+      'userType': prefs.getString(_keyUserType),
+      'email': prefs.getString(_keyEmail),
     };
   }
 
@@ -39,5 +121,16 @@ class OfflineAuthService {
     await prefs.remove(_keyUserId);
     await prefs.remove(_keyUserName);
     await prefs.remove(_keyAvatarUrl);
+    await prefs.remove(_keyUserType);
+    await prefs.remove(_keyEmail);
+    await prefs.remove(_keySecret);
+  }
+
+  static String _encodeSecret({
+    required String email,
+    required String password,
+  }) {
+    final normalizedEmail = email.trim().toLowerCase();
+    return base64Url.encode(utf8.encode('$normalizedEmail::$password'));
   }
 }

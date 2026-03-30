@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/theme/app_theme.dart';
@@ -45,17 +46,38 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     setState(() => loading = true);
 
     try {
-      await authService.signIn(
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
-      );
+      final connectivityResults = await Connectivity().checkConnectivity();
+      final isConnected = !connectivityResults.contains(ConnectivityResult.none);
 
-      final currentUser = Supabase.instance.client.auth.currentUser;
-      if (currentUser?.emailConfirmedAt == null) {
-        throw Exception(AppStrings.t('confirm_email_first'));
+      if (isConnected) {
+        await authService.signIn(
+          email: emailController.text.trim(),
+          password: passwordController.text.trim(),
+        );
+
+        final currentUser = Supabase.instance.client.auth.currentUser;
+        if (currentUser?.emailConfirmedAt == null) {
+          throw Exception(AppStrings.t('confirm_email_first'));
+        }
+
+        await ref.read(profileProvider.notifier).reload();
+        await ref.read(profileProvider.notifier).cacheOfflineAccess(
+              email: emailController.text.trim(),
+              password: passwordController.text.trim(),
+            );
+        await _importPendingVeterinarianClient(currentUser!);
+      } else {
+        final authenticated = await ref
+            .read(profileProvider.notifier)
+            .activateOfflineSession(
+              email: emailController.text.trim(),
+              password: passwordController.text.trim(),
+            );
+
+        if (!authenticated) {
+          throw Exception(AppStrings.t('offline_login_first_time'));
+        }
       }
-
-      await _importPendingVeterinarianClient(currentUser!);
 
       if (!mounted) {
         return;

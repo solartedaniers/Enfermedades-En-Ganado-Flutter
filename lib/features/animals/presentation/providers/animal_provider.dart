@@ -17,7 +17,7 @@ final supabaseClientProvider = Provider<SupabaseClient>((ref) {
 
 final currentUserIdProvider = Provider<String?>((ref) {
   final client = ref.watch(supabaseClientProvider);
-  return client.auth.currentUser?.id;
+  return client.auth.currentUser?.id ?? ref.watch(profileProvider).userId;
 });
 
 final storageServiceProvider = Provider<StorageService>((ref) {
@@ -55,16 +55,27 @@ final getAnimalsProvider = Provider<GetAnimals>((ref) {
 final rawAnimalsListProvider =
     FutureProvider.autoDispose<List<AnimalEntity>>((ref) async {
   final getAnimals = ref.watch(getAnimalsProvider);
-  return getAnimals();
+  final currentUserId = ref.watch(currentUserIdProvider);
+  final animals = await getAnimals();
+
+  if (currentUserId == null) {
+    return animals;
+  }
+
+  return animals.where((animal) => animal.userId == currentUserId).toList();
 });
 
 final animalsListProvider =
     FutureProvider.autoDispose<List<AnimalEntity>>((ref) async {
   final animals = await ref.watch(rawAnimalsListProvider.future);
+  final currentUserId = ref.watch(currentUserIdProvider);
+  final scopedAnimals = currentUserId == null
+      ? animals
+      : animals.where((animal) => animal.userId == currentUserId).toList();
   final profile = ref.watch(profileProvider);
 
   if (!profile.isVeterinarian) {
-    return animals;
+    return scopedAnimals;
   }
 
   final managedClientState = await ref.watch(managedClientProvider.future);
@@ -74,7 +85,7 @@ final animalsListProvider =
     return const [];
   }
 
-  return animals.where((animal) {
+  return scopedAnimals.where((animal) {
     return managedClientState.animalAssignments[animal.id] == activeClientId;
   }).toList();
 });

@@ -5,7 +5,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/network/network_provider.dart';
 import '../../../../core/services/managed_client_service.dart';
-import '../../../../core/services/offline_auth_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../../../../geolocation/presentation/providers/geolocation_provider.dart';
@@ -90,7 +89,6 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
 
     syncService?.stop();
-    await OfflineAuthService.clearSession();
     await supabase.auth.signOut();
 
     if (!mounted) {
