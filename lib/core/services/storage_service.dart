@@ -1,24 +1,27 @@
 import 'dart:io';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:uuid/uuid.dart';
+
+import 'storage_path_builder.dart';
 
 class StorageService {
   final SupabaseClient _supabase;
-  final _uuid = const Uuid();
+  final StoragePathBuilder _pathBuilder;
 
-  StorageService(this._supabase);
+  const StorageService(
+    this._supabase, {
+    StoragePathBuilder pathBuilder = const StoragePathBuilder(),
+  }) : _pathBuilder = pathBuilder;
 
-  // Fotos de animales y registros médicos → bucket 'animals'
   Future<String> uploadAnimalImage(File file, String userId) async {
-    final fileName = '$userId/${_uuid.v4()}.jpg';
-    await _supabase.storage.from('animals').upload(fileName, file);
-    return _supabase.storage.from('animals').getPublicUrl(fileName);
+    final filePath = _pathBuilder.buildAnimalImagePath(userId);
+    await _supabase.storage.from('animals').upload(filePath, file);
+    return _supabase.storage.from('animals').getPublicUrl(filePath);
   }
 
-  // Avatares de usuario → bucket 'users'
   Future<String> uploadUserAvatar(File file, String userId) async {
-    final fileName = '$userId/${_uuid.v4()}.jpg';
-    await _supabase.storage.from('users').upload(fileName, file);
-    return _supabase.storage.from('users').getPublicUrl(fileName);
+    final filePath = _pathBuilder.buildUserAvatarPath(userId);
+    await _supabase.storage.from('users').upload(filePath, file);
+    return _supabase.storage.from('users').getPublicUrl(filePath);
   }
 }

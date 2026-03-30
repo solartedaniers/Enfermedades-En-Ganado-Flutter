@@ -29,4 +29,43 @@ class AnimalEntity {
     this.profileImageUrl,
   })  : symptoms = symptoms ?? '',
         ageLabel = ageLabel ?? '';
+
+  AnimalEntity copyWith({
+    String? id,
+    String? userId,
+    String? name,
+    String? breed,
+    int? age,
+    String? ageLabel,
+    double? weight,
+    bool clearWeight = false,
+    double? temperature,
+    bool clearTemperature = false,
+    String? symptoms,
+    String? imageUrl,
+    bool clearImageUrl = false,
+    String? profileImageUrl,
+    bool clearProfileImageUrl = false,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return AnimalEntity(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      name: name ?? this.name,
+      breed: breed ?? this.breed,
+      age: age ?? this.age,
+      ageLabel: ageLabel ?? this.ageLabel,
+      symptoms: symptoms ?? this.symptoms,
+      weight: clearWeight ? null : (weight ?? this.weight),
+      temperature:
+          clearTemperature ? null : (temperature ?? this.temperature),
+      imageUrl: clearImageUrl ? null : (imageUrl ?? this.imageUrl),
+      profileImageUrl: clearProfileImageUrl
+          ? null
+          : (profileImageUrl ?? this.profileImageUrl),
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
 }

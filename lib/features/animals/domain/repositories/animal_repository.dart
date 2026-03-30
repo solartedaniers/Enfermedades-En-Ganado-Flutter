@@ -2,7 +2,7 @@ import '../entities/animal_entity.dart';
 
 abstract class AnimalRepository {
   /// Agrega o actualiza un animal (offline-first).
-  /// [localImagePath] ruta local de imagen pendiente de subir.
+  /// [localImagePath] es la ruta local de una imagen pendiente por subir.
   Future<void> addAnimal(AnimalEntity animal, {String? localImagePath});
 
   Future<List<AnimalEntity>> getAnimals();
@@ -13,6 +13,6 @@ abstract class AnimalRepository {
   /// Elimina el animal tanto en Hive como en Supabase.
   Future<void> deleteAnimal(String id);
 
-  /// Sincroniza animales pendientes cuando regresa la conexión.
+  /// Sincroniza animales pendientes cuando regresa la conexion.
   Future<void> syncAnimals();
 }

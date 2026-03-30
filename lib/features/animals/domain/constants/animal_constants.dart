@@ -6,6 +6,7 @@ class AnimalConstants {
   static const String createdAtColumn = 'created_at';
   static const String profileImageUrlColumn = 'profile_image_url';
   static const int maxAgeYears = 25;
+  static const String cattleSpecies = 'bovine';
 
   static const List<String> cattleBreeds = [
     'Aberdeen Angus',

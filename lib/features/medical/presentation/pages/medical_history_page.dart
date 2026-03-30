@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/services/connectivity_service.dart';
@@ -39,99 +38,57 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
   void _goHome() => Navigator.of(context).popUntil((route) => route.isFirst);
 
   Future<void> _pickProfileImage() async {
-    final appColors = context.appColors;
-
     final isOnline = await ConnectivityService.checkAndNotify(
       context,
       message: AppStrings.t('medical_need_internet_change_photo'),
     );
-    if (!isOnline || !mounted) return;
+    if (!isOnline || !mounted) {
+      return;
+    }
 
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: appColors.inputBorderLight,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              ListTile(
-                leading: Icon(Icons.camera_alt, color: appColors.chipForeground),
-                title: Text(AppStrings.t('take_photo')),
-                onTap: () => Navigator.pop(context, ImageSource.camera),
-              ),
-              ListTile(
-                leading: Icon(Icons.photo_library, color: appColors.chipForeground),
-                title: Text(AppStrings.t('choose_gallery')),
-                onTap: () => Navigator.pop(context, ImageSource.gallery),
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        ),
-      ),
+      builder: (_) => const _MedicalImageSourceSheet(),
     );
 
-    if (source == null || !mounted) return;
+    if (source == null || !mounted) {
+      return;
+    }
 
     final picked = await _picker.pickImage(source: source, imageQuality: 80);
-    if (picked == null || !mounted) return;
+    if (picked == null || !mounted) {
+      return;
+    }
 
     try {
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user == null) return;
+      final updatedAnimal = _animal.copyWith(updatedAt: DateTime.now());
+      await ref.read(animalRepositoryProvider).updateAnimal(
+            updatedAnimal,
+            localImagePath: picked.path,
+          );
+      final refreshedAnimals =
+          await ref.read(animalRepositoryProvider).getAnimals();
+      final refreshedAnimal = refreshedAnimals.firstWhere(
+        (item) => item.id == _animal.id,
+        orElse: () => updatedAnimal,
+      );
 
-      final storageService = ref.read(storageServiceProvider);
-      final url = await storageService.uploadAnimalImage(File(picked.path), user.id);
-
-      await Supabase.instance.client
-          .from('animals')
-          .update({'profile_image_url': url}).eq('id', _animal.id);
-
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
-        _animal = AnimalEntity(
-          id: _animal.id,
-          userId: _animal.userId,
-          name: _animal.name,
-          breed: _animal.breed,
-          age: _animal.age,
-          ageLabel: _animal.ageLabel,
-          symptoms: _animal.symptoms,
-          weight: _animal.weight,
-          temperature: _animal.temperature,
-          imageUrl: _animal.imageUrl,
-          profileImageUrl: url,
-          createdAt: _animal.createdAt,
-          updatedAt: DateTime.now(),
-        );
+        _animal = refreshedAnimal;
       });
-
-      ref.invalidate(animalRepositoryProvider);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppStrings.t('medical_photo_updated'))),
-      );
+      ref.invalidate(animalsListProvider);
+      _showSnack(AppStrings.t('medical_photo_updated'));
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${AppStrings.t("unexpected_error")}: $error')),
-      );
+      _showSnack('${AppStrings.t("unexpected_error")}: $error');
     }
   }
 
@@ -140,7 +97,9 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
       context,
       message: AppStrings.t('medical_need_internet_add_record'),
     );
-    if (!isOnline || !mounted) return;
+    if (!isOnline || !mounted) {
+      return;
+    }
 
     final draft = await showModalBottomSheet<MedicalRecordDraft>(
       context: context,
@@ -155,7 +114,9 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
       ),
     );
 
-    if (draft == null) return;
+    if (draft == null) {
+      return;
+    }
 
     await _saveRecord(diagnosis: draft.diagnosis, imageFile: draft.imageFile);
   }
@@ -165,19 +126,21 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
     File? imageFile,
   }) async {
     try {
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user == null) return;
+      final userId = ref.read(currentUserIdProvider);
+      if (userId == null) {
+        return;
+      }
 
       String? imageUrl;
       if (imageFile != null) {
         final storageService = ref.read(storageServiceProvider);
-        imageUrl = await storageService.uploadAnimalImage(imageFile, user.id);
+        imageUrl = await storageService.uploadAnimalImage(imageFile, userId);
       }
 
       final record = MedicalRecordModel(
         id: const Uuid().v4(),
         animalId: _animal.id,
-        userId: user.id,
+        userId: userId,
         diagnosis: diagnosis.isEmpty ? null : diagnosis,
         aiResult: null,
         imageUrl: imageUrl,
@@ -186,18 +149,18 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
 
       await ref.read(medicalRepositoryProvider).addRecord(record);
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {});
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppStrings.t('medical_record_saved'))),
-      );
+      _showSnack(AppStrings.t('medical_record_saved'));
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${AppStrings.t("unexpected_error")}: $error')),
-      );
+      _showSnack('${AppStrings.t("unexpected_error")}: $error');
     }
   }
 
@@ -222,23 +185,24 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
         ],
       ),
     );
-    if (confirm != true || !mounted) return;
+    if (confirm != true || !mounted) {
+      return;
+    }
 
     try {
-      await Supabase.instance.client
-          .from('medical_records')
-          .delete()
-          .eq('id', recordId);
+      await ref.read(medicalRepositoryProvider).deleteRecord(recordId);
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {});
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${AppStrings.t("unexpected_error")}: $error')),
-      );
+      _showSnack('${AppStrings.t("unexpected_error")}: $error');
     }
   }
 
@@ -256,24 +220,34 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
       ),
     );
 
-    if (draft == null || !mounted) return;
+    if (draft == null || !mounted) {
+      return;
+    }
 
     try {
-      await Supabase.instance.client
-          .from('medical_records')
-          .update({'diagnosis': draft.diagnosis})
-          .eq('id', recordId);
+      await ref.read(medicalRepositoryProvider).updateRecord(
+            recordId: recordId,
+            diagnosis: draft.diagnosis,
+          );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {});
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${AppStrings.t("unexpected_error")}: $error')),
-      );
+      _showSnack('${AppStrings.t("unexpected_error")}: $error');
     }
+  }
+
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   @override
@@ -282,7 +256,12 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
     final appColors = context.appColors;
 
     return PopScope(
-      onPopInvokedWithResult: (didPop, result) {},
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          Navigator.of(context).pop(_animal);
+        }
+      },
       child: Scaffold(
         appBar: AppBar(
           title: Text(_animal.name),
@@ -361,6 +340,49 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
                 },
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MedicalImageSourceSheet extends StatelessWidget {
+  const _MedicalImageSourceSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    final appColors = context.appColors;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: appColors.inputBorderLight,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            ListTile(
+              leading: Icon(Icons.camera_alt, color: appColors.chipForeground),
+              title: Text(AppStrings.t('take_photo')),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            ListTile(
+              leading: Icon(Icons.photo_library, color: appColors.chipForeground),
+              title: Text(AppStrings.t('choose_gallery')),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+            const SizedBox(height: 8),
           ],
         ),
       ),

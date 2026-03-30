@@ -1,9 +1,17 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
+
+import 'notification_channel_config.dart';
+import 'notification_schedule_policy.dart';
+import '../utils/app_strings.dart';
 
 class NotificationService {
-  static final _plugin = FlutterLocalNotificationsPlugin();
+  static final FlutterLocalNotificationsPlugin _plugin =
+      FlutterLocalNotificationsPlugin();
+  static const NotificationSchedulePolicy _schedulePolicy =
+      NotificationSchedulePolicy();
+
   static bool _initialized = false;
 
   static Future<void> init() async {
@@ -11,8 +19,8 @@ class NotificationService {
 
     tz.initializeTimeZones();
 
-    const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const settings = InitializationSettings(android: android);
+    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const settings = InitializationSettings(android: androidSettings);
 
     await _plugin.initialize(settings);
     _initialized = true;
@@ -24,27 +32,20 @@ class NotificationService {
     required String body,
     required DateTime scheduledTime,
   }) async {
-    // Notificación 20 minutos antes
-    final notifyAt = scheduledTime.subtract(const Duration(minutes: 20));
+    final notifyAt = _schedulePolicy.resolveNotificationTime(
+      scheduledTime,
+      DateTime.now(),
+    );
 
-    if (notifyAt.isBefore(DateTime.now())) return;
+    if (notifyAt == null) return;
 
     await _plugin.zonedSchedule(
       id,
       title,
       body,
       tz.TZDateTime.from(notifyAt, tz.local),
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'agrovet_channel',
-          'AgroVet Recordatorios',
-          channelDescription: 'Recordatorios de medicamentos',
-          importance: Importance.high,
-          priority: Priority.high,
-        ),
-      ),
+      _buildChannelConfig().toNotificationDetails(),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      // --- ESTO ES LO QUE SOLUCIONA EL ERROR ---
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
     );
@@ -56,5 +57,13 @@ class NotificationService {
 
   static Future<void> cancelAll() async {
     await _plugin.cancelAll();
+  }
+
+  static NotificationChannelConfig _buildChannelConfig() {
+    return NotificationChannelConfig(
+      channelId: 'agrovet_channel',
+      channelName: AppStrings.t('notification_channel_name'),
+      channelDescription: AppStrings.t('notification_channel_description'),
+    );
   }
 }

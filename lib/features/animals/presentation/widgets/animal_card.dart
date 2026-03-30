@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../../domain/entities/animal_entity.dart';
@@ -17,9 +18,9 @@ class AnimalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final appColors = context.appColors;
     final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
       onTap: onTap,
@@ -39,7 +40,6 @@ class AnimalCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // ── Imagen de perfil ────────────────────────────────────
             ClipRRect(
               borderRadius:
                   const BorderRadius.horizontal(left: Radius.circular(20)),
@@ -51,16 +51,13 @@ class AnimalCard extends StatelessWidget {
                       height: 100,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) =>
-                          _placeholder(),
+                          _buildPlaceholder(),
                     )
-                  : _placeholder(),
+                  : _buildPlaceholder(),
             ),
-
-            // ── Info ────────────────────────────────────────────────
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
@@ -90,7 +87,7 @@ class AnimalCard extends StatelessWidget {
                       spacing: 6,
                       runSpacing: 4,
                       children: [
-                        _chip(
+                        _buildChip(
                           context,
                           Icons.cake,
                           animalData.ageLabel.isNotEmpty
@@ -98,10 +95,10 @@ class AnimalCard extends StatelessWidget {
                               : AgeLabelFormatter.format(animalData.age),
                         ),
                         if (animalData.weight != null)
-                          _chip(
+                          _buildChip(
                             context,
                             Icons.monitor_weight,
-                            '${animalData.weight} ${AppStrings.t("kg")}',
+                            '${animalData.weight} ${AppStrings.t('kg')}',
                           ),
                       ],
                     ),
@@ -109,8 +106,6 @@ class AnimalCard extends StatelessWidget {
                 ),
               ),
             ),
-
-            // ── Flecha ──────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.only(right: 10),
               child: Icon(
@@ -125,7 +120,7 @@ class AnimalCard extends StatelessWidget {
     ).animate().fadeIn(duration: 300.ms).slideX(begin: 0.05);
   }
 
-  Widget _chip(BuildContext context, IconData icon, String label) {
+  Widget _buildChip(BuildContext context, IconData icon, String label) {
     final appColors = context.appColors;
 
     return Container(
@@ -145,7 +140,10 @@ class AnimalCard extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 11, color: appColors.chipForeground),
+              style: TextStyle(
+                fontSize: 11,
+                color: appColors.chipForeground,
+              ),
             ),
           ),
         ],
@@ -153,7 +151,7 @@ class AnimalCard extends StatelessWidget {
     );
   }
 
-  Widget _placeholder() {
+  Widget _buildPlaceholder() {
     return Image.asset(
       AppStrings.t('animal_default_image'),
       width: 100,
