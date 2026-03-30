@@ -6,6 +6,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../../profile/presentation/providers/managed_client_provider.dart';
 import '../../profile/presentation/providers/profile_provider.dart';
+import '../widgets/auth_preferences_button.dart';
 import '../widgets/auth_page_shell.dart';
 import '../widgets/auth_text_field.dart';
 import '../../auth/home/screens/home_page.dart';
@@ -125,6 +126,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final isDark = theme.brightness == Brightness.dark;
 
     return AuthPageShell(
+      appBar: AppBar(
+        leading: const AuthPreferencesButton(),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [

@@ -328,6 +328,7 @@
   "weekday_fri": "Vie",
   "weekday_sat": "Sab",
   "weekday_sun": "Dom",
+  "auth_preferences": "Preferencias",
   "role_title": "Rol",
   "role_farmer": "Ganadero",
   "role_veterinarian": "Veterinario"

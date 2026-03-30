@@ -74,9 +74,15 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       if (event == AuthChangeEvent.signedIn) {
         await _loadFromSupabase();
       } else if (event == AuthChangeEvent.signedOut) {
-        await AppStrings.load('es');
+        final currentLanguage = state.language;
+        final currentThemeMode = state.themeMode;
+        await AppStrings.load(currentLanguage);
         await OfflineAuthService.clearSession();
-        state = ProfileState.empty();
+        state = ProfileState.empty().copyWith(
+          language: currentLanguage,
+          themeMode: currentThemeMode,
+          isLoaded: true,
+        );
       }
     });
 
@@ -88,17 +94,26 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
   Future<void> _loadFromSupabase() async {
     try {
       final currentUser = _supabase.auth.currentUser;
+      final currentLanguage = state.language;
+      final currentThemeMode = state.themeMode;
+
       if (currentUser == null) {
-        await AppStrings.load('es');
-        state = ProfileState.empty();
+        await AppStrings.load(currentLanguage);
+        state = ProfileState.empty().copyWith(
+          language: currentLanguage,
+          themeMode: currentThemeMode,
+          isLoaded: true,
+        );
         return;
       }
 
       final data = await _supabase
           .from('profiles')
-          .select('username, avatar_url, language, theme, user_type')
+          .select('username, avatar_url, user_type')
           .eq('id', currentUser.id)
           .maybeSingle();
+
+      await AppStrings.load(currentLanguage);
 
       if (data == null) {
         final meta = currentUser.userMetadata;
@@ -106,52 +121,49 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
             (meta?['username'] as String?) ?? AppStrings.t('default_username');
         final userType =
             (meta?['user_type'] as String?) ??
-            (AppStrings.isEnglish ? 'farmer' : 'ganadero');
-        await AppStrings.load('es');
+            (currentLanguage == 'en' ? 'farmer' : 'ganadero');
+
         state = ProfileState(
           name: name,
           email: currentUser.email ?? '',
-          language: 'es',
+          language: currentLanguage,
           userType: userType,
-          themeMode: ThemeMode.system,
+          themeMode: currentThemeMode,
           avatarUrl: null,
           isLoaded: true,
         );
         return;
       }
 
-      final language = (data['language'] as String?) ?? 'es';
-      final theme = (data['theme'] as String?) ?? 'system';
       final userType =
           (data['user_type'] as String?) ??
-          (language == 'en' ? 'farmer' : 'ganadero');
+          (currentLanguage == 'en' ? 'farmer' : 'ganadero');
       final name =
           (data['username'] as String?) ?? AppStrings.t('default_username');
       final avatar = data['avatar_url'] as String?;
 
-      await AppStrings.load(language);
-
-      // Guarda sesion offline.
       await OfflineAuthService.saveSession(
         userId: currentUser.id,
         userName: name,
         avatarUrl: avatar,
-        language: language,
-        theme: theme,
       );
 
       state = ProfileState(
         name: name,
         email: currentUser.email ?? '',
         avatarUrl: avatar,
-        language: language,
+        language: currentLanguage,
         userType: userType,
-        themeMode: _themeFromString(theme),
+        themeMode: currentThemeMode,
         isLoaded: true,
       );
     } catch (_) {
-      await AppStrings.load('es');
-      state = ProfileState.empty().copyWith(isLoaded: true);
+      await AppStrings.load(state.language);
+      state = ProfileState.empty().copyWith(
+        language: state.language,
+        themeMode: state.themeMode,
+        isLoaded: true,
+      );
     }
   }
 
@@ -176,39 +188,15 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
   Future<void> changeLanguage(String language) async {
     await AppStrings.load(language);
     state = state.copyWith(language: language);
-    await _saveToSupabase({'language': language});
   }
 
   Future<void> changeTheme(ThemeMode mode) async {
     state = state.copyWith(themeMode: mode);
-    await _saveToSupabase({'theme': _themeToString(mode)});
   }
 
   Future<void> changeAvatar(String url) async {
     state = state.copyWith(avatarUrl: url);
     await _saveToSupabase({'avatar_url': url});
-  }
-
-  ThemeMode _themeFromString(String value) {
-    switch (value) {
-      case 'light':
-        return ThemeMode.light;
-      case 'dark':
-        return ThemeMode.dark;
-      default:
-        return ThemeMode.system;
-    }
-  }
-
-  String _themeToString(ThemeMode mode) {
-    switch (mode) {
-      case ThemeMode.light:
-        return 'light';
-      case ThemeMode.dark:
-        return 'dark';
-      default:
-        return 'system';
-    }
   }
 }
 

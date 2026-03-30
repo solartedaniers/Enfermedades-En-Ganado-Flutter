@@ -45,8 +45,6 @@ class AuthService {
           'phone': normalizedPhone,
           'location': normalizedLocation,
           'user_type': localizedUserType,
-          'language': AppStrings.currentLanguage,
-          'theme': 'system',
         },
       );
     } on AuthException catch (e) {
