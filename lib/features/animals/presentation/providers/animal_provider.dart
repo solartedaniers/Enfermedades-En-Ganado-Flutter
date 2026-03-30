@@ -2,9 +2,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/services/storage_service.dart';
+import '../../../profile/presentation/providers/managed_client_provider.dart';
+import '../../../profile/presentation/providers/profile_provider.dart';
 import '../../data/datasources/animal_local_datasource.dart';
 import '../../data/datasources/animal_remote_datasource.dart';
 import '../../data/repositories/animal_repository_impl.dart';
+import '../../domain/entities/animal_entity.dart';
 import '../../domain/usecases/add_animal.dart';
 import '../../domain/usecases/get_animals.dart';
 
@@ -31,7 +34,7 @@ final animalRemoteDataSourceProvider = Provider<AnimalRemoteDataSource>((ref) {
   return AnimalRemoteDataSource(supabaseClient);
 });
 
-final animalRepositoryProvider = Provider((ref) {
+final animalRepositoryProvider = Provider<AnimalRepositoryImpl>((ref) {
   return AnimalRepositoryImpl(
     localDataSource: ref.watch(animalLocalDataSourceProvider),
     remoteDataSource: ref.watch(animalRemoteDataSourceProvider),
@@ -39,17 +42,39 @@ final animalRepositoryProvider = Provider((ref) {
   );
 });
 
-final addAnimalProvider = Provider((ref) {
+final addAnimalProvider = Provider<AddAnimal>((ref) {
   final animalRepository = ref.read(animalRepositoryProvider);
   return AddAnimal(animalRepository);
 });
 
-final getAnimalsProvider = Provider((ref) {
+final getAnimalsProvider = Provider<GetAnimals>((ref) {
   final animalRepository = ref.read(animalRepositoryProvider);
   return GetAnimals(animalRepository);
 });
 
-final animalsListProvider = FutureProvider.autoDispose((ref) async {
+final rawAnimalsListProvider =
+    FutureProvider.autoDispose<List<AnimalEntity>>((ref) async {
   final getAnimals = ref.watch(getAnimalsProvider);
   return getAnimals();
+});
+
+final animalsListProvider =
+    FutureProvider.autoDispose<List<AnimalEntity>>((ref) async {
+  final animals = await ref.watch(rawAnimalsListProvider.future);
+  final profile = ref.watch(profileProvider);
+
+  if (!profile.isVeterinarian) {
+    return animals;
+  }
+
+  final managedClientState = await ref.watch(managedClientProvider.future);
+  final activeClientId = managedClientState.activeClientId;
+
+  if (activeClientId == null) {
+    return const [];
+  }
+
+  return animals.where((animal) {
+    return managedClientState.animalAssignments[animal.id] == activeClientId;
+  }).toList();
 });

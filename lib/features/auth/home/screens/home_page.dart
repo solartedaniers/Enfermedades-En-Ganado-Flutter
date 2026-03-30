@@ -4,17 +4,28 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/network/network_provider.dart';
+import '../../../../core/services/managed_client_service.dart';
+import '../../../../core/services/offline_auth_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_strings.dart';
+import '../../../../geolocation/presentation/providers/geolocation_provider.dart';
 import '../../../animals/data/services/animal_sync_service.dart';
+import '../../../animals/domain/entities/animal_entity.dart';
 import '../../../animals/presentation/pages/add_animal_page.dart';
 import '../../../animals/presentation/pages/animals_page.dart';
 import '../../../animals/presentation/providers/animal_provider.dart';
 import '../../../diagnosis/screens/scanner_screen.dart';
+import '../../../medical/domain/entities/medical_record_entity.dart';
+import '../../../medical/presentation/providers/medical_provider.dart';
+import '../../../notifications/data/datasources/notification_remote_datasource.dart';
 import '../../../notifications/presentation/pages/notifications_page.dart';
 import '../../../profile/presentation/pages/profile_page.dart';
+import '../../../profile/presentation/providers/managed_client_provider.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
 import '../../screens/login_page.dart';
+import '../models/home_dashboard_summary.dart';
+import '../widgets/home_dashboard_section.dart';
+import '../widgets/veterinarian_client_panel.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -25,6 +36,9 @@ class HomePage extends ConsumerStatefulWidget {
 
 class _HomePageState extends ConsumerState<HomePage> {
   final SupabaseClient supabase = Supabase.instance.client;
+  final NotificationRemoteDataSource _notificationDataSource =
+      NotificationRemoteDataSource();
+
   AnimalSyncService? syncService;
 
   @override
@@ -35,6 +49,11 @@ class _HomePageState extends ConsumerState<HomePage> {
       networkInfo: ref.read(networkInfoProvider),
     );
     syncService?.start();
+    Future.microtask(
+      () => ref
+          .read(currentGeolocationContextProvider.notifier)
+          .loadCurrentContext(),
+    );
   }
 
   @override
@@ -48,28 +67,35 @@ class _HomePageState extends ConsumerState<HomePage> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(AppStrings.t("logout")),
-        content: Text(AppStrings.t("logout_confirm")),
+        title: Text(AppStrings.t('logout')),
+        content: Text(AppStrings.t('logout_confirm')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text(AppStrings.t("cancel")),
+            child: Text(AppStrings.t('cancel')),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
               backgroundColor: context.appColors.danger,
             ),
-            child: Text(AppStrings.t("exit")),
+            child: Text(AppStrings.t('exit')),
           ),
         ],
       ),
     );
 
-    if (confirm != true) return;
+    if (confirm != true) {
+      return;
+    }
+
     syncService?.stop();
+    await OfflineAuthService.clearSession();
     await supabase.auth.signOut();
-    if (!mounted) return;
+
+    if (!mounted) {
+      return;
+    }
 
     Navigator.pushAndRemoveUntil(
       context,
@@ -78,43 +104,300 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
+  Future<void> _openManagedClientDialog() async {
+    final clientNameController = TextEditingController();
+    final geolocationContext =
+        ref.read(currentGeolocationContextProvider).valueOrNull;
+    final defaultLocation = geolocationContext?.regionLabel ?? '';
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(AppStrings.t('veterinarian_add_client')),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: clientNameController,
+                decoration: InputDecoration(
+                  labelText: AppStrings.t('veterinarian_client_name'),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  defaultLocation.isEmpty
+                      ? AppStrings.t('registration_location_missing')
+                      : '${AppStrings.t('veterinarian_client_location')}: $defaultLocation',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(AppStrings.t('cancel')),
+            ),
+            FilledButton(
+              onPressed: () async {
+                final clientName = clientNameController.text.trim();
+                if (clientName.isEmpty) {
+                  return;
+                }
+
+                await ref.read(managedClientProvider.notifier).createClient(
+                      name: clientName,
+                      location: defaultLocation,
+                    );
+
+                if (!mounted || !dialogContext.mounted) {
+                  return;
+                }
+
+                Navigator.pop(dialogContext);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(AppStrings.t('veterinarian_client_saved')),
+                  ),
+                );
+              },
+              child: Text(AppStrings.t('save')),
+            ),
+          ],
+        );
+      },
+    );
+
+    clientNameController.dispose();
+  }
+
   void _onMenuTap(String key) {
+    final profile = ref.read(profileProvider);
+    final managedClientState = ref.read(managedClientProvider).valueOrNull;
+    final requiresActiveClient = {
+      'register_animal',
+      'history',
+      'notifications',
+      'diagnosis',
+    };
+
+    if (profile.isVeterinarian &&
+        requiresActiveClient.contains(key) &&
+        (managedClientState == null || !managedClientState.hasActiveClient)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppStrings.t('veterinarian_workspace_hint')),
+        ),
+      );
+      return;
+    }
+
     switch (key) {
-      case "register_animal":
+      case 'register_animal':
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const AddAnimalPage()),
         );
         break;
-      case "history":
+      case 'history':
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const AnimalsPage()),
         );
         break;
-      case "notifications":
+      case 'notifications':
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const NotificationsPage()),
         );
         break;
-      case "diagnosis":
+      case 'diagnosis':
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const ScannerScreen()),
         );
         break;
-      case "vaccines":
+      case 'vaccines':
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppStrings.t("coming_soon_vaccines"))),
+          SnackBar(content: Text(AppStrings.t('coming_soon_vaccines'))),
         );
         break;
+    }
+  }
+
+  Future<HomeDashboardSummary> _loadDashboardSummary() async {
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month, 1);
+    final profile = ref.read(profileProvider);
+    final managedClientState = ref.read(managedClientProvider).valueOrNull;
+    final medicalRepository = ref.read(medicalRepositoryProvider);
+    final geolocationContext =
+        ref.read(currentGeolocationContextProvider).valueOrNull;
+
+    final allAnimals = profile.isVeterinarian
+        ? await ref.read(rawAnimalsListProvider.future)
+        : await ref.read(animalsListProvider.future);
+
+    if (allAnimals.isEmpty) {
+      return HomeDashboardSummary.empty();
+    }
+
+    final animalIds = allAnimals.map((animal) => animal.id).toSet();
+    final notifications = await _notificationDataSource.getNotifications();
+    final monthlyNotifications = notifications.where((notification) {
+      return animalIds.contains(notification.animalId) &&
+          !notification.createdAt.isBefore(monthStart);
+    }).toList();
+
+    final monthlyRecords = <MedicalRecordEntity>[];
+    for (final animal in allAnimals) {
+      final records = await medicalRepository.getRecords(animal.id);
+      monthlyRecords.addAll(
+        records.where((record) => !record.createdAt.isBefore(monthStart)),
+      );
+    }
+
+    final weekdayCounter = <String, int>{};
+    for (final animal in allAnimals.where((animal) => !animal.createdAt.isBefore(monthStart))) {
+      _increaseCounter(weekdayCounter, _weekdayLabel(animal.createdAt.weekday));
+    }
+    for (final notification in monthlyNotifications) {
+      _increaseCounter(
+        weekdayCounter,
+        _weekdayLabel(notification.createdAt.weekday),
+      );
+    }
+    for (final record in monthlyRecords) {
+      _increaseCounter(weekdayCounter, _weekdayLabel(record.createdAt.weekday));
+    }
+
+    final diseaseCounter = <String, int>{};
+    for (final record in monthlyRecords) {
+      final diseaseLabel = _normalizeDiseaseLabel(
+        record.diagnosis ?? record.aiResult,
+      );
+      _increaseCounter(
+        diseaseCounter,
+        diseaseLabel.isEmpty
+            ? AppStrings.t('dashboard_unknown_disease')
+            : diseaseLabel,
+      );
+    }
+
+    final locationCounter = <String, int>{};
+    if (profile.isVeterinarian && managedClientState != null) {
+      for (final record in monthlyRecords) {
+        AnimalEntity? animal;
+        for (final item in allAnimals) {
+          if (item.id == record.animalId) {
+            animal = item;
+            break;
+          }
+        }
+        if (animal == null) {
+          continue;
+        }
+
+        final clientId = managedClientState.animalAssignments[animal.id];
+        ManagedClientProfile? client;
+        for (final item in managedClientState.clients) {
+          if (item.id == clientId) {
+            client = item;
+            break;
+          }
+        }
+        final locationLabel = client?.location.trim().isNotEmpty == true
+            ? client!.location
+            : AppStrings.t('dashboard_unknown_location');
+        _increaseCounter(locationCounter, locationLabel);
+      }
+    } else {
+      final regionLabel = geolocationContext?.regionLabel.isNotEmpty == true
+          ? geolocationContext!.regionLabel
+          : AppStrings.t('dashboard_current_region_fallback');
+      if (monthlyRecords.isNotEmpty) {
+        locationCounter[regionLabel] = monthlyRecords.length;
+      }
+    }
+
+    return HomeDashboardSummary(
+      busiestWeekdays: _topItems(weekdayCounter),
+      topLocations: _topItems(locationCounter),
+      topDiseases: _topItems(diseaseCounter),
+    );
+  }
+
+  void _increaseCounter(Map<String, int> counter, String key) {
+    counter.update(key, (value) => value + 1, ifAbsent: () => 1);
+  }
+
+  List<DashboardMetricItem> _topItems(Map<String, int> counter, {int limit = 4}) {
+    final entries = counter.entries.toList()
+      ..sort((left, right) => right.value.compareTo(left.value));
+
+    return entries.take(limit).map((entry) {
+      return DashboardMetricItem(label: entry.key, value: entry.value);
+    }).toList();
+  }
+
+  String _normalizeDiseaseLabel(String? rawValue) {
+    if (rawValue == null) {
+      return '';
+    }
+
+    final normalized = rawValue
+        .replaceAll('\n', ' ')
+        .replaceAll(':', '.')
+        .trim();
+
+    if (normalized.isEmpty) {
+      return '';
+    }
+
+    final firstSentence = normalized
+        .split('.')
+        .map((item) => item.trim())
+        .firstWhere((item) => item.isNotEmpty, orElse: () => normalized);
+
+    return _titleCase(firstSentence);
+  }
+
+  String _titleCase(String value) {
+    return value
+        .split(' ')
+        .where((item) => item.isNotEmpty)
+        .map((item) {
+          final lower = item.toLowerCase();
+          return '${lower[0].toUpperCase()}${lower.substring(1)}';
+        })
+        .join(' ');
+  }
+
+  String _weekdayLabel(int weekday) {
+    switch (weekday) {
+      case DateTime.monday:
+        return AppStrings.t('weekday_mon');
+      case DateTime.tuesday:
+        return AppStrings.t('weekday_tue');
+      case DateTime.wednesday:
+        return AppStrings.t('weekday_wed');
+      case DateTime.thursday:
+        return AppStrings.t('weekday_thu');
+      case DateTime.friday:
+        return AppStrings.t('weekday_fri');
+      case DateTime.saturday:
+        return AppStrings.t('weekday_sat');
+      default:
+        return AppStrings.t('weekday_sun');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final profile = ref.watch(profileProvider);
+    final managedClientAsync = ref.watch(managedClientProvider);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final appColors = context.appColors;
@@ -122,31 +405,31 @@ class _HomePageState extends ConsumerState<HomePage> {
 
     final menuItems = [
       _HomeMenuItem(
-        keyName: "register_animal",
-        imagePath: "lib/images/Taureau.webp",
+        keyName: 'register_animal',
+        imagePath: 'lib/images/Taureau.webp',
         foregroundColor: appColors.success,
         backgroundColor: appColors.selectionBackground,
       ),
       _HomeMenuItem(
-        keyName: "diagnosis",
+        keyName: 'diagnosis',
         icon: Icons.health_and_safety,
         foregroundColor: colorScheme.secondary,
         backgroundColor: colorScheme.secondaryContainer,
       ),
       _HomeMenuItem(
-        keyName: "history",
+        keyName: 'history',
         icon: Icons.pets,
         foregroundColor: colorScheme.tertiary,
         backgroundColor: colorScheme.tertiaryContainer,
       ),
       _HomeMenuItem(
-        keyName: "vaccines",
+        keyName: 'vaccines',
         icon: Icons.vaccines,
         foregroundColor: appColors.danger,
         backgroundColor: colorScheme.errorContainer,
       ),
       _HomeMenuItem(
-        keyName: "notifications",
+        keyName: 'notifications',
         icon: Icons.alarm,
         foregroundColor: appColors.warning,
         backgroundColor: colorScheme.surfaceContainerHighest,
@@ -155,7 +438,7 @@ class _HomePageState extends ConsumerState<HomePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(AppStrings.t("app_name")),
+        title: Text(AppStrings.t('app_name')),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -193,10 +476,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                         Container(
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
+                            border: Border.all(color: appColors.onSolid, width: 2),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.2),
+                                color: appColors.darkShadow.withValues(alpha: 0.3),
                                 blurRadius: 8,
                                 offset: const Offset(0, 4),
                               ),
@@ -211,10 +494,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                                 : null,
                             child: profile.avatarUrl == null ||
                                     profile.avatarUrl!.isEmpty
-                                ? const Icon(
+                                ? Icon(
                                     Icons.person,
                                     size: 36,
-                                    color: Colors.white,
+                                    color: appColors.onSolid,
                                   )
                                 : null,
                           ),
@@ -224,8 +507,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                           right: 0,
                           child: Container(
                             padding: const EdgeInsets.all(3),
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
+                            decoration: BoxDecoration(
+                              color: appColors.onSolid,
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
@@ -244,16 +527,16 @@ class _HomePageState extends ConsumerState<HomePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          AppStrings.t("hello"),
-                          style: const TextStyle(
-                            color: Colors.white70,
+                          AppStrings.t('hello'),
+                          style: TextStyle(
+                            color: appColors.onSolid.withValues(alpha: 0.75),
                             fontSize: 14,
                           ),
                         ),
                         Text(
                           profile.name,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: appColors.onSolid,
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                           ),
@@ -265,10 +548,28 @@ class _HomePageState extends ConsumerState<HomePage> {
                 ],
               ),
             ).animate().fadeIn(duration: 500.ms).slideY(begin: -0.1),
+            if (profile.isVeterinarian)
+              managedClientAsync.when(
+                loading: () => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
+                data: (managedClientState) {
+                  return VeterinarianClientPanel(
+                    clients: managedClientState.clients,
+                    activeClientId: managedClientState.activeClientId,
+                    onClientChanged: (clientId) {
+                      if (clientId == null) {
+                        return;
+                      }
+                      ref.read(managedClientProvider.notifier).setActiveClient(clientId);
+                    },
+                    onAddClient: _openManagedClientDialog,
+                  );
+                },
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
               child: Text(
-                AppStrings.t("main_panel"),
+                AppStrings.t('main_panel'),
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -299,6 +600,16 @@ class _HomePageState extends ConsumerState<HomePage> {
                       );
                 }).toList(),
               ),
+            ),
+            FutureBuilder<HomeDashboardSummary>(
+              future: _loadDashboardSummary(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const SizedBox.shrink();
+                }
+
+                return HomeDashboardSection(summary: snapshot.data!);
+              },
             ),
             const SizedBox(height: 24),
           ],
@@ -383,7 +694,7 @@ class _MenuCard extends StatelessWidget {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 13,
-                color: isDark ? Colors.white : appColors.subduedForeground,
+                color: isDark ? appColors.onSolid : appColors.subduedForeground,
               ),
             ),
           ],

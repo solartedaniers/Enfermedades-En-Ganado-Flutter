@@ -12,6 +12,8 @@ import '../../domain/constants/animal_constants.dart';
 import '../../domain/entities/animal_entity.dart';
 import '../../shared/age_label_formatter.dart';
 import '../../shared/animal_input_formatters.dart';
+import '../../../profile/presentation/providers/managed_client_provider.dart';
+import '../../../profile/presentation/providers/profile_provider.dart';
 import '../providers/animal_provider.dart';
 import '../widgets/animal_image_card.dart';
 import '../widgets/animal_image_source_sheet.dart';
@@ -157,6 +159,12 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
             animal,
             localImagePath: _selectedImage?.path,
           );
+      final profile = ref.read(profileProvider);
+      if (profile.isVeterinarian) {
+        await ref
+            .read(managedClientProvider.notifier)
+            .assignAnimalToActiveClient(animal.id);
+      }
 
       if (!mounted) {
         return;

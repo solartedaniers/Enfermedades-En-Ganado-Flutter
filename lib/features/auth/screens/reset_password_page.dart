@@ -195,11 +195,11 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
               child: ElevatedButton(
                 onPressed: _loading ? null : _updatePassword,
                 child: _loading
-                    ? const SizedBox(
+                    ? SizedBox(
                         height: 24,
                         width: 24,
                         child: CircularProgressIndicator(
-                          color: Colors.white,
+                          color: colorScheme.onPrimary,
                           strokeWidth: 2,
                         ),
                       )

@@ -11,6 +11,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../../../animals/domain/entities/animal_entity.dart';
 import '../../../animals/presentation/providers/animal_provider.dart';
+import '../../../profile/presentation/providers/profile_provider.dart';
 import '../../data/datasources/notification_remote_datasource.dart';
 import '../../data/models/notification_model.dart';
 import '../../domain/entities/notification_entity.dart';
@@ -42,11 +43,19 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
 
     try {
       final notifications = await _notificationDataSource.getNotifications();
-      final animals = await ref.read(animalRepositoryProvider).getAnimals();
+      final animals = await ref.read(animalsListProvider.future);
+      final allowedAnimalIds = animals.map((animal) => animal.id).toSet();
+      final profile = ref.read(profileProvider);
+
+      final visibleNotifications = profile.isVeterinarian
+          ? notifications
+              .where((notification) => allowedAnimalIds.contains(notification.animalId))
+              .toList()
+          : notifications;
 
       if (mounted) {
         setState(() {
-          _notifications = notifications;
+          _notifications = visibleNotifications;
           _animals = animals;
         });
       }

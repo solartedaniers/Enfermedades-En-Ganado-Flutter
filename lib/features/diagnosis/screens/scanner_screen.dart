@@ -98,8 +98,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   }
 
   Future<List<AnimalEntity>> _loadAnimals() async {
-    final animalRepository = ref.read(animalRepositoryProvider);
-    final animals = await animalRepository.getAnimals();
+    final animals = await ref.read(animalsListProvider.future);
     if (_selectedAnimal == null && animals.isNotEmpty) {
       _selectedAnimal = animals.first;
       _prefillFromAnimal(_selectedAnimal!);

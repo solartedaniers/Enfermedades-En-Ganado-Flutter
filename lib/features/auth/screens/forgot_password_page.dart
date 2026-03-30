@@ -58,14 +58,14 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
     final appColors = context.appColors;
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
+    final titleColor = isDark ? colorScheme.onSurface : colorScheme.onSurface;
 
     return AuthPageShell(
       appBar: AppBar(
         title: Text(AppStrings.t("recover_access"),
             style: const TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
-        foregroundColor:
-            isDark ? colorScheme.onSurface : appColors.heroGradientStart,
+        foregroundColor: titleColor,
         elevation: 0,
         centerTitle: true,
       ),
@@ -90,7 +90,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
             textAlign: TextAlign.center,
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
-              color: isDark ? colorScheme.onSurface : appColors.heroGradientStart,
+              color: titleColor,
             ),
           ),
           const SizedBox(height: 12),
@@ -115,11 +115,13 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
             child: ElevatedButton(
               onPressed: loading ? null : reset,
               child: loading
-                  ? const SizedBox(
+                  ? SizedBox(
                       height: 24,
                       width: 24,
                       child: CircularProgressIndicator(
-                          color: Colors.white, strokeWidth: 2),
+                        color: colorScheme.onPrimary,
+                        strokeWidth: 2,
+                      ),
                     )
                   : Text(AppStrings.t("send_instructions"),
                       style: const TextStyle(

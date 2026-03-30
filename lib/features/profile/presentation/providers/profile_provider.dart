@@ -1,19 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../core/utils/app_strings.dart';
+
 import '../../../../core/services/offline_auth_service.dart';
+import '../../../../core/utils/app_strings.dart';
 
 class ProfileState {
   final String name;
+  final String email;
   final String language;
+  final String userType;
   final ThemeMode themeMode;
   final String? avatarUrl;
   final bool isLoaded;
 
-  ProfileState({
+  const ProfileState({
     required this.name,
+    required this.email,
     required this.language,
+    required this.userType,
     required this.themeMode,
     this.avatarUrl,
     this.isLoaded = false,
@@ -21,7 +26,9 @@ class ProfileState {
 
   ProfileState copyWith({
     String? name,
+    String? email,
     String? language,
+    String? userType,
     ThemeMode? themeMode,
     String? avatarUrl,
     bool? isLoaded,
@@ -29,7 +36,9 @@ class ProfileState {
   }) {
     return ProfileState(
       name: name ?? this.name,
+      email: email ?? this.email,
       language: language ?? this.language,
+      userType: userType ?? this.userType,
       themeMode: themeMode ?? this.themeMode,
       avatarUrl: clearAvatar ? null : avatarUrl ?? this.avatarUrl,
       isLoaded: isLoaded ?? this.isLoaded,
@@ -38,11 +47,15 @@ class ProfileState {
 
   factory ProfileState.empty() => ProfileState(
         name: AppStrings.t('default_username'),
-        language: "es",
+        email: '',
+        language: 'es',
+        userType: 'farmer',
         themeMode: ThemeMode.system,
         avatarUrl: null,
         isLoaded: false,
       );
+
+  bool get isVeterinarian => userType == 'veterinarian';
 }
 
 class ProfileNotifier extends StateNotifier<ProfileState> {
@@ -80,7 +93,7 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
 
       final data = await _supabase
           .from('profiles')
-          .select('username, avatar_url, language, theme')
+          .select('username, avatar_url, language, theme, user_type')
           .eq('id', currentUser.id)
           .maybeSingle();
 
@@ -88,10 +101,13 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
         final meta = currentUser.userMetadata;
         final name =
             (meta?['username'] as String?) ?? AppStrings.t('default_username');
+        final userType = (meta?['user_type'] as String?) ?? 'farmer';
         await AppStrings.load('es');
         state = ProfileState(
           name: name,
+          email: currentUser.email ?? '',
           language: 'es',
+          userType: userType,
           themeMode: ThemeMode.system,
           avatarUrl: null,
           isLoaded: true,
@@ -99,31 +115,34 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
         return;
       }
 
-      final lang = (data['language'] as String?) ?? 'es';
+      final language = (data['language'] as String?) ?? 'es';
       final theme = (data['theme'] as String?) ?? 'system';
+      final userType = (data['user_type'] as String?) ?? 'farmer';
       final name =
           (data['username'] as String?) ?? AppStrings.t('default_username');
       final avatar = data['avatar_url'] as String?;
 
-      await AppStrings.load(lang);
+      await AppStrings.load(language);
 
-      // Guarda sesión offline
+      // Guarda sesion offline.
       await OfflineAuthService.saveSession(
         userId: currentUser.id,
         userName: name,
         avatarUrl: avatar,
-        language: lang,
+        language: language,
         theme: theme,
       );
 
       state = ProfileState(
         name: name,
+        email: currentUser.email ?? '',
         avatarUrl: avatar,
-        language: lang,
+        language: language,
+        userType: userType,
         themeMode: _themeFromString(theme),
         isLoaded: true,
       );
-    } catch (e) {
+    } catch (_) {
       await AppStrings.load('es');
       state = ProfileState.empty().copyWith(isLoaded: true);
     }
@@ -134,7 +153,10 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
   Future<void> _saveToSupabase(Map<String, dynamic> data) async {
     try {
       final currentUser = _supabase.auth.currentUser;
-      if (currentUser == null) return;
+      if (currentUser == null) {
+        return;
+      }
+
       await _supabase.from('profiles').update(data).eq('id', currentUser.id);
     } catch (_) {}
   }
@@ -144,10 +166,10 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
     await _saveToSupabase({'username': name});
   }
 
-  Future<void> changeLanguage(String lang) async {
-    await AppStrings.load(lang);
-    state = state.copyWith(language: lang);
-    await _saveToSupabase({'language': lang});
+  Future<void> changeLanguage(String language) async {
+    await AppStrings.load(language);
+    state = state.copyWith(language: language);
+    await _saveToSupabase({'language': language});
   }
 
   Future<void> changeTheme(ThemeMode mode) async {
@@ -183,7 +205,6 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
   }
 }
 
-final profileProvider =
-    StateNotifierProvider<ProfileNotifier, ProfileState>(
+final profileProvider = StateNotifierProvider<ProfileNotifier, ProfileState>(
   (ref) => ProfileNotifier(),
 );

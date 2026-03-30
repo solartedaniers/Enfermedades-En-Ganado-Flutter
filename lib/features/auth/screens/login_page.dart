@@ -2,14 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../../core/services/connectivity_service.dart';
-import '../../../../core/services/offline_auth_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_strings.dart';
+import '../../profile/presentation/providers/managed_client_provider.dart';
+import '../../profile/presentation/providers/profile_provider.dart';
 import '../widgets/auth_page_shell.dart';
 import '../widgets/auth_text_field.dart';
 import '../../auth/home/screens/home_page.dart';
-import '../../profile/presentation/providers/profile_provider.dart';
 import '../services/auth_service.dart';
 import 'forgot_password_page.dart';
 import 'register_page.dart';
@@ -38,88 +37,80 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   Future<void> login() async {
     if (emailController.text.isEmpty || passwordController.text.isEmpty) {
-      _showSnackBar(AppStrings.t("enter_email_password"));
+      _showSnackBar(AppStrings.t('enter_email_password'));
       return;
     }
 
     setState(() => loading = true);
 
-    final isOnline = await ConnectivityService.isConnected();
-
     try {
-      if (isOnline) {
-        await authService.signIn(
-          email: emailController.text.trim(),
-          password: passwordController.text.trim(),
-        );
+      await authService.signIn(
+        email: emailController.text.trim(),
+        password: passwordController.text.trim(),
+      );
 
-        final currentUser = Supabase.instance.client.auth.currentUser;
-
-        if (currentUser?.emailConfirmedAt == null) {
-          throw Exception(AppStrings.t("confirm_email_first"));
-        }
-
-        await OfflineAuthService.saveSession(
-          userId: currentUser!.id,
-          userName: currentUser.userMetadata?['username'] ??
-              AppStrings.t("default_username"),
-          avatarUrl: currentUser.userMetadata?['avatar_url'],
-        );
-
-        if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomePage()),
-        );
-      } else {
-        final hasLocalSession = await OfflineAuthService.hasSession();
-
-        if (!mounted) return;
-
-        if (hasLocalSession) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.wifi_off, color: Colors.white, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      AppStrings.t("offline_mode_login"),
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
-              backgroundColor: context.appColors.warning,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              duration: const Duration(seconds: 3),
-            ),
-          );
-
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const HomePage()),
-          );
-        } else {
-          _showSnackBar(AppStrings.t("offline_login_first_time"));
-        }
+      final currentUser = Supabase.instance.client.auth.currentUser;
+      if (currentUser?.emailConfirmedAt == null) {
+        throw Exception(AppStrings.t('confirm_email_first'));
       }
-    } catch (e) {
-      if (!mounted) return;
-      _showSnackBar(e.toString().replaceAll("Exception: ", ""));
+
+      await _importPendingVeterinarianClient(currentUser!);
+
+      if (!mounted) {
+        return;
+      }
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomePage()),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      _showSnackBar(error.toString().replaceAll('Exception: ', ''));
     } finally {
-      if (mounted) setState(() => loading = false);
+      if (mounted) {
+        setState(() => loading = false);
+      }
     }
   }
 
+  Future<void> _importPendingVeterinarianClient(User currentUser) async {
+    final userType = currentUser.userMetadata?['user_type'] as String? ?? 'farmer';
+    if (userType != 'veterinarian') {
+      return;
+    }
+
+    final managedClientService = ref.read(managedClientServiceProvider);
+    final pendingDraft = await managedClientService.consumePendingDraft(
+      emailController.text.trim(),
+    );
+
+    if (pendingDraft == null) {
+      return;
+    }
+
+    final snapshot = await managedClientService.loadSnapshot(currentUser.id);
+    if (snapshot.clients.isNotEmpty) {
+      return;
+    }
+
+    await ref.read(managedClientProvider.notifier).createClient(
+          name: pendingDraft.name,
+          location: pendingDraft.location,
+        );
+  }
+
   void _showSnackBar(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   @override
@@ -141,7 +132,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
+                  color: appColors.lightShadow,
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -149,7 +140,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             ),
             child: ClipOval(
               child: Image.asset(
-                AppStrings.t("app_logo_path"),
+                AppStrings.t('app_logo_path'),
                 width: 120,
                 height: 120,
                 fit: BoxFit.cover,
@@ -171,32 +162,17 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          Text(
-            AppStrings.t("app_name"),
-            style: theme.textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: isDark ? colorScheme.onSurface : appColors.heroGradientStart,
-              letterSpacing: 1.5,
-            ),
-          ),
-          Text(
-            AppStrings.t("app_subtitle"),
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: appColors.mutedForeground,
-            ),
-          ),
           const SizedBox(height: 40),
           AuthTextField(
             controller: emailController,
-            label: AppStrings.t("email"),
+            label: AppStrings.t('email'),
             icon: Icons.email_outlined,
             keyboardType: TextInputType.emailAddress,
           ),
           const SizedBox(height: 20),
           AuthTextField(
             controller: passwordController,
-            label: AppStrings.t("password"),
+            label: AppStrings.t('password'),
             icon: Icons.lock_outline,
             obscureText: !showPassword,
             suffixIcon: IconButton(
@@ -216,9 +192,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 ),
               ),
               child: Text(
-                AppStrings.t("forgot_password"),
-                style: const TextStyle(
-                  color: AppTheme.primaryColor,
+                AppStrings.t('forgot_password'),
+                style: TextStyle(
+                  color: isDark ? appColors.accent : appColors.heroGradientStart,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -231,16 +207,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             child: ElevatedButton(
               onPressed: loading ? null : login,
               child: loading
-                  ? const SizedBox(
+                  ? SizedBox(
                       height: 24,
                       width: 24,
                       child: CircularProgressIndicator(
-                        color: Colors.white,
+                        color: colorScheme.onPrimary,
                         strokeWidth: 2,
                       ),
                     )
                   : Text(
-                      AppStrings.t("login"),
+                      AppStrings.t('login'),
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -252,7 +228,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(AppStrings.t("no_account")),
+              Text(AppStrings.t('no_account')),
               TextButton(
                 onPressed: () => Navigator.push(
                   context,
@@ -261,9 +237,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   ),
                 ),
                 child: Text(
-                  AppStrings.t("register_here"),
+                  AppStrings.t('register_here'),
                   style: TextStyle(
-                    color: appColors.heroGradientStart,
+                    color: isDark ? appColors.accent : appColors.heroGradientStart,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
