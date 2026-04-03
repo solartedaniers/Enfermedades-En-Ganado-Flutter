@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../core/theme/app_theme.dart';
+import '../../../../../core/theme/app_sizes.dart';
+import '../../../../../core/theme/app_text_styles.dart';
 
 class ProfileHeader extends StatelessWidget {
   final String name;
@@ -65,7 +67,7 @@ class ProfileHeader extends StatelessWidget {
                     ],
                   ),
                   child: CircleAvatar(
-                    radius: 55,
+                    radius: AppSizes.profileAvatarRadius,
                     backgroundColor: appColors.whiteOverlay,
                     backgroundImage:
                         avatarUrl != null && avatarUrl!.isNotEmpty
@@ -74,7 +76,7 @@ class ProfileHeader extends StatelessWidget {
                     child: avatarUrl == null || avatarUrl!.isEmpty
                         ? Icon(
                             Icons.person,
-                            size: 55,
+                            size: AppIconSizes.xxLarge,
                             color: appColors.chipForeground,
                           )
                         : null,
@@ -94,28 +96,26 @@ class ProfileHeader extends StatelessWidget {
                     ),
                     child: Icon(
                       Icons.camera_alt,
-                      size: 18,
+                      size: AppIconSizes.medium,
                       color: appColors.chipForeground,
                     ),
                   ),
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSizes.medium),
           Text(
             name,
-            style: TextStyle(
+            style: AppTextStyles.sectionTitle(theme).copyWith(
               color: colorScheme.onSurface,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(999),
+              color: colorScheme.surface.withValues(alpha: 0),
+              borderRadius: BorderRadius.circular(AppSizes.chipRadius),
               border: Border.all(
                 color: appColors.chipForeground.withValues(alpha: 0.35),
               ),

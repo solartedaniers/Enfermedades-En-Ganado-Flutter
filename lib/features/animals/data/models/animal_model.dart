@@ -1,54 +1,55 @@
 import 'package:hive/hive.dart';
 
+import '../../../../core/constants/app_storage_keys.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../../domain/entities/animal_entity.dart';
 import '../../shared/age_label_formatter.dart';
 
 @HiveType(typeId: 0)
 class AnimalModel {
-  @HiveField(0)
+  @HiveField(AnimalHiveFields.id)
   final String id;
 
-  @HiveField(1)
+  @HiveField(AnimalHiveFields.userId)
   final String userId;
 
-  @HiveField(2)
+  @HiveField(AnimalHiveFields.name)
   final String name;
 
-  @HiveField(3)
+  @HiveField(AnimalHiveFields.breed)
   final String breed;
 
-  @HiveField(4)
+  @HiveField(AnimalHiveFields.age)
   final int age;
 
-  @HiveField(5)
+  @HiveField(AnimalHiveFields.symptoms)
   final String symptoms;
 
-  @HiveField(6)
+  @HiveField(AnimalHiveFields.createdAt)
   final DateTime createdAt;
 
-  @HiveField(7)
+  @HiveField(AnimalHiveFields.updatedAt)
   final DateTime updatedAt;
 
-  @HiveField(8)
+  @HiveField(AnimalHiveFields.weight)
   final double? weight;
 
-  @HiveField(9)
+  @HiveField(AnimalHiveFields.temperature)
   final double? temperature;
 
-  @HiveField(10)
+  @HiveField(AnimalHiveFields.isSynced)
   final bool isSynced;
 
-  @HiveField(11)
+  @HiveField(AnimalHiveFields.imageUrl)
   final String? imageUrl;
 
-  @HiveField(12)
+  @HiveField(AnimalHiveFields.profileImageUrl)
   final String? profileImageUrl;
 
-  @HiveField(13)
+  @HiveField(AnimalHiveFields.pendingImagePath)
   final String? pendingImagePath;
 
-  @HiveField(14)
+  @HiveField(AnimalHiveFields.ageLabel)
   final String ageLabel;
 
   const AnimalModel({
@@ -168,60 +169,65 @@ class AnimalModelAdapter extends TypeAdapter<AnimalModel> {
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    final age = (fields[4] as int?) ?? 0;
+    final age = (fields[AnimalHiveFields.age] as int?) ?? 0;
 
     return AnimalModel(
-      id: (fields[0] as String?) ?? '',
-      userId: (fields[1] as String?) ?? '',
-      name: (fields[2] as String?) ?? AppStrings.t('animal_no_name'),
-      breed: (fields[3] as String?) ?? AppStrings.t('animal_unknown_breed'),
+      id: (fields[AnimalHiveFields.id] as String?) ?? '',
+      userId: (fields[AnimalHiveFields.userId] as String?) ?? '',
+      name: (fields[AnimalHiveFields.name] as String?) ??
+          AppStrings.t('animal_no_name'),
+      breed: (fields[AnimalHiveFields.breed] as String?) ??
+          AppStrings.t('animal_unknown_breed'),
       age: age,
-      symptoms: (fields[5] as String?) ?? '',
-      createdAt: (fields[6] as DateTime?) ?? DateTime.now(),
-      updatedAt: (fields[7] as DateTime?) ?? DateTime.now(),
-      weight: fields[8] as double?,
-      temperature: fields[9] as double?,
-      isSynced: (fields[10] as bool?) ?? false,
-      imageUrl: fields[11] as String?,
-      profileImageUrl: fields[12] as String?,
-      pendingImagePath: fields[13] as String?,
-      ageLabel: (fields[14] as String?) ?? AgeLabelFormatter.format(age),
+      symptoms: (fields[AnimalHiveFields.symptoms] as String?) ?? '',
+      createdAt:
+          (fields[AnimalHiveFields.createdAt] as DateTime?) ?? DateTime.now(),
+      updatedAt:
+          (fields[AnimalHiveFields.updatedAt] as DateTime?) ?? DateTime.now(),
+      weight: fields[AnimalHiveFields.weight] as double?,
+      temperature: fields[AnimalHiveFields.temperature] as double?,
+      isSynced: (fields[AnimalHiveFields.isSynced] as bool?) ?? false,
+      imageUrl: fields[AnimalHiveFields.imageUrl] as String?,
+      profileImageUrl: fields[AnimalHiveFields.profileImageUrl] as String?,
+      pendingImagePath: fields[AnimalHiveFields.pendingImagePath] as String?,
+      ageLabel: (fields[AnimalHiveFields.ageLabel] as String?) ??
+          AgeLabelFormatter.format(age),
     );
   }
 
   @override
   void write(BinaryWriter writer, AnimalModel obj) {
     writer
-      ..writeByte(15)
-      ..writeByte(0)
+      ..writeByte(AnimalHiveFields.totalFields)
+      ..writeByte(AnimalHiveFields.id)
       ..write(obj.id)
-      ..writeByte(1)
+      ..writeByte(AnimalHiveFields.userId)
       ..write(obj.userId)
-      ..writeByte(2)
+      ..writeByte(AnimalHiveFields.name)
       ..write(obj.name)
-      ..writeByte(3)
+      ..writeByte(AnimalHiveFields.breed)
       ..write(obj.breed)
-      ..writeByte(4)
+      ..writeByte(AnimalHiveFields.age)
       ..write(obj.age)
-      ..writeByte(5)
+      ..writeByte(AnimalHiveFields.symptoms)
       ..write(obj.symptoms)
-      ..writeByte(6)
+      ..writeByte(AnimalHiveFields.createdAt)
       ..write(obj.createdAt)
-      ..writeByte(7)
+      ..writeByte(AnimalHiveFields.updatedAt)
       ..write(obj.updatedAt)
-      ..writeByte(8)
+      ..writeByte(AnimalHiveFields.weight)
       ..write(obj.weight)
-      ..writeByte(9)
+      ..writeByte(AnimalHiveFields.temperature)
       ..write(obj.temperature)
-      ..writeByte(10)
+      ..writeByte(AnimalHiveFields.isSynced)
       ..write(obj.isSynced)
-      ..writeByte(11)
+      ..writeByte(AnimalHiveFields.imageUrl)
       ..write(obj.imageUrl)
-      ..writeByte(12)
+      ..writeByte(AnimalHiveFields.profileImageUrl)
       ..write(obj.profileImageUrl)
-      ..writeByte(13)
+      ..writeByte(AnimalHiveFields.pendingImagePath)
       ..write(obj.pendingImagePath)
-      ..writeByte(14)
+      ..writeByte(AnimalHiveFields.ageLabel)
       ..write(obj.ageLabel);
   }
 

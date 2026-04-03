@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../core/theme/app_theme.dart';
+import '../../../../../core/theme/app_sizes.dart';
+import '../../../../../core/theme/app_text_styles.dart';
 import '../../../../../core/utils/app_date_formatter.dart';
 import '../../../../../core/utils/app_strings.dart';
 import '../../domain/entities/medical_record_entity.dart';
@@ -20,58 +22,74 @@ class MedicalRecordCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appColors = context.appColors;
+    final theme = Theme.of(context);
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: AppSizes.medium),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(AppSizes.medium),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(Icons.calendar_today, size: 14, color: appColors.mutedForeground),
-                const SizedBox(width: 4),
+                Icon(
+                  Icons.calendar_today,
+                  size: AppIconSizes.small,
+                  color: appColors.mutedForeground,
+                ),
+                const SizedBox(width: AppSizes.xSmall),
                 Text(
                   AppDateFormatter.shortDate(record.createdAt),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: appColors.mutedForeground,
-                  ),
+                  style: AppTextStyles.caption(theme, appColors.mutedForeground),
                 ),
                 const Spacer(),
                 IconButton(
-                  icon: Icon(Icons.edit, size: 18, color: appColors.chipForeground),
+                  icon: Icon(
+                    Icons.edit,
+                    size: AppIconSizes.medium,
+                    color: appColors.chipForeground,
+                  ),
                   onPressed: onEdit,
                 ),
                 IconButton(
-                  icon: Icon(Icons.delete, size: 18, color: appColors.danger),
+                  icon: Icon(
+                    Icons.delete,
+                    size: AppIconSizes.medium,
+                    color: appColors.danger,
+                  ),
                   onPressed: onDelete,
                 ),
               ],
             ),
             if (record.imageUrl != null && record.imageUrl!.isNotEmpty) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSizes.small),
               ClipRRect(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppSizes.small),
                 child: Image.network(
                   record.imageUrl!,
-                  height: 160,
+                  height: AppSizes.medicalRecordImageHeight,
                   width: double.infinity,
                   fit: BoxFit.cover,
                 ),
               ),
             ],
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSizes.small),
             Text(
               '${AppStrings.t("diagnosis_label")}:',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: AppTextStyles.emphasisLabel(
+                theme,
+                theme.colorScheme.onSurface,
+              ),
             ),
             Text(record.diagnosis ?? AppStrings.t('no_diagnosis')),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSizes.small),
             Text(
               '${AppStrings.t("ai_result")}:',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: AppTextStyles.emphasisLabel(
+                theme,
+                theme.colorScheme.onSurface,
+              ),
             ),
             Text(record.aiResult ?? AppStrings.t('no_ai_result')),
           ],

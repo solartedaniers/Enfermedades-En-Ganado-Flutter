@@ -7,6 +7,7 @@ import 'package:logger/logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/services/notification_service.dart';
+import 'core/constants/app_route_paths.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/app_strings.dart';
 import 'features/animals/data/models/animal_model.dart';
@@ -94,7 +95,7 @@ class _AgrovetAIState extends ConsumerState<AgrovetAI> {
     try {
       await _supabase.auth.getSessionFromUrl(uri);
 
-      if (uri.host == 'auth-confirm') {
+      if (uri.host == AppDeepLinkPaths.authConfirmHost) {
         navigatorKey.currentState?.pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const LoginPage()),
           (route) => false,
@@ -116,9 +117,9 @@ class _AgrovetAIState extends ConsumerState<AgrovetAI> {
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,
       routes: {
-        '/login': (_) => const LoginPage(),
-        '/home': (_) => const HomePage(),
-        '/reset-password': (_) => const ResetPasswordPage(),
+        AppRoutePaths.login: (_) => const LoginPage(),
+        AppRoutePaths.home: (_) => const HomePage(),
+        AppRoutePaths.resetPassword: (_) => const ResetPasswordPage(),
       },
       home: const LoginPage(),
     );

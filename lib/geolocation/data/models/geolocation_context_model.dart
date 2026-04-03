@@ -1,3 +1,4 @@
+import '../../../core/constants/app_json_keys.dart';
 import '../../domain/entities/geolocation_context_entity.dart';
 
 class GeolocationContextModel extends GeolocationContextEntity {
@@ -15,15 +16,15 @@ class GeolocationContextModel extends GeolocationContextEntity {
 
   Map<String, dynamic> toJson() {
     return {
-      'latitude': latitude,
-      'longitude': longitude,
-      'country': country,
-      'country_code': countryCode,
-      'administrative_area': administrativeArea,
-      'locality': locality,
-      'climate_zone': climateZone,
-      'epidemiology_summary': epidemiologySummary,
-      'common_disease_keys': commonDiseaseKeys,
+      AppJsonKeys.latitude: latitude,
+      AppJsonKeys.longitude: longitude,
+      AppJsonKeys.country: country,
+      AppJsonKeys.countryCode: countryCode,
+      AppJsonKeys.administrativeArea: administrativeArea,
+      AppJsonKeys.locality: locality,
+      AppJsonKeys.climateZone: climateZone,
+      AppJsonKeys.epidemiologySummary: epidemiologySummary,
+      AppJsonKeys.commonDiseaseKeys: commonDiseaseKeys,
     };
   }
 }

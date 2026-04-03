@@ -2,6 +2,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../../../core/utils/app_strings.dart';
+import '../../config/app_location_settings.dart';
 
 class DeviceGeolocationResult {
   final Position position;
@@ -36,9 +37,7 @@ class DeviceGeolocationDatasource {
     }
 
     final position = await Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-      ),
+      locationSettings: AppLocationSettings.currentLocation,
     );
     final placemarks = await placemarkFromCoordinates(
       position.latitude,
@@ -47,7 +46,9 @@ class DeviceGeolocationDatasource {
 
     return DeviceGeolocationResult(
       position: position,
-      placemark: placemarks.isNotEmpty ? placemarks.first : const Placemark(),
+      placemark: placemarks.isNotEmpty
+          ? placemarks.first
+          : AppLocationSettings.emptyPlacemark,
     );
   }
 }

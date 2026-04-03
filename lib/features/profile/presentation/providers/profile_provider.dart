@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/constants/app_json_keys.dart';
+import '../../../../core/constants/app_user_type.dart';
 import '../../../../core/services/offline_auth_service.dart';
 import '../../../../core/utils/app_strings.dart';
 
@@ -10,7 +12,7 @@ class ProfileState {
   final String name;
   final String email;
   final String language;
-  final String userType;
+  final AppUserType userType;
   final ThemeMode themeMode;
   final String? avatarUrl;
   final bool isLoaded;
@@ -32,7 +34,7 @@ class ProfileState {
     String? name,
     String? email,
     String? language,
-    String? userType,
+    AppUserType? userType,
     ThemeMode? themeMode,
     String? avatarUrl,
     bool? isLoaded,
@@ -55,16 +57,13 @@ class ProfileState {
         name: AppStrings.t('default_username'),
         email: '',
         language: 'es',
-        userType: 'ganadero',
+        userType: AppUserType.farmer,
         themeMode: ThemeMode.system,
         avatarUrl: null,
         isLoaded: false,
       );
 
-  bool get isVeterinarian {
-    final normalized = userType.trim().toLowerCase();
-    return normalized == 'veterinarian' || normalized == 'veterinario';
-  }
+  bool get isVeterinarian => userType.isVeterinarian;
 }
 
 class ProfileNotifier extends StateNotifier<ProfileState> {
@@ -114,7 +113,7 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
 
       final data = await _supabase
           .from('profiles')
-          .select('username, avatar_url, user_type')
+          .select('${AppJsonKeys.username}, avatar_url, ${AppJsonKeys.userType}')
           .eq('id', currentUser.id)
           .maybeSingle();
 
@@ -123,10 +122,11 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       if (data == null) {
         final meta = currentUser.userMetadata;
         final name =
-            (meta?['username'] as String?) ?? AppStrings.t('default_username');
-        final userType =
-            (meta?['user_type'] as String?) ??
-            (currentLanguage == 'en' ? 'farmer' : 'ganadero');
+            (meta?[AppJsonKeys.username] as String?) ??
+                AppStrings.t('default_username');
+        final userType = AppUserTypeCodec.fromValue(
+          meta?[AppJsonKeys.userType] as String?,
+        );
 
         state = ProfileState(
           userId: currentUser.id,
@@ -141,17 +141,18 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
         return;
       }
 
-      final userType =
-          (data['user_type'] as String?) ??
-          (currentLanguage == 'en' ? 'farmer' : 'ganadero');
+      final userType = AppUserTypeCodec.fromValue(
+        data[AppJsonKeys.userType] as String?,
+      );
       final name =
-          (data['username'] as String?) ?? AppStrings.t('default_username');
+          (data[AppJsonKeys.username] as String?) ??
+              AppStrings.t('default_username');
       final avatar = data['avatar_url'] as String?;
 
       await OfflineAuthService.saveSession(
         userId: currentUser.id,
         userName: name,
-        userType: userType,
+        userType: userType.storageValue,
         avatarUrl: avatar,
       );
 
@@ -219,7 +220,7 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
     await OfflineAuthService.saveOfflineAccess(
       userId: currentUser.id,
       userName: state.name,
-      userType: state.userType,
+      userType: state.userType.storageValue,
       email: email,
       password: password,
       avatarUrl: state.avatarUrl,
@@ -245,9 +246,7 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       userId: offlineSnapshot['userId'],
       name: offlineSnapshot['userName'] ?? AppStrings.t('default_username'),
       email: offlineSnapshot['email'] ?? email.trim(),
-      userType:
-          offlineSnapshot['userType'] ??
-          (state.language == 'en' ? 'farmer' : 'ganadero'),
+      userType: AppUserTypeCodec.fromValue(offlineSnapshot['userType']),
       avatarUrl: offlineSnapshot['avatarUrl'],
       isLoaded: true,
     );

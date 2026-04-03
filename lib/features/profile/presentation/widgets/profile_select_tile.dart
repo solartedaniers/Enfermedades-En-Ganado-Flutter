@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../core/theme/app_durations.dart';
 import '../../../../../core/theme/app_theme.dart';
+import '../../../../../core/theme/app_sizes.dart';
 
 class ProfileSelectTile extends StatelessWidget {
   final IconData icon;
@@ -25,13 +27,13 @@ class ProfileSelectTile extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(AppSizes.small + 2),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: AppDurations.short,
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
         decoration: BoxDecoration(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
+          color: colorScheme.surface.withValues(alpha: 0),
+          borderRadius: BorderRadius.circular(AppSizes.small + 2),
           border: Border.all(
             color: selected
                 ? appColors.chipForeground.withValues(alpha: 0.35)
@@ -45,10 +47,10 @@ class ProfileSelectTile extends StatelessWidget {
             Icon(
               selected ? Icons.check_circle : Icons.circle_outlined,
               color: selected ? appColors.chipForeground : appColors.mutedForeground,
-              size: 22,
+              size: AppIconSizes.large,
             ),
             const SizedBox(width: 12),
-            Icon(icon, size: 18, color: appColors.mutedForeground),
+            Icon(icon, size: AppIconSizes.medium, color: appColors.mutedForeground),
             const SizedBox(width: 8),
             Text(
               label,

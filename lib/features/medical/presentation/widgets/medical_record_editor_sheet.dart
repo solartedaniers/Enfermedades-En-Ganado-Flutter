@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../../core/theme/app_theme.dart';
+import '../../../../../core/theme/app_sizes.dart';
+import '../../../../../core/theme/app_text_styles.dart';
 import '../../../../../core/utils/app_strings.dart';
 
 class MedicalRecordDraft {
@@ -64,13 +66,14 @@ class _MedicalRecordEditorSheetState extends State<MedicalRecordEditorSheet> {
   @override
   Widget build(BuildContext context) {
     final appColors = context.appColors;
+    final theme = Theme.of(context);
 
     return Padding(
       padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+        left: AppSizes.large,
+        right: AppSizes.large,
+        top: AppSizes.large,
+        bottom: MediaQuery.of(context).viewInsets.bottom + AppSizes.large,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -78,23 +81,23 @@ class _MedicalRecordEditorSheetState extends State<MedicalRecordEditorSheet> {
         children: [
           Text(
             widget.title,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: AppTextStyles.sectionTitle(theme),
           ),
           if (widget.allowImage) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSizes.large),
             GestureDetector(
               onTap: _pickImage,
               child: Container(
                 width: double.infinity,
-                height: 140,
+                height: AppSizes.medicalPreviewHeight,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(12),
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(AppSizes.medium),
                   border: Border.all(color: appColors.inputBorderLight),
                 ),
                 child: _selectedImage != null
                     ? ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(AppSizes.medium),
                         child: Image.file(_selectedImage!, fit: BoxFit.cover),
                       )
                     : Column(
@@ -102,16 +105,15 @@ class _MedicalRecordEditorSheetState extends State<MedicalRecordEditorSheet> {
                         children: [
                           Icon(
                             Icons.add_a_photo,
-                            size: 40,
+                            size: AppIconSizes.xLarge,
                             color: appColors.inputBorderLight,
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: AppSizes.small),
                           Text(
                             AppStrings.t('medical_ai_photo_hint'),
                             textAlign: TextAlign.center,
-                            style: TextStyle(
+                            style: theme.textTheme.bodySmall?.copyWith(
                               color: appColors.mutedForeground,
-                              fontSize: 13,
                             ),
                           ),
                         ],
@@ -119,7 +121,7 @@ class _MedicalRecordEditorSheetState extends State<MedicalRecordEditorSheet> {
               ),
             ),
           ],
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSizes.medium),
           TextField(
             controller: _diagnosisController,
             decoration: InputDecoration(
@@ -127,10 +129,10 @@ class _MedicalRecordEditorSheetState extends State<MedicalRecordEditorSheet> {
             ),
             maxLines: 3,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSizes.large),
           SizedBox(
             width: double.infinity,
-            height: 48,
+            height: AppSizes.buttonHeight,
             child: ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop(

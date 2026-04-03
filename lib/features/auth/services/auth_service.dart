@@ -1,4 +1,8 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../../core/constants/app_json_keys.dart';
+import '../../../core/constants/app_route_paths.dart';
+import '../../../core/constants/app_user_type.dart';
 import '../../../core/utils/app_strings.dart';
 
 class AuthService {
@@ -12,7 +16,7 @@ class AuthService {
     required String username,
     required String phone,
     required String location,
-    required String userType,
+    required AppUserType userType,
   }) async {
     try {
       final normalizedFirstName = firstName.trim();
@@ -20,12 +24,10 @@ class AuthService {
       final normalizedUsername = username.trim();
       final normalizedPhone = phone.trim();
       final normalizedLocation = location.trim();
-      final localizedUserType = _localizedUserType(userType);
-
       final existing = await _client
           .from('profiles')
-          .select('username')
-          .eq('username', normalizedUsername)
+          .select(AppJsonKeys.username)
+          .eq(AppJsonKeys.username, normalizedUsername)
           .maybeSingle();
 
       if (existing != null) {
@@ -35,16 +37,16 @@ class AuthService {
       await _client.auth.signUp(
         email: email.trim(),
         password: password,
-        emailRedirectTo: 'agrovetai://auth-confirm',
+        emailRedirectTo: AppDeepLinkPaths.authConfirm,
         data: {
-          'first_name': normalizedFirstName,
-          'last_name': normalizedLastName,
-          'full_name': '$normalizedFirstName $normalizedLastName'.trim(),
-          'name': normalizedFirstName,
-          'username': normalizedUsername,
-          'phone': normalizedPhone,
-          'location': normalizedLocation,
-          'user_type': localizedUserType,
+          AppJsonKeys.firstName: normalizedFirstName,
+          AppJsonKeys.lastName: normalizedLastName,
+          AppJsonKeys.fullName: '$normalizedFirstName $normalizedLastName'.trim(),
+          AppJsonKeys.name: normalizedFirstName,
+          AppJsonKeys.username: normalizedUsername,
+          AppJsonKeys.phone: normalizedPhone,
+          AppJsonKeys.location: normalizedLocation,
+          AppJsonKeys.userType: userType.storageValue,
         },
       );
     } on AuthException catch (e) {
@@ -88,7 +90,7 @@ class AuthService {
     try {
       await _client.auth.resetPasswordForEmail(
         email,
-        redirectTo: 'agrovetai://reset-password',
+        redirectTo: AppDeepLinkPaths.resetPassword,
       );
     } on AuthException catch (e) {
       throw Exception(e.message);
@@ -97,17 +99,5 @@ class AuthService {
 
   Future<void> signOut() async {
     await _client.auth.signOut();
-  }
-
-  String _localizedUserType(String value) {
-    final normalizedValue = value.trim().toLowerCase();
-    final isVeterinarian =
-        normalizedValue == 'veterinarian' || normalizedValue == 'veterinario';
-
-    if (AppStrings.isEnglish) {
-      return isVeterinarian ? 'veterinarian' : 'farmer';
-    }
-
-    return isVeterinarian ? 'veterinario' : 'ganadero';
   }
 }
