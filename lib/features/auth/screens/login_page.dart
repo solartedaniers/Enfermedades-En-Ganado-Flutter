@@ -151,6 +151,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       appBar: AppBar(
         leading: const AuthPreferencesButton(),
         backgroundColor: Colors.transparent,
+        foregroundColor: colorScheme.onSurface,
         elevation: 0,
       ),
       child: Column(

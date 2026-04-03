@@ -300,7 +300,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       appBar: AppBar(
         title: Text(
           AppStrings.t('create_account'),
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: titleColor,
+          ),
         ),
         backgroundColor: Colors.transparent,
         foregroundColor: titleColor,

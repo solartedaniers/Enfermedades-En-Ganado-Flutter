@@ -62,8 +62,13 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
 
     return AuthPageShell(
       appBar: AppBar(
-        title: Text(AppStrings.t("recover_access"),
-            style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          AppStrings.t("recover_access"),
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: titleColor,
+          ),
+        ),
         backgroundColor: Colors.transparent,
         foregroundColor: titleColor,
         elevation: 0,

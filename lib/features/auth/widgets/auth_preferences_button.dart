@@ -14,8 +14,13 @@ class AuthPreferencesButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return PopupMenuButton<_AuthPreferenceAction>(
-      icon: const Icon(Icons.more_vert),
+      icon: Icon(
+        Icons.more_vert,
+        color: colorScheme.onSurface,
+      ),
       tooltip: AppStrings.t('auth_preferences'),
       onSelected: (action) {
         switch (action) {
