@@ -321,13 +321,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                 color: titleColor,
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              AppStrings.t('manage_livestock'),
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: appColors.mutedForeground,
-              ),
-            ),
             const SizedBox(height: 30),
             TextFormField(
               controller: firstName,
