@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_sizes.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/app_strings.dart';
 
 class AnimalImageCard extends StatelessWidget {
@@ -42,7 +44,7 @@ class AnimalImageCard extends StatelessWidget {
           borderRadius: borderRadius,
           border: Border.all(
             color: appColors.inputBorderLight,
-            width: 1.5,
+            width: AppSizes.thinStroke,
           ),
         ),
         child: ClipRRect(
@@ -91,24 +93,17 @@ class AnimalImageCard extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(overlayIcon, size: 44, color: appColors.onSolid),
-          const SizedBox(height: 8),
+          Icon(overlayIcon, size: AppIconSizes.xLarge + 4, color: appColors.onSolid),
+          const SizedBox(height: AppSizes.small),
           Text(
             overlayLabel,
-            style: TextStyle(
-              color: appColors.onSolid,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
+            style: AppTextStyles.bodyStrong(Theme.of(context), appColors.onSolid),
           ),
           if (overlaySubtitle != null) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSizes.xSmall),
             Text(
               overlaySubtitle!,
-              style: TextStyle(
-                color: overlaySubtitleColor,
-                fontSize: 12,
-              ),
+              style: AppTextStyles.bodyMuted(Theme.of(context), overlaySubtitleColor),
             ),
           ],
         ],

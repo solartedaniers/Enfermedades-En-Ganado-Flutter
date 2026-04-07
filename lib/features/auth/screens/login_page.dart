@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/constants/app_json_keys.dart';
+import '../../../../core/constants/app_user_type.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../../profile/presentation/providers/managed_client_provider.dart';
@@ -101,11 +103,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   Future<void> _importPendingVeterinarianClient(User currentUser) async {
-    final userType = (currentUser.userMetadata?['user_type'] as String?)
-            ?.trim()
-            .toLowerCase() ??
-        'farmer';
-    if (userType != 'veterinarian' && userType != 'veterinario') {
+    final userType = AppUserTypeCodec.fromValue(
+      currentUser.userMetadata?[AppJsonKeys.userType] as String?,
+    );
+    if (!userType.isVeterinarian) {
       return;
     }
 
@@ -151,6 +152,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       appBar: AppBar(
         leading: const AuthPreferencesButton(),
         backgroundColor: Colors.transparent,
+        foregroundColor: colorScheme.onSurface,
         elevation: 0,
       ),
       child: Column(

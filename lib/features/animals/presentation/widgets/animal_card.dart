@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../../../core/theme/app_durations.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_sizes.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/app_strings.dart';
+import '../../domain/constants/animal_breed_catalog.dart';
 import '../../domain/entities/animal_entity.dart';
 import '../../shared/age_label_formatter.dart';
 
@@ -25,15 +29,18 @@ class AnimalCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        margin: const EdgeInsets.symmetric(
+          horizontal: AppSizes.large,
+          vertical: AppSizes.small,
+        ),
         decoration: BoxDecoration(
           color: isDark ? appColors.cardDark : colorScheme.surface,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(AppSizes.cardRadius),
           boxShadow: [
             BoxShadow(
               color: appColors.lightShadow,
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+              blurRadius: AppSizes.medium,
+              offset: const Offset(0, AppSizes.xSmall),
             ),
           ],
         ),
@@ -42,13 +49,15 @@ class AnimalCard extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius:
-                  const BorderRadius.horizontal(left: Radius.circular(20)),
+                  const BorderRadius.horizontal(
+                    left: Radius.circular(AppSizes.cardRadius),
+                  ),
               child: animalData.profileImageUrl != null &&
                       animalData.profileImageUrl!.isNotEmpty
                   ? Image.network(
                       animalData.profileImageUrl!,
-                      width: 100,
-                      height: 100,
+                      width: AppSizes.animalCardImageSize,
+                      height: AppSizes.animalCardImageSize,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) =>
                           _buildPlaceholder(),
@@ -57,7 +66,10 @@ class AnimalCard extends StatelessWidget {
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSizes.medium,
+                  vertical: AppSizes.medium,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
@@ -66,23 +78,22 @@ class AnimalCard extends StatelessWidget {
                       animalData.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 16,
+                      style: AppTextStyles.sectionTitle(Theme.of(context)).copyWith(
                         fontWeight: FontWeight.bold,
                         color: isDark ? appColors.onSolid : appColors.subduedForeground,
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: AppSizes.xSmall),
                     Text(
-                      animalData.breed,
+                      AnimalBreedCatalog.displayLabel(animalData.breed),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: appColors.mutedForeground,
-                        fontSize: 13,
+                      style: AppTextStyles.caption(
+                        Theme.of(context),
+                        appColors.mutedForeground,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSizes.small),
                     Wrap(
                       spacing: 6,
                       runSpacing: 4,
@@ -110,14 +121,14 @@ class AnimalCard extends StatelessWidget {
               padding: const EdgeInsets.only(right: 10),
               child: Icon(
                 Icons.arrow_forward_ios,
-                size: 14,
+                size: AppIconSizes.small,
                 color: appColors.inputBorderLight,
               ),
             ),
           ],
         ),
       ),
-    ).animate().fadeIn(duration: 300.ms).slideX(begin: 0.05);
+    ).animate().fadeIn(duration: AppDurations.medium).slideX(begin: 0.05);
   }
 
   Widget _buildChip(BuildContext context, IconData icon, String label) {
@@ -127,22 +138,22 @@ class AnimalCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: appColors.selectionBackground,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppSizes.cardRadius),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: appColors.chipForeground),
-          const SizedBox(width: 4),
+          Icon(icon, size: AppIconSizes.small, color: appColors.chipForeground),
+          const SizedBox(width: AppSizes.xSmall),
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 120),
             child: Text(
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 11,
-                color: appColors.chipForeground,
+              style: AppTextStyles.caption(
+                Theme.of(context),
+                appColors.chipForeground,
               ),
             ),
           ),
@@ -154,8 +165,8 @@ class AnimalCard extends StatelessWidget {
   Widget _buildPlaceholder() {
     return Image.asset(
       AppStrings.t('animal_default_image'),
-      width: 100,
-      height: 100,
+      width: AppSizes.animalCardImageSize,
+      height: AppSizes.animalCardImageSize,
       fit: BoxFit.cover,
     );
   }

@@ -5,9 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_sizes.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../../../medical/presentation/pages/medical_history_page.dart';
 import '../../domain/constants/animal_constants.dart';
+import '../../domain/constants/animal_breed_catalog.dart';
 import '../../domain/entities/animal_entity.dart';
 import '../../shared/age_label_formatter.dart';
 import '../../shared/animal_input_formatters.dart';
@@ -35,7 +38,7 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
 
   late TextEditingController _nameController;
   late TextEditingController _weightController;
-  String? _selectedBreedName;
+  String? _selectedBreedKey;
   AnimalAgeOption? _selectedAgeOption;
 
   File? _newImage;
@@ -54,7 +57,7 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
     _weightController = TextEditingController(
       text: _currentAnimal.weight != null ? '${_currentAnimal.weight}' : '',
     );
-    _selectedBreedName = _currentAnimal.breed;
+    _selectedBreedKey = AnimalBreedCatalog.storageValue(_currentAnimal.breed);
 
     final ageOptions = AgeLabelFormatter.buildAgeOptions();
     _selectedAgeOption = ageOptions.firstWhere(
@@ -97,7 +100,7 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
   void _showImageSourceDialog() {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: Colors.transparent,
+      backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0),
       builder: (_) {
         return AnimalImageSourceSheet(
           onSourceSelected: (source) {
@@ -113,14 +116,21 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0),
       builder: (_) {
         return AnimalOptionPickerSheet(
           title: AppStrings.t('select_breed'),
-          options: AnimalConstants.cattleBreeds,
-          selectedValue: _selectedBreedName,
-          onOptionSelected: (breed) {
-            setState(() => _selectedBreedName = breed);
+          options: AnimalBreedCatalog.options()
+              .map(
+                (breed) => AnimalOptionItem(
+                  value: breed.value,
+                  label: AppStrings.t(breed.labelKey),
+                ),
+              )
+              .toList(),
+          selectedValue: _selectedBreedKey,
+          onOptionSelected: (breedKey) {
+            setState(() => _selectedBreedKey = breedKey);
             Navigator.pop(context);
           },
         );
@@ -134,18 +144,25 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0),
       builder: (_) {
         return AnimalOptionPickerSheet(
           title: AppStrings.t('select_age'),
-          options: ageOptions.map((option) => option.label).toList(),
-          selectedValue: _selectedAgeOption?.label,
+          options: ageOptions
+              .map(
+                (option) => AnimalOptionItem(
+                  value: option.months.toString(),
+                  label: option.label,
+                ),
+              )
+              .toList(),
+          selectedValue: _selectedAgeOption?.months.toString(),
           initialChildSize: 0.55,
           minChildSize: 0.35,
           maxChildSize: 0.85,
-          onOptionSelected: (label) {
+          onOptionSelected: (selectedValue) {
             final selectedAgeOption = ageOptions.firstWhere(
-              (option) => option.label == label,
+              (option) => option.months.toString() == selectedValue,
             );
             setState(() => _selectedAgeOption = selectedAgeOption);
             Navigator.pop(context);
@@ -168,7 +185,7 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
       final normalizedWeight = _weightController.text.trim().replaceAll(',', '.');
       final updatedAnimal = _currentAnimal.copyWith(
         name: name,
-        breed: _selectedBreedName,
+        breed: _selectedBreedKey,
         age: _selectedAgeOption?.months,
         ageLabel: _selectedAgeOption?.label,
         weight: normalizedWeight.isEmpty
@@ -214,7 +231,7 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
           ),
           title: Text(
             AppStrings.t('delete_animal'),
-            style: const TextStyle(fontWeight: FontWeight.bold),
+            style: AppTextStyles.sectionTitle(Theme.of(context)),
           ),
           content: Text(AppStrings.t('delete_animal_confirm')),
           actions: [
@@ -295,7 +312,7 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
               },
               child: Text(
                 AppStrings.t('cancel'),
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: Theme.of(context).colorScheme.primary),
               ),
             ),
           ],
@@ -305,11 +322,11 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
           ? FloatingActionButton.extended(
               onPressed: _isSaving ? null : _saveEdit,
               icon: _isSaving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
+                  ? SizedBox(
+                      width: AppIconSizes.medium,
+                      height: AppIconSizes.medium,
                       child: CircularProgressIndicator(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onPrimary,
                         strokeWidth: 2,
                       ),
                     )
@@ -318,15 +335,20 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
             )
           : null,
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+        padding: const EdgeInsets.fromLTRB(
+          AppSizes.large,
+          AppSizes.large,
+          AppSizes.large,
+          AppSizes.formBottomSpacing + AppSizes.xLarge,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             AnimalImageCard(
               selectedImage: _newImage,
               networkImageUrl: _currentAnimal.profileImageUrl,
-              height: 220,
-              borderRadius: BorderRadius.circular(16),
+              height: AppSizes.animalDetailImageHeight,
+              borderRadius: BorderRadius.circular(AppSizes.large),
               onTap: _showImageSourceDialog,
               overlayLabel: _isEditing
                   ? AppStrings.t('change_photo')
@@ -334,7 +356,7 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
               overlayIcon:
                   _isEditing ? Icons.camera_alt : Icons.add_a_photo_outlined,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSizes.xLarge),
             if (_isEditing) _buildEditForm() else _buildViewMode(),
           ],
         ),
@@ -353,7 +375,7 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
         _buildInfoRow(
           Icons.pets,
           AppStrings.t('breed_label'),
-          _currentAnimal.breed,
+          AnimalBreedCatalog.displayLabel(_currentAnimal.breed),
         ),
         _buildInfoRow(
           Icons.cake,
@@ -373,10 +395,10 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
             AppStrings.t('temperature_label'),
             '${_currentAnimal.temperature} \u00B0C',
           ),
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSizes.xxLarge),
         SizedBox(
           width: double.infinity,
-          height: 50,
+          height: AppSizes.largeButtonHeight,
           child: ElevatedButton.icon(
             onPressed: () async {
               final updatedAnimal = await Navigator.push<AnimalEntity>(
@@ -402,20 +424,20 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
     final appColors = context.appColors;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.only(bottom: AppSizes.sectionSpacing),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: appColors.chipForeground, size: 20),
-          const SizedBox(width: 10),
+          Icon(icon, color: appColors.chipForeground, size: AppIconSizes.large),
+          const SizedBox(width: AppSizes.small + 2),
           Text(
             '$label: ',
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            style: AppTextStyles.sectionTitle(Theme.of(context)),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(fontSize: 15),
+              style: Theme.of(context).textTheme.bodyLarge,
             ),
           ),
         ],
@@ -437,21 +459,23 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
             prefixIcon: Icon(Icons.pets, color: appColors.chipForeground),
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSizes.sectionSpacing),
         AnimalSelectorField(
           label: AppStrings.t('breed_label'),
-          value: _selectedBreedName,
+          value: _selectedBreedKey == null
+              ? null
+              : AnimalBreedCatalog.displayLabel(_selectedBreedKey),
           icon: Icons.category_outlined,
           onTap: _showBreedSelector,
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSizes.sectionSpacing),
         AnimalSelectorField(
           label: AppStrings.t('age_label'),
           value: _selectedAgeOption?.label,
           icon: Icons.cake_outlined,
           onTap: _showAgeSelector,
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSizes.sectionSpacing),
         TextFormField(
           controller: _weightController,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -466,7 +490,7 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
             suffixText: AppStrings.t('kg'),
           ),
         ),
-        const SizedBox(height: 80),
+        const SizedBox(height: AppSizes.formBottomSpacing),
       ],
     );
   }

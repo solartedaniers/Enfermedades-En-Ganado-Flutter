@@ -3,14 +3,15 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// Guarda datos minimos de sesion y acceso local para permitir uso offline.
+import '../constants/app_storage_keys.dart';
+
 class OfflineAuthService {
-  static const _keyUserId = 'offline_user_id';
-  static const _keyUserName = 'offline_user_name';
-  static const _keyAvatarUrl = 'offline_avatar_url';
-  static const _keyUserType = 'offline_user_type';
-  static const _keyEmail = 'offline_auth_email';
-  static const _keySecret = 'offline_auth_secret';
+  static const _keyUserId = AppStorageKeys.offlineUserId;
+  static const _keyUserName = AppStorageKeys.offlineUserName;
+  static const _keyAvatarUrl = AppStorageKeys.offlineAvatarUrl;
+  static const _keyUserType = AppStorageKeys.offlineUserType;
+  static const _keyEmail = AppStorageKeys.offlineAuthEmail;
+  static const _keySecret = AppStorageKeys.offlineAuthSecret;
 
   static Future<void> saveSession({
     required String userId,

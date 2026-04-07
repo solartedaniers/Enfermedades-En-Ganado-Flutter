@@ -1,3 +1,5 @@
+import '../../config/app_location_settings.dart';
+import '../../../core/utils/app_strings.dart';
 import '../../domain/entities/geolocation_context_entity.dart';
 import '../../domain/repositories/geolocation_repository.dart';
 import '../datasources/device_geolocation_datasource.dart';
@@ -17,21 +19,23 @@ class GeolocationRepositoryImpl implements GeolocationRepository {
   Future<GeolocationContextEntity> getCurrentContext() async {
     final result = await deviceDatasource.getCurrentLocation();
     final placemark = result.placemark;
-    final profile = regionProfileDatasource.resolveProfile(
-      countryCode: placemark.isoCountryCode ?? '',
-      administrativeArea: placemark.administrativeArea ?? '',
-      locality: placemark.locality ?? '',
+    final profile = await regionProfileDatasource.resolveProfile(
+      countryCode: placemark.isoCountryCode ?? AppLocationSettings.emptyValue,
+      administrativeArea:
+          placemark.administrativeArea ?? AppLocationSettings.emptyValue,
+      locality: placemark.locality ?? AppLocationSettings.emptyValue,
     );
 
     return GeolocationContextModel(
       latitude: result.position.latitude,
       longitude: result.position.longitude,
-      country: placemark.country ?? '',
-      countryCode: placemark.isoCountryCode ?? '',
-      administrativeArea: placemark.administrativeArea ?? '',
-      locality: placemark.locality ?? '',
-      climateZone: profile.climateZone,
-      epidemiologySummary: profile.epidemiologySummary,
+      country: placemark.country ?? AppLocationSettings.emptyValue,
+      countryCode: placemark.isoCountryCode ?? AppLocationSettings.emptyValue,
+      administrativeArea:
+          placemark.administrativeArea ?? AppLocationSettings.emptyValue,
+      locality: placemark.locality ?? AppLocationSettings.emptyValue,
+      climateZone: AppStrings.t(profile.climateZoneKey),
+      epidemiologySummary: AppStrings.t(profile.epidemiologySummaryKey),
       commonDiseaseKeys: profile.commonDiseaseKeys,
     );
   }

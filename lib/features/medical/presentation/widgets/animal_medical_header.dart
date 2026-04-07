@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../core/theme/app_theme.dart';
+import '../../../../../core/theme/app_sizes.dart';
+import '../../../../../core/theme/app_text_styles.dart';
 import '../../../../../core/utils/app_strings.dart';
+import '../../../animals/domain/constants/animal_breed_catalog.dart';
 import '../../../animals/domain/entities/animal_entity.dart';
 import '../../../animals/shared/age_label_formatter.dart';
 
@@ -18,10 +21,11 @@ class AnimalMedicalHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appColors = context.appColors;
+    final theme = Theme.of(context);
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSizes.xLarge),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [appColors.medicalHeaderStart, appColors.medicalHeaderEnd],
@@ -36,7 +40,7 @@ class AnimalMedicalHeader extends StatelessWidget {
             child: Stack(
               children: [
                 CircleAvatar(
-                  radius: 40,
+                  radius: AppSizes.medicalAvatarRadius,
                   backgroundColor: appColors.whiteOverlay,
                   backgroundImage: animal.profileImageUrl != null &&
                           animal.profileImageUrl!.isNotEmpty
@@ -44,21 +48,25 @@ class AnimalMedicalHeader extends StatelessWidget {
                       : null,
                   child: animal.profileImageUrl == null ||
                           animal.profileImageUrl!.isEmpty
-                      ? const Icon(Icons.pets, size: 40, color: Colors.white)
+                      ? Icon(
+                          Icons.pets,
+                          size: AppIconSizes.xLarge,
+                          color: appColors.onSolid,
+                        )
                       : null,
                 ),
                 Positioned(
                   bottom: 0,
                   right: 0,
                   child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
+                    padding: const EdgeInsets.all(AppSizes.xSmall),
+                    decoration: BoxDecoration(
+                      color: appColors.onSolid,
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       Icons.camera_alt,
-                      size: 14,
+                      size: AppIconSizes.small,
                       color: appColors.chipForeground,
                     ),
                   ),
@@ -66,37 +74,44 @@ class AnimalMedicalHeader extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: AppSizes.large),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   animal.name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: AppTextStyles.title(
+                    theme,
+                  ).copyWith(color: appColors.onSolid),
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSizes.xSmall - 2),
                 Text(
-                  animal.breed,
-                  style: const TextStyle(color: Colors.white70, fontSize: 14),
+                  AnimalBreedCatalog.displayLabel(animal.breed),
+                  style: AppTextStyles.caption(
+                    theme,
+                    appColors.onSolid.withValues(alpha: 0.8),
+                  ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSizes.xSmall - 2),
                 Text(
                   animal.ageLabel.isNotEmpty
                       ? animal.ageLabel
                       : AgeLabelFormatter.format(animal.age),
-                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                  style: AppTextStyles.caption(
+                    theme,
+                    appColors.onSolid.withValues(alpha: 0.8),
+                  ),
                 ),
                 if (animal.weight != null) ...[
-                  const SizedBox(height: 2),
+                  const SizedBox(height: AppSizes.xSmall - 2),
                   Text(
                     '${animal.weight} ${AppStrings.t("kg")}',
-                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                    style: AppTextStyles.caption(
+                      theme,
+                      appColors.onSolid.withValues(alpha: 0.8),
+                    ),
                   ),
                 ],
               ],

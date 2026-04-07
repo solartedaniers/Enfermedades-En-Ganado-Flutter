@@ -1,11 +1,23 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_sizes.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import 'animal_bottom_sheet_handle.dart';
+
+class AnimalOptionItem {
+  final String value;
+  final String label;
+
+  const AnimalOptionItem({
+    required this.value,
+    required this.label,
+  });
+}
 
 class AnimalOptionPickerSheet extends StatelessWidget {
   final String title;
-  final List<String> options;
+  final List<AnimalOptionItem> options;
   final String? selectedValue;
   final ValueChanged<String> onOptionSelected;
   final double initialChildSize;
@@ -36,36 +48,39 @@ class AnimalOptionPickerSheet extends StatelessWidget {
         return Container(
           decoration: BoxDecoration(
             color: Theme.of(context).scaffoldBackgroundColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(AppSizes.xxLarge),
+            ),
           ),
           child: Column(
             children: [
               const AnimalBottomSheetHandle(),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSizes.xLarge,
+                  vertical: AppSizes.small,
+                ),
                 child: Text(
                   title,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: AppTextStyles.sectionTitle(Theme.of(context)),
                 ),
               ),
-              const Divider(height: 1),
+              const Divider(height: AppSizes.xSmall),
               Expanded(
                 child: ListView.builder(
                   controller: scrollController,
                   itemCount: options.length,
                   itemBuilder: (context, index) {
                     final option = options[index];
-                    final isSelected = option == selectedValue;
+                    final isSelected = option.value == selectedValue;
 
                     return ListTile(
-                      title: Text(option),
+                      title: Text(option.label),
                       trailing: isSelected
                           ? Icon(Icons.check_circle, color: appColors.chipForeground)
                           : null,
                       tileColor: isSelected ? appColors.selectionBackground : null,
-                      onTap: () => onOptionSelected(option),
+                      onTap: () => onOptionSelected(option.value),
                     );
                   },
                 ),

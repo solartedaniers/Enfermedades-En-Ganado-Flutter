@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../core/theme/app_sizes.dart';
 import '../../../../../core/theme/app_theme.dart';
+import '../../../../../core/theme/app_text_styles.dart';
 import '../../../../../core/utils/app_date_formatter.dart';
 import '../../../../../core/utils/app_strings.dart';
 import '../../../animals/domain/entities/animal_entity.dart';
@@ -102,10 +104,10 @@ class _NotificationFormSheetState extends State<NotificationFormSheet> {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        left: AppSizes.pagePadding,
+        right: AppSizes.pagePadding,
+        top: AppSizes.pagePadding,
+        bottom: MediaQuery.of(context).viewInsets.bottom + AppSizes.pagePadding,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -113,20 +115,20 @@ class _NotificationFormSheetState extends State<NotificationFormSheet> {
         children: [
           Center(
             child: Container(
-              width: 40,
-              height: 4,
+              width: AppSizes.modalHandleWidth,
+              height: AppSizes.modalHandleHeight,
               decoration: BoxDecoration(
                 color: appColors.inputBorderLight,
-                borderRadius: BorderRadius.circular(2),
+                borderRadius: BorderRadius.circular(AppSizes.modalHandleRadius),
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSizes.large),
           Text(
             AppStrings.t("add_notification"),
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: AppTextStyles.sectionTitle(Theme.of(context)),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSizes.large),
           DropdownButtonFormField<AnimalEntity>(
             decoration: InputDecoration(
               labelText: AppStrings.t("notification_animal"),
@@ -142,7 +144,7 @@ class _NotificationFormSheetState extends State<NotificationFormSheet> {
                 .toList(),
             onChanged: (value) => setState(() => _selectedAnimal = value),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSizes.medium),
           TextField(
             controller: _titleController,
             decoration: InputDecoration(
@@ -150,7 +152,7 @@ class _NotificationFormSheetState extends State<NotificationFormSheet> {
               prefixIcon: const Icon(Icons.title),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSizes.medium),
           TextField(
             controller: _messageController,
             decoration: InputDecoration(
@@ -159,19 +161,19 @@ class _NotificationFormSheetState extends State<NotificationFormSheet> {
             ),
             maxLines: 2,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSizes.medium),
           InkWell(
             onTap: _selectDateTime,
             child: Container(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(AppSizes.sectionSpacing),
               decoration: BoxDecoration(
                 border: Border.all(color: appColors.inputBorderLight),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppSizes.small),
               ),
               child: Row(
                 children: [
                   Icon(Icons.calendar_today, color: appColors.mutedForeground),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSizes.medium),
                   Text(
                     _selectedDate != null
                         ? AppDateFormatter.shortDateTime(_selectedDate!)
@@ -186,10 +188,10 @@ class _NotificationFormSheetState extends State<NotificationFormSheet> {
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSizes.xLarge),
           SizedBox(
             width: double.infinity,
-            height: 50,
+            height: AppSizes.largeButtonHeight,
             child: ElevatedButton(
               onPressed: _submit,
               child: Text(AppStrings.t("notification_saved")),

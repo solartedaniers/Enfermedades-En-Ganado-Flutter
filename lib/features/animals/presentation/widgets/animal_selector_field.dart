@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_sizes.dart';
+import '../../../../core/theme/app_text_styles.dart';
 
 class AnimalSelectorField extends StatelessWidget {
   final String label;
@@ -24,20 +26,22 @@ class AnimalSelectorField extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSizes.medium,
+          vertical: AppSizes.large,
+        ),
         decoration: BoxDecoration(
           border: Border.all(color: appColors.inputBorderLight),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppSizes.small),
         ),
         child: Row(
           children: [
             Icon(icon, color: appColors.chipForeground),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSizes.medium),
             Expanded(
               child: Text(
                 hasValue ? value! : label,
-                style: TextStyle(
-                  fontSize: 16,
+                style: AppTextStyles.sectionTitle(Theme.of(context)).copyWith(
                   color: hasValue ? null : appColors.mutedForeground,
                 ),
               ),

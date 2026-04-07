@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../core/theme/app_sizes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_strings.dart';
 import 'animal_bottom_sheet_handle.dart';
@@ -20,7 +21,9 @@ class AnimalImageSourceSheet extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppSizes.cardRadius),
+        ),
       ),
       child: SafeArea(
         child: Column(
@@ -37,7 +40,7 @@ class AnimalImageSourceSheet extends StatelessWidget {
               title: Text(AppStrings.t('choose_gallery')),
               onTap: () => onSourceSelected(ImageSource.gallery),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSizes.small),
           ],
         ),
       ),

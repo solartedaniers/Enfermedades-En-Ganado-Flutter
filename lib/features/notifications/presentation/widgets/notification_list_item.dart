@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../../../../core/theme/app_durations.dart';
+import '../../../../../core/theme/app_sizes.dart';
 import '../../../../../core/theme/app_theme.dart';
+import '../../../../../core/theme/app_text_styles.dart';
 import '../../../../../core/utils/app_date_formatter.dart';
 import '../../domain/entities/notification_entity.dart';
 
@@ -23,7 +26,7 @@ class NotificationListItem extends StatelessWidget {
     final isPast = notification.scheduledAt.isBefore(DateTime.now());
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: AppSizes.medium),
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: isPast
@@ -36,36 +39,40 @@ class NotificationListItem extends StatelessWidget {
         ),
         title: Text(
           notification.title,
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          style: AppTextStyles.sectionTitle(Theme.of(context)),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(notification.message),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSizes.xSmall),
             Row(
               children: [
-                Icon(Icons.set_meal, size: 12, color: appColors.mutedForeground),
-                const SizedBox(width: 4),
-                Text(
-                  notification.animalName,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: appColors.mutedForeground,
-                  ),
-                ),
-                const SizedBox(width: 12),
                 Icon(
-                  Icons.access_time,
-                  size: 12,
+                  Icons.set_meal,
+                  size: AppSizes.medium,
                   color: appColors.mutedForeground,
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: AppSizes.xSmall),
+                Text(
+                  notification.animalName,
+                  style: AppTextStyles.caption(
+                    Theme.of(context),
+                    appColors.mutedForeground,
+                  ),
+                ),
+                const SizedBox(width: AppSizes.medium),
+                Icon(
+                  Icons.access_time,
+                  size: AppSizes.medium,
+                  color: appColors.mutedForeground,
+                ),
+                const SizedBox(width: AppSizes.xSmall),
                 Text(
                   AppDateFormatter.shortDateTime(notification.scheduledAt),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isPast ? appColors.danger : appColors.mutedForeground,
+                  style: AppTextStyles.caption(
+                    Theme.of(context),
+                    isPast ? appColors.danger : appColors.mutedForeground,
                   ),
                 ),
               ],
@@ -78,7 +85,7 @@ class NotificationListItem extends StatelessWidget {
         ),
       ),
     ).animate().fadeIn(
-          duration: 300.ms,
+          duration: AppDurations.medium,
           delay: (index * 60).ms,
         );
   }

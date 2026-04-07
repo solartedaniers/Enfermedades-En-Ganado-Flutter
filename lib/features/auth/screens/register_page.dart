@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/constants/app_user_type.dart';
 import '../../../../core/services/managed_client_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_strings.dart';
@@ -32,7 +33,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   final formKey = GlobalKey<FormState>();
   final _geolocationDatasource = const DeviceGeolocationDatasource();
 
-  String? userType;
+  AppUserType? userType;
   String _locationLabel = '';
   bool loading = false;
   bool loadingLocation = false;
@@ -126,7 +127,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       return;
     }
 
-    final isVeterinarian = userType == 'veterinarian';
+    final isVeterinarian = userType?.isVeterinarian == true;
     if (isVeterinarian && firstManagedClientName.text.trim().isEmpty) {
       _showSnackBar(AppStrings.t('veterinarian_select_client_first'));
       return;
@@ -300,7 +301,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       appBar: AppBar(
         title: Text(
           AppStrings.t('create_account'),
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: titleColor,
+          ),
         ),
         backgroundColor: Colors.transparent,
         foregroundColor: titleColor,
@@ -316,13 +320,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: titleColor,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              AppStrings.t('manage_livestock'),
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: appColors.mutedForeground,
               ),
             ),
             const SizedBox(height: 30),
@@ -369,15 +366,15 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             const SizedBox(height: 16),
             _buildLocationCard(),
             const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
+            DropdownButtonFormField<AppUserType>(
               initialValue: userType,
               items: [
                 DropdownMenuItem(
-                  value: 'farmer',
+                  value: AppUserType.farmer,
                   child: Text(AppStrings.t('farmer')),
                 ),
                 DropdownMenuItem(
-                  value: 'veterinarian',
+                  value: AppUserType.veterinarian,
                   child: Text(AppStrings.t('vet')),
                 ),
               ],
@@ -389,7 +386,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
               validator: (value) =>
                   value == null ? AppStrings.t('select_type') : null,
             ),
-            if (userType == 'veterinarian') ...[
+            if (userType?.isVeterinarian == true) ...[
               const SizedBox(height: 16),
               TextFormField(
                 controller: firstManagedClientName,
@@ -398,7 +395,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                   Icons.groups_outlined,
                 ),
                 validator: (value) {
-                  if (userType == 'veterinarian' &&
+                  if (userType?.isVeterinarian == true &&
                       (value == null || value.trim().isEmpty)) {
                     return AppStrings.t('veterinarian_select_client_first');
                   }

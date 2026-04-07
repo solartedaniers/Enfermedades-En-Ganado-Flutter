@@ -1,5 +1,7 @@
+import '../../../../core/constants/app_json_keys.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../../../../core/utils/json_parser.dart';
+import '../../domain/constants/animal_breed_catalog.dart';
 import '../../domain/entities/animal_entity.dart';
 import '../../shared/age_label_formatter.dart';
 
@@ -39,9 +41,7 @@ class AnimalRemoteModel {
       id: entity.id,
       userId: entity.userId,
       name: entity.name.isEmpty ? AppStrings.t('animal_no_name') : entity.name,
-      breed: entity.breed.isEmpty
-          ? AppStrings.t('animal_unknown_breed')
-          : entity.breed,
+      breed: AnimalBreedCatalog.storageValue(entity.breed),
       age: entity.age,
       ageLabel: entity.ageLabel.isNotEmpty
           ? entity.ageLabel
@@ -57,23 +57,26 @@ class AnimalRemoteModel {
   }
 
   factory AnimalRemoteModel.fromJson(Map<String, dynamic> json) {
-    final ageValue = JsonParser.asInt(json['age']);
+    final ageValue = JsonParser.asInt(json[AppJsonKeys.age]);
 
     return AnimalRemoteModel(
-      id: JsonParser.asString(json['id']) ?? '',
-      userId: JsonParser.asString(json['user_id']) ?? '',
-      name: JsonParser.asString(json['name']) ?? AppStrings.t('animal_no_name'),
-      breed: JsonParser.asString(json['breed']) ??
-          AppStrings.t('animal_unknown_breed'),
+      id: JsonParser.asString(json[AppJsonKeys.id]) ?? '',
+      userId: JsonParser.asString(json[AppJsonKeys.userId]) ?? '',
+      name:
+          JsonParser.asString(json[AppJsonKeys.name]) ??
+              AppStrings.t('animal_no_name'),
+      breed: AnimalBreedCatalog.storageValue(
+        JsonParser.asString(json[AppJsonKeys.breed]),
+      ),
       age: ageValue,
       ageLabel: AgeLabelFormatter.format(ageValue),
-      symptoms: JsonParser.asString(json['symptoms']) ?? '',
-      weight: JsonParser.asDouble(json['weight']),
-      temperature: JsonParser.asDouble(json['temperature']),
-      imageUrl: JsonParser.asString(json['image_url']),
-      profileImageUrl: JsonParser.asString(json['profile_image_url']),
-      createdAt: JsonParser.asDateTime(json['created_at']),
-      updatedAt: JsonParser.asDateTime(json['updated_at']),
+      symptoms: JsonParser.asString(json[AppJsonKeys.symptoms]) ?? '',
+      weight: JsonParser.asDouble(json[AppJsonKeys.weight]),
+      temperature: JsonParser.asDouble(json[AppJsonKeys.temperature]),
+      imageUrl: JsonParser.asString(json[AppJsonKeys.imageUrl]),
+      profileImageUrl: JsonParser.asString(json[AppJsonKeys.profileImageUrl]),
+      createdAt: JsonParser.asDateTime(json[AppJsonKeys.createdAt]),
+      updatedAt: JsonParser.asDateTime(json[AppJsonKeys.updatedAt]),
     );
   }
 
@@ -97,18 +100,18 @@ class AnimalRemoteModel {
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
-      'user_id': userId,
-      'name': name,
-      'breed': breed,
-      'age': age,
-      'symptoms': symptoms,
-      'weight': weight,
-      'temperature': temperature,
-      'image_url': imageUrl,
-      'profile_image_url': profileImageUrl,
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
+      AppJsonKeys.id: id,
+      AppJsonKeys.userId: userId,
+      AppJsonKeys.name: name,
+      AppJsonKeys.breed: breed,
+      AppJsonKeys.age: age,
+      AppJsonKeys.symptoms: symptoms,
+      AppJsonKeys.weight: weight,
+      AppJsonKeys.temperature: temperature,
+      AppJsonKeys.imageUrl: imageUrl,
+      AppJsonKeys.profileImageUrl: profileImageUrl,
+      AppJsonKeys.createdAt: createdAt.toIso8601String(),
+      AppJsonKeys.updatedAt: updatedAt.toIso8601String(),
     };
   }
 }

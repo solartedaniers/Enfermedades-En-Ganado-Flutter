@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_sizes.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../providers/animal_provider.dart';
 import '../widgets/animal_card.dart';
@@ -39,18 +41,26 @@ class AnimalsPage extends ConsumerWidget {
         child: const Icon(Icons.add),
       ),
       body: animalsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => Center(
+          child: CircularProgressIndicator(
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
         error: (_, _) => Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.error_outline, size: 64, color: appColors.danger),
-              const SizedBox(height: 16),
+              Icon(
+                Icons.error_outline,
+                size: AppSizes.emptyStateIcon,
+                color: appColors.danger,
+              ),
+              const SizedBox(height: AppSizes.large),
               Text(
                 AppStrings.t('load_error'),
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSizes.small),
               ElevatedButton(
                 onPressed: () => ref.invalidate(animalsListProvider),
                 child: Text(AppStrings.t('retry')),
@@ -64,16 +74,26 @@ class AnimalsPage extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.pets, size: 80, color: appColors.inputBorderLight),
-                  const SizedBox(height: 16),
+                  Icon(
+                    Icons.pets,
+                    size: AppSizes.notificationEmptyIcon,
+                    color: appColors.inputBorderLight,
+                  ),
+                  const SizedBox(height: AppSizes.large),
                   Text(
                     AppStrings.t('no_animals'),
-                    style: TextStyle(fontSize: 16, color: appColors.mutedForeground),
+                    style: AppTextStyles.bodyMuted(
+                      Theme.of(context),
+                      appColors.mutedForeground,
+                    ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSizes.small),
                   Text(
                     AppStrings.t('add_first'),
-                    style: TextStyle(color: appColors.inputBorderLight),
+                    style: AppTextStyles.bodyMuted(
+                      Theme.of(context),
+                      appColors.inputBorderLight,
+                    ),
                   ),
                 ],
               ),

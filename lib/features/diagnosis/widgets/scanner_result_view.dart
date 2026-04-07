@@ -2,7 +2,9 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_sizes.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/app_strings.dart';
 import '../../../core/ai/models/diagnosis_response.dart';
 import '../../animals/domain/entities/animal_entity.dart';
@@ -36,13 +38,13 @@ class ScannerResultView extends StatelessWidget {
 
     return SafeArea(
       child: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(AppSizes.pagePadding),
         children: [
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(AppSizes.xLarge),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(AppSizes.xxLarge),
               boxShadow: [
                 BoxShadow(
                   color: context.appColors.scannerAccent.withValues(alpha: 0.10),
@@ -56,18 +58,14 @@ class ScannerResultView extends StatelessWidget {
               children: [
                 Text(
                   '${AppStrings.t('diagnosis_animal_prefix')}: ${currentAnimal.name}',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: AppTextStyles.sectionTitle(Theme.of(context)),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSizes.medium),
                 Text(
                   currentReport.diagnosticStatement,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: AppTextStyles.title(Theme.of(context)),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSizes.large),
                 Wrap(
                   spacing: 12,
                   runSpacing: 12,
@@ -89,18 +87,18 @@ class ScannerResultView extends StatelessWidget {
                   ],
                 ),
                 if (capturedImageBytes != null) ...[
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AppSizes.xLarge),
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(AppSizes.fieldRadius),
                     child: Image.memory(
                       capturedImageBytes!,
-                      height: 180,
+                      height: AppSizes.diagnosisResultImageHeight,
                       width: double.infinity,
                       fit: BoxFit.cover,
                     ),
                   ),
                 ],
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSizes.xLarge),
                 _ScannerSection(
                   title: AppStrings.t('diagnosis_reasoning'),
                   items: [currentReport.reasoning],
@@ -122,7 +120,7 @@ class ScannerResultView extends StatelessWidget {
                   title: AppStrings.t('diagnosis_monitoring'),
                   items: currentReport.monitoringPlan,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSizes.xLarge),
                 Row(
                   children: [
                     Expanded(
@@ -134,15 +132,15 @@ class ScannerResultView extends StatelessWidget {
                         ),
                         icon: isSaving
                             ? const SizedBox(
-                                width: 18,
-                                height: 18,
+                                width: AppIconSizes.medium,
+                                height: AppIconSizes.medium,
                                 child: CircularProgressIndicator(strokeWidth: 2),
                               )
                             : const Icon(Icons.save),
                         label: Text(AppStrings.t('save')),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSizes.medium),
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: onReset,
@@ -182,25 +180,22 @@ class _ScannerMetricChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: context.appColors.scannerAccent.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppSizes.fieldRadius),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             title,
-            style: TextStyle(
-              color: context.appColors.subduedForeground,
-              fontWeight: FontWeight.w600,
+            style: AppTextStyles.bodyStrong(
+              Theme.of(context),
+              context.appColors.subduedForeground,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSizes.xSmall),
           Text(
             value,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
+            style: AppTextStyles.sectionTitle(Theme.of(context)),
           ),
         ],
       ),
@@ -220,15 +215,15 @@ class _ScannerSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
+      padding: const EdgeInsets.only(bottom: AppIconSizes.medium),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            style: AppTextStyles.sectionTitle(Theme.of(context)),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSizes.small),
           ...items.map(
             (item) => Padding(
               padding: const EdgeInsets.only(bottom: 6),

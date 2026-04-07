@@ -7,7 +7,9 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/services/connectivity_service.dart';
 import '../../../../core/services/notification_service.dart';
+import '../../../../core/theme/app_durations.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_sizes.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../../../animals/domain/entities/animal_entity.dart';
 import '../../../animals/presentation/providers/animal_provider.dart';
@@ -88,7 +90,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
     final formResult = await showModalBottomSheet<NotificationFormResult>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0),
       builder: (_) => NotificationFormSheet(animals: _animals),
     );
 
@@ -200,7 +202,11 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
         label: Text(AppStrings.t("add_notification")),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+              child: CircularProgressIndicator(
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            )
           : _notifications.isEmpty
               ? Center(
                   child: Column(
@@ -208,10 +214,10 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                     children: [
                       Icon(
                         Icons.notifications_off_outlined,
-                        size: 80,
+                        size: AppSizes.notificationEmptyIcon,
                         color: appColors.inputBorderLight,
-                      ).animate().fadeIn(duration: 400.ms).scale(),
-                      const SizedBox(height: 16),
+                      ).animate().fadeIn(duration: AppDurations.medium).scale(),
+                      const SizedBox(height: AppSizes.large),
                       Text(
                         AppStrings.t("no_notifications"),
                         style: TextStyle(color: appColors.subduedForeground),
