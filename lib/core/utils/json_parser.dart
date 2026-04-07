@@ -25,6 +25,14 @@ class JsonParser {
     return null;
   }
 
+  static List<String> asStringList(dynamic value) {
+    if (value is List<dynamic>) {
+      return value.map((item) => item.toString()).toList();
+    }
+
+    return const [];
+  }
+
   static DateTime asDateTime(dynamic value, {DateTime? fallback}) {
     final resolvedFallback = fallback ?? DateTime.now();
 

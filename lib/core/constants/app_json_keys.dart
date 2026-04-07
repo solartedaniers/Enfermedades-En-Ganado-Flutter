@@ -16,4 +16,15 @@ class AppJsonKeys {
   static const String phone = 'phone';
   static const String location = 'location';
   static const String userType = 'user_type';
+  static const String id = 'id';
+  static const String userId = 'user_id';
+  static const String breed = 'breed';
+  static const String age = 'age';
+  static const String symptoms = 'symptoms';
+  static const String weight = 'weight';
+  static const String temperature = 'temperature';
+  static const String imageUrl = 'image_url';
+  static const String profileImageUrl = 'profile_image_url';
+  static const String createdAt = 'created_at';
+  static const String updatedAt = 'updated_at';
 }

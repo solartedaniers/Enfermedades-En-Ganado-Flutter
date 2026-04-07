@@ -6,7 +6,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/services/connectivity_service.dart';
+import '../../../../core/theme/app_sizes.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../../../animals/domain/entities/animal_entity.dart';
 import '../../../animals/presentation/providers/animal_provider.dart';
@@ -48,7 +50,7 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
 
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
-      backgroundColor: Colors.transparent,
+      backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0),
       builder: (_) => const _MedicalImageSourceSheet(),
     );
 
@@ -306,18 +308,24 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
                         children: [
                           Icon(
                             Icons.medical_services_outlined,
-                            size: 64,
+                            size: AppSizes.emptyStateIcon,
                             color: appColors.inputBorderLight,
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: AppSizes.large),
                           Text(
                             AppStrings.t('no_records'),
-                            style: TextStyle(color: appColors.mutedForeground),
+                            style: AppTextStyles.bodyMuted(
+                              Theme.of(context),
+                              appColors.mutedForeground,
+                            ),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: AppSizes.small),
                           Text(
                             AppStrings.t('medical_add_record_hint'),
-                            style: TextStyle(color: appColors.inputBorderLight),
+                            style: AppTextStyles.bodyMuted(
+                              Theme.of(context),
+                              appColors.inputBorderLight,
+                            ),
                           ),
                         ],
                       ),
@@ -364,12 +372,12 @@ class _MedicalImageSourceSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 40,
-              height: 4,
+              width: AppSizes.modalHandleWidth,
+              height: AppSizes.modalHandleHeight,
               margin: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
                 color: appColors.inputBorderLight,
-                borderRadius: BorderRadius.circular(2),
+                borderRadius: BorderRadius.circular(AppSizes.modalHandleRadius),
               ),
             ),
             ListTile(
@@ -382,7 +390,7 @@ class _MedicalImageSourceSheet extends StatelessWidget {
               title: Text(AppStrings.t('choose_gallery')),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSizes.small),
           ],
         ),
       ),

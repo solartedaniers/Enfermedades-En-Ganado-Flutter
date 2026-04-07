@@ -10,50 +10,6 @@ class AnimalConstants {
       AppStorageKeys.animalProfileImageUrlColumn;
   static const int maxAgeYears = 25;
   static const String cattleSpecies = 'bovine';
-
-  static const List<String> cattleBreeds = [
-    'Aberdeen Angus',
-    'Beefmaster',
-    'Belgian Blue',
-    'Blonde d\'Aquitaine',
-    'Bonsmara',
-    'Brahman',
-    'Brangus',
-    'Brown Swiss',
-    'Charolais',
-    'Chianina',
-    'Criollo',
-    'Devon',
-    'Droughtmaster',
-    'Fleckvieh',
-    'Gelbvieh',
-    'Gir',
-    'Guzera',
-    'Hereford',
-    'Holstein Friesian',
-    'Jersey',
-    'Limousin',
-    'Longhorn',
-    'Maine-Anjou',
-    'Marchigiana',
-    'Montbeliarde',
-    'Murray Grey',
-    'Nelore',
-    'Normande',
-    'Piedmontese',
-    'Pinzgauer',
-    'Red Angus',
-    'Red Poll',
-    'Romosinuano',
-    'Sahiwal',
-    'Salorn',
-    'Santa Gertrudis',
-    'Senepol',
-    'Shorthorn',
-    'Simmental',
-    'Taurus',
-    'Zebu (Cebu)',
-  ];
 }
 
 class AnimalAgeOption {

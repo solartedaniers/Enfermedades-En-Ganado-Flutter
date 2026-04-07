@@ -4,6 +4,7 @@ import '../../../../../core/theme/app_theme.dart';
 import '../../../../../core/theme/app_sizes.dart';
 import '../../../../../core/theme/app_text_styles.dart';
 import '../../../../../core/utils/app_strings.dart';
+import '../../../animals/domain/constants/animal_breed_catalog.dart';
 import '../../../animals/domain/entities/animal_entity.dart';
 import '../../../animals/shared/age_label_formatter.dart';
 
@@ -80,21 +81,20 @@ class AnimalMedicalHeader extends StatelessWidget {
               children: [
                 Text(
                   animal.name,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    color: appColors.onSolid,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: AppTextStyles.title(
+                    theme,
+                  ).copyWith(color: appColors.onSolid),
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSizes.xSmall - 2),
                 Text(
-                  animal.breed,
+                  AnimalBreedCatalog.displayLabel(animal.breed),
                   style: AppTextStyles.caption(
                     theme,
                     appColors.onSolid.withValues(alpha: 0.8),
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSizes.xSmall - 2),
                 Text(
                   animal.ageLabel.isNotEmpty
                       ? animal.ageLabel
@@ -105,7 +105,7 @@ class AnimalMedicalHeader extends StatelessWidget {
                   ),
                 ),
                 if (animal.weight != null) ...[
-                  const SizedBox(height: 2),
+                  const SizedBox(height: AppSizes.xSmall - 2),
                   Text(
                     '${animal.weight} ${AppStrings.t("kg")}',
                     style: AppTextStyles.caption(

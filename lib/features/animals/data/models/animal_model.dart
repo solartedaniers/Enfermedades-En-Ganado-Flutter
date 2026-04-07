@@ -2,6 +2,7 @@ import 'package:hive/hive.dart';
 
 import '../../../../core/constants/app_storage_keys.dart';
 import '../../../../core/utils/app_strings.dart';
+import '../../domain/constants/animal_breed_catalog.dart';
 import '../../domain/entities/animal_entity.dart';
 import '../../shared/age_label_formatter.dart';
 
@@ -79,9 +80,7 @@ class AnimalModel {
       id: entity.id,
       userId: entity.userId,
       name: entity.name.isEmpty ? AppStrings.t('animal_no_name') : entity.name,
-      breed: entity.breed.isEmpty
-          ? AppStrings.t('animal_unknown_breed')
-          : entity.breed,
+      breed: AnimalBreedCatalog.storageValue(entity.breed),
       age: entity.age,
       ageLabel: entity.ageLabel.isNotEmpty
           ? entity.ageLabel
@@ -176,8 +175,9 @@ class AnimalModelAdapter extends TypeAdapter<AnimalModel> {
       userId: (fields[AnimalHiveFields.userId] as String?) ?? '',
       name: (fields[AnimalHiveFields.name] as String?) ??
           AppStrings.t('animal_no_name'),
-      breed: (fields[AnimalHiveFields.breed] as String?) ??
-          AppStrings.t('animal_unknown_breed'),
+      breed: AnimalBreedCatalog.storageValue(
+        fields[AnimalHiveFields.breed] as String?,
+      ),
       age: age,
       symptoms: (fields[AnimalHiveFields.symptoms] as String?) ?? '',
       createdAt:

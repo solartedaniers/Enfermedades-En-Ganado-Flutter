@@ -3,9 +3,12 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_sizes.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/app_strings.dart';
 import '../../../geolocation/presentation/providers/geolocation_provider.dart';
+import '../../animals/domain/constants/animal_breed_catalog.dart';
 import '../../animals/domain/entities/animal_entity.dart';
 import '../../animals/presentation/pages/add_animal_page.dart';
 
@@ -51,7 +54,7 @@ class ScannerIntakeView extends StatelessWidget {
         if (snapshot.hasError) {
           return Center(
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(AppSizes.xxLarge),
               child: Text(
                 '${AppStrings.t('diagnosis_load_animals_error')}: ${snapshot.error}',
               ),
@@ -63,21 +66,21 @@ class ScannerIntakeView extends StatelessWidget {
         if (animals.isEmpty) {
           return Center(
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(AppSizes.xxLarge),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     Icons.pets_outlined,
-                    size: 64,
+                    size: AppIconSizes.xxxLarge,
                     color: context.appColors.mutedForeground,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSizes.large),
                   Text(
                     AppStrings.t('diagnosis_register_animal_first'),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSizes.large),
                   ElevatedButton.icon(
                     onPressed: () {
                       Navigator.of(context).push(
@@ -98,13 +101,13 @@ class ScannerIntakeView extends StatelessWidget {
         }
 
         return ListView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(AppSizes.pagePadding),
           children: [
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(AppSizes.xLarge),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(AppSizes.xxLarge),
                 boxShadow: [
                   BoxShadow(
                     color: context.appColors.scannerAccent.withValues(alpha: 0.10),
@@ -118,22 +121,19 @@ class ScannerIntakeView extends StatelessWidget {
                 children: [
                   Text(
                     AppStrings.t('diagnosis_real_title'),
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: AppTextStyles.title(Theme.of(context)),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AppSizes.small + 2),
                   Text(
                     AppStrings.t('diagnosis_real_subtitle'),
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyMedium?.copyWith(
-                      color: context.appColors.subduedForeground,
+                    style: AppTextStyles.bodyMuted(
+                      Theme.of(context),
+                      context.appColors.subduedForeground,
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AppSizes.xLarge),
                   _ScannerGeolocationCard(geolocationState: geolocationState),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSizes.large),
                   DropdownButtonFormField<String>(
                     initialValue: selectedAnimal?.id,
                     decoration: InputDecoration(
@@ -143,7 +143,9 @@ class ScannerIntakeView extends StatelessWidget {
                         .map(
                           (animal) => DropdownMenuItem<String>(
                             value: animal.id,
-                            child: Text('${animal.name} \u2022 ${animal.breed}'),
+                            child: Text(
+                              '${animal.name} \u2022 ${AnimalBreedCatalog.displayLabel(animal.breed)}',
+                            ),
                           ),
                         )
                         .toList(),
@@ -157,7 +159,7 @@ class ScannerIntakeView extends StatelessWidget {
                       );
                     },
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSizes.large),
                   TextField(
                     controller: mainReasonController,
                     decoration: InputDecoration(
@@ -166,7 +168,7 @@ class ScannerIntakeView extends StatelessWidget {
                     ),
                     maxLines: 3,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSizes.large),
                   TextField(
                     controller: symptomsController,
                     decoration: InputDecoration(
@@ -176,7 +178,7 @@ class ScannerIntakeView extends StatelessWidget {
                     minLines: 4,
                     maxLines: 6,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSizes.large),
                   TextField(
                     controller: temperatureController,
                     decoration: InputDecoration(
@@ -187,18 +189,18 @@ class ScannerIntakeView extends StatelessWidget {
                       decimal: true,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSizes.large),
                   if (capturedImageBytes != null)
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(AppSizes.fieldRadius),
                       child: Image.memory(
                         capturedImageBytes!,
-                        height: 170,
+                        height: AppSizes.diagnosisPreviewImageHeight,
                         width: double.infinity,
                         fit: BoxFit.cover,
                       ),
                     ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSizes.large),
                   Row(
                     children: [
                       Expanded(
@@ -209,7 +211,9 @@ class ScannerIntakeView extends StatelessWidget {
                             side: BorderSide(
                               color: context.appColors.scannerAccent,
                             ),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: AppSizes.sectionSpacing,
+                            ),
                           ),
                           icon: const Icon(Icons.camera_alt),
                           label: Text(
@@ -219,19 +223,21 @@ class ScannerIntakeView extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: AppSizes.medium),
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: isSubmitting ? null : onDiagnoseWithoutImage,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: context.appColors.scannerAccent,
                             foregroundColor: context.appColors.onSolid,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: AppSizes.sectionSpacing,
+                            ),
                           ),
                           icon: isSubmitting
                               ? SizedBox(
-                                  width: 18,
-                                  height: 18,
+                                  width: AppIconSizes.medium,
+                                  height: AppIconSizes.medium,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
                                     valueColor:
@@ -247,10 +253,13 @@ class ScannerIntakeView extends StatelessWidget {
                     ],
                   ),
                   if (errorMessage != null) ...[
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSizes.large),
                     Text(
                       errorMessage!,
-                      style: TextStyle(color: context.appColors.danger),
+                      style: AppTextStyles.bodyMuted(
+                        Theme.of(context),
+                        context.appColors.danger,
+                      ),
                     ),
                   ],
                 ],
@@ -273,16 +282,16 @@ class _ScannerGeolocationCard extends ConsumerWidget {
     final appColors = context.appColors;
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppSizes.sectionSpacing),
       decoration: BoxDecoration(
         color: appColors.selectionBackground,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppSizes.fieldRadius),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(Icons.location_on_outlined, color: appColors.chipForeground),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSizes.medium),
           Expanded(
             child: geolocationState.when(
               data: (contextValue) {
@@ -295,13 +304,16 @@ class _ScannerGeolocationCard extends ConsumerWidget {
                   children: [
                     Text(
                       AppStrings.t('geolocation_region_ready'),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: AppTextStyles.bodyStrong(
+                        Theme.of(context),
+                        Theme.of(context).colorScheme.onSurface,
+                      ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AppSizes.xSmall),
                     Text(
                       '${AppStrings.t('geolocation_region_label')}: ${contextValue.regionLabel}',
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AppSizes.xSmall - 2),
                     Text(
                       '${AppStrings.t('geolocation_climate_label')}: ${contextValue.climateZone}',
                     ),
@@ -311,7 +323,10 @@ class _ScannerGeolocationCard extends ConsumerWidget {
               loading: () => Text(AppStrings.t('geolocation_loading')),
               error: (error, _) => Text(
                 '${AppStrings.t('geolocation_unavailable')}: $error',
-                style: TextStyle(color: appColors.danger),
+                style: AppTextStyles.bodyMuted(
+                  Theme.of(context),
+                  appColors.danger,
+                ),
               ),
             ),
           ),

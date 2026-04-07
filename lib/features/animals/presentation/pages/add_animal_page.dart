@@ -7,8 +7,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_sizes.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../../domain/constants/animal_constants.dart';
+import '../../domain/constants/animal_breed_catalog.dart';
 import '../../domain/entities/animal_entity.dart';
 import '../../shared/age_label_formatter.dart';
 import '../../shared/animal_input_formatters.dart';
@@ -34,7 +36,7 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
   final _picker = ImagePicker();
 
   File? _selectedImage;
-  String? _selectedBreedName;
+  String? _selectedBreedKey;
   AnimalAgeOption? _selectedAgeOption;
   bool _isLoading = false;
 
@@ -61,7 +63,7 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
   void _showImageSourceDialog() {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: Colors.transparent,
+      backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0),
       builder: (_) {
         return AnimalImageSourceSheet(
           onSourceSelected: (source) {
@@ -77,14 +79,21 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0),
       builder: (_) {
         return AnimalOptionPickerSheet(
           title: AppStrings.t('select_breed'),
-          options: AnimalConstants.cattleBreeds,
-          selectedValue: _selectedBreedName,
-          onOptionSelected: (breed) {
-            setState(() => _selectedBreedName = breed);
+          options: AnimalBreedCatalog.options()
+              .map(
+                (breed) => AnimalOptionItem(
+                  value: breed.value,
+                  label: AppStrings.t(breed.labelKey),
+                ),
+              )
+              .toList(),
+          selectedValue: _selectedBreedKey,
+          onOptionSelected: (breedKey) {
+            setState(() => _selectedBreedKey = breedKey);
             Navigator.pop(context);
           },
         );
@@ -98,18 +107,25 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0),
       builder: (_) {
         return AnimalOptionPickerSheet(
           title: AppStrings.t('select_age'),
-          options: ageOptions.map((option) => option.label).toList(),
-          selectedValue: _selectedAgeOption?.label,
+          options: ageOptions
+              .map(
+                (option) => AnimalOptionItem(
+                  value: option.months.toString(),
+                  label: option.label,
+                ),
+              )
+              .toList(),
+          selectedValue: _selectedAgeOption?.months.toString(),
           initialChildSize: 0.55,
           minChildSize: 0.35,
           maxChildSize: 0.85,
-          onOptionSelected: (label) {
+          onOptionSelected: (selectedValue) {
             final selectedAgeOption = ageOptions.firstWhere(
-              (option) => option.label == label,
+              (option) => option.months.toString() == selectedValue,
             );
             setState(() => _selectedAgeOption = selectedAgeOption);
             Navigator.pop(context);
@@ -124,7 +140,7 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
       return;
     }
 
-    if (_selectedBreedName == null || _selectedAgeOption == null) {
+    if (_selectedBreedKey == null || _selectedAgeOption == null) {
       _showSnack(AppStrings.t('required_field'));
       return;
     }
@@ -146,7 +162,7 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
         id: const Uuid().v4(),
         userId: currentUserId,
         name: _nameController.text.trim(),
-        breed: _selectedBreedName!,
+        breed: _selectedBreedKey!,
         age: _selectedAgeOption!.months,
         ageLabel: _selectedAgeOption!.label,
         symptoms: '',
@@ -198,7 +214,7 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
     return Scaffold(
       appBar: AppBar(title: Text(AppStrings.t('add_animal'))),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(AppSizes.pagePadding),
         child: Form(
           key: _formKey,
           child: Column(
@@ -207,8 +223,8 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
               AnimalImageCard(
                 selectedImage: _selectedImage,
                 networkImageUrl: null,
-                height: 180,
-                borderRadius: BorderRadius.circular(20),
+                height: AppSizes.animalFormImageHeight,
+                borderRadius: BorderRadius.circular(AppSizes.cardRadius),
                 onTap: _showImageSourceDialog,
                 overlayLabel: AppStrings.t('add_photo'),
                 overlaySubtitle: AppStrings.t('photo_subtitle'),
@@ -216,7 +232,7 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
               ).animate().fadeIn(duration: 400.ms).scale(
                     begin: const Offset(0.95, 0.95),
                   ),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSizes.xxLarge),
               TextFormField(
                 controller: _nameController,
                 inputFormatters: [AnimalInputFormatters.name],
@@ -231,21 +247,23 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
                   return null;
                 },
               ).animate().fadeIn(duration: 300.ms).slideX(begin: 0.03),
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSizes.sectionSpacing),
               AnimalSelectorField(
                 label: '${AppStrings.t('breed')} *',
-                value: _selectedBreedName,
+                value: _selectedBreedKey == null
+                    ? null
+                    : AnimalBreedCatalog.displayLabel(_selectedBreedKey),
                 icon: Icons.category_outlined,
                 onTap: _showBreedSelector,
               ).animate().fadeIn(duration: 300.ms).slideX(begin: 0.03),
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSizes.sectionSpacing),
               AnimalSelectorField(
                 label: '${AppStrings.t('age')} *',
                 value: _selectedAgeOption?.label,
                 icon: Icons.cake_outlined,
                 onTap: _showAgeSelector,
               ).animate().fadeIn(duration: 300.ms).slideX(begin: 0.03),
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSizes.sectionSpacing),
               TextFormField(
                 controller: _weightController,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -260,18 +278,18 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
                   suffixText: AppStrings.t('kg'),
                 ),
               ).animate().fadeIn(duration: 300.ms).slideX(begin: 0.03),
-              const SizedBox(height: 28),
+              const SizedBox(height: AppSizes.xxxLarge),
               SizedBox(
                 width: double.infinity,
-                height: 52,
+                height: AppSizes.largeButtonHeight + 2,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _submit,
                   child: _isLoading
-                      ? const SizedBox(
-                          height: 22,
-                          width: 22,
+                      ? SizedBox(
+                          height: AppIconSizes.large,
+                          width: AppIconSizes.large,
                           child: CircularProgressIndicator(
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.onPrimary,
                             strokeWidth: 2,
                           ),
                         )

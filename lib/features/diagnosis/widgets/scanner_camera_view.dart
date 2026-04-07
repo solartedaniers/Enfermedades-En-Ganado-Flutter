@@ -1,7 +1,9 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_sizes.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/app_strings.dart';
 
 class ScannerCameraView extends StatelessWidget {
@@ -32,9 +34,9 @@ class ScannerCameraView extends StatelessWidget {
         _buildCameraLayer(context),
         _ScannerCameraOverlay(targetSize: targetSize),
         Positioned(
-          left: 16,
-          right: 16,
-          bottom: 24,
+          left: AppSizes.large,
+          right: AppSizes.large,
+          bottom: AppSizes.bottomActionInset,
           child: FilledButton.icon(
             onPressed: isSubmitting ? null : onBack,
             style: FilledButton.styleFrom(
@@ -61,25 +63,24 @@ class ScannerCameraView extends StatelessWidget {
     if (errorMessage != null) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: AppSizes.xxLarge),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.camera_alt_outlined,
-                color: Colors.white70,
-                size: 56,
+                color: context.appColors.onSolid,
+                size: AppIconSizes.xxLarge,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSizes.large),
               Text(
                 errorMessage!,
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: context.appColors.onSolid,
-                  fontSize: 16,
-                ),
+                style: AppTextStyles.sectionTitle(
+                  Theme.of(context),
+                ).copyWith(color: context.appColors.onSolid),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: AppSizes.xLarge),
               FilledButton.icon(
                 onPressed: onRetry,
                 style: FilledButton.styleFrom(
@@ -130,8 +131,11 @@ class _ScannerCameraOverlay extends StatelessWidget {
               width: targetSize,
               height: targetSize,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(28),
-                border: Border.all(color: context.appColors.scannerTarget, width: 3),
+                borderRadius: BorderRadius.circular(AppSizes.xxxLarge),
+                border: Border.all(
+                  color: context.appColors.scannerTarget,
+                  width: AppSizes.thickStroke,
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: context.appColors.scannerTarget.withValues(alpha: 0.28),
@@ -141,21 +145,20 @@ class _ScannerCameraOverlay extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: AppSizes.xxxLarge),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding: const EdgeInsets.symmetric(horizontal: AppSizes.xxLarge),
               child: Text(
                 AppStrings.t('diagnosis_camera_optional'),
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: AppTextStyles.sectionTitle(Theme.of(context)).copyWith(
+                  color: context.appColors.onSolid,
                   fontWeight: FontWeight.w600,
-                  fontSize: 16,
                 ),
               ),
             ),
             const Spacer(),
-            const SizedBox(height: 110),
+            const SizedBox(height: AppSizes.formBottomSpacing + AppSizes.xLarge),
           ],
         ),
       ),

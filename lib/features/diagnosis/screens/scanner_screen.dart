@@ -10,6 +10,7 @@ import 'package:uuid/uuid.dart';
 import '../../../core/ai/models/diagnosis_request.dart';
 import '../../../core/ai/models/diagnosis_response.dart';
 import '../../../core/ai/providers/ai_diagnosis_provider.dart';
+import '../../../core/theme/app_sizes.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/app_strings.dart';
 import '../../../geolocation/presentation/providers/geolocation_provider.dart';
@@ -435,14 +436,14 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     return Scaffold(
       backgroundColor:
           _currentStep == _ScannerStep.camera
-              ? Colors.black
+              ? appColors.authBackgroundDark
               : appColors.scannerBackground,
       appBar: AppBar(
         title: Text(AppStrings.t('scanner_title')),
         backgroundColor:
             _currentStep == _ScannerStep.camera
-                ? Colors.black
-                : Colors.transparent,
+                ? appColors.authBackgroundDark
+                : Theme.of(context).colorScheme.surface.withValues(alpha: 0),
         foregroundColor:
             _currentStep == _ScannerStep.camera ? appColors.onSolid : null,
       ),
@@ -487,12 +488,14 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
               backgroundColor: appColors.scannerAccent,
               foregroundColor: appColors.onSolid,
               child: _isSubmitting
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
+                  ? SizedBox(
+                      width: AppIconSizes.large,
+                      height: AppIconSizes.large,
                       child: CircularProgressIndicator(
                         strokeWidth: 2.4,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          appColors.onSolid,
+                        ),
                       ),
                     )
                   : const Icon(Icons.camera_alt),

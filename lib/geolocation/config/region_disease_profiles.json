@@ -1,0 +1,54 @@
+{
+  "default_profile": {
+    "climate_zone_key": "geolocation_profile_default_climate",
+    "epidemiology_summary_key": "geolocation_profile_default_summary",
+    "common_disease_keys": ["mastitis", "bovine_pneumonia"]
+  },
+  "countries": {
+    "CO": {
+      "fallback_profile": {
+        "climate_zone_key": "geolocation_profile_colombia_fallback_climate",
+        "epidemiology_summary_key": "geolocation_profile_colombia_fallback_summary",
+        "common_disease_keys": ["mastitis", "bovine_pneumonia", "gastroenteritis"]
+      },
+      "rules": [
+        {
+          "administrative_areas": ["cundinamarca", "boyaca"],
+          "localities": ["bogota", "tunja"],
+          "profile": {
+            "climate_zone_key": "geolocation_profile_highland_dairy_climate",
+            "epidemiology_summary_key": "geolocation_profile_highland_dairy_summary",
+            "common_disease_keys": ["mastitis", "bovine_pneumonia", "dermatophytosis"]
+          }
+        },
+        {
+          "administrative_areas": ["antioquia", "caldas", "risaralda", "quindio"],
+          "localities": [],
+          "profile": {
+            "climate_zone_key": "geolocation_profile_humid_mountain_climate",
+            "epidemiology_summary_key": "geolocation_profile_humid_mountain_summary",
+            "common_disease_keys": ["mastitis", "bovine_pneumonia", "gastroenteritis"]
+          }
+        },
+        {
+          "administrative_areas": ["cordoba", "sucre", "magdalena", "cesar", "la guajira", "atlantico", "bolivar"],
+          "localities": [],
+          "profile": {
+            "climate_zone_key": "geolocation_profile_warm_coastal_climate",
+            "epidemiology_summary_key": "geolocation_profile_warm_coastal_summary",
+            "common_disease_keys": ["gastroenteritis", "foot_and_mouth_disease", "dermatophytosis"]
+          }
+        },
+        {
+          "administrative_areas": ["meta", "casanare", "arauca", "vichada"],
+          "localities": [],
+          "profile": {
+            "climate_zone_key": "geolocation_profile_savanna_climate",
+            "epidemiology_summary_key": "geolocation_profile_savanna_summary",
+            "common_disease_keys": ["foot_and_mouth_disease", "gastroenteritis", "bovine_pneumonia"]
+          }
+        }
+      ]
+    }
+  }
+}
