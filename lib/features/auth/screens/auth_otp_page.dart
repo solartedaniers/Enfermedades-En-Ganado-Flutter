@@ -4,13 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../../profile/presentation/providers/profile_provider.dart';
 import '../constants/auth_otp_constants.dart';
 import '../models/auth_otp_flow.dart';
 import '../services/auth_service.dart';
 import '../widgets/auth_page_shell.dart';
+import '../widgets/auth_ui.dart';
 import '../../auth/home/screens/home_page.dart';
 import 'login_page.dart';
 import 'reset_password_page.dart';
@@ -208,7 +208,7 @@ class _AuthOtpPageState extends ConsumerState<AuthOtpPage> {
     ref.watch(profileProvider);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final appColors = context.appColors;
+    final appColors = context.authColors;
     final isDark = theme.brightness == Brightness.dark;
 
     return AuthPageShell(
@@ -217,11 +217,11 @@ class _AuthOtpPageState extends ConsumerState<AuthOtpPage> {
           AppStrings.t('auth_otp_page_title'),
           style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
-            color: colorScheme.onSurface,
+            color: context.authTitleColor,
           ),
         ),
         backgroundColor: Colors.transparent,
-        foregroundColor: colorScheme.onSurface,
+        foregroundColor: context.authTitleColor,
         elevation: 0,
         centerTitle: true,
       ),
@@ -231,13 +231,13 @@ class _AuthOtpPageState extends ConsumerState<AuthOtpPage> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withValues(alpha: 0.1),
+              color: context.authPrimaryTint,
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.pin_outlined,
               size: 68,
-              color: AppTheme.primaryColor,
+              color: context.authPrimaryColor,
             ),
           ),
           const SizedBox(height: 28),
@@ -246,7 +246,7 @@ class _AuthOtpPageState extends ConsumerState<AuthOtpPage> {
             textAlign: TextAlign.center,
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
-              color: colorScheme.onSurface,
+              color: context.authTitleColor,
             ),
           ),
           const SizedBox(height: 12),
@@ -313,11 +313,7 @@ class _AuthOtpPageState extends ConsumerState<AuthOtpPage> {
                     )
                   : Text(
                       AppStrings.t('auth_otp_verify_button'),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        letterSpacing: 1.1,
-                      ),
+                      style: context.authPrimaryButtonTextStyle,
                     ),
             ),
           ),
@@ -336,9 +332,7 @@ class _AuthOtpPageState extends ConsumerState<AuthOtpPage> {
                 : Text(
                     AppStrings.t('auth_otp_resend_button'),
                     style: TextStyle(
-                      color: isDark
-                          ? appColors.accent
-                          : appColors.heroGradientStart,
+                      color: context.authInteractiveColor,
                       fontWeight: FontWeight.bold,
                     ),
                   ),

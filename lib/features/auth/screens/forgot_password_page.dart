@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../models/auth_otp_flow.dart';
 import '../services/auth_service.dart';
 import '../widgets/auth_page_shell.dart';
 import '../widgets/auth_text_field.dart';
+import '../widgets/auth_ui.dart';
 import '../../profile/presentation/providers/profile_provider.dart';
 import 'auth_otp_page.dart';
 
@@ -70,10 +70,8 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
   Widget build(BuildContext context) {
     ref.watch(profileProvider);
     final theme = Theme.of(context);
-    final appColors = context.appColors;
+    final appColors = context.authColors;
     final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-    final titleColor = isDark ? colorScheme.onSurface : colorScheme.onSurface;
 
     return AuthPageShell(
       appBar: AppBar(
@@ -81,11 +79,11 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
           AppStrings.t("recover_access"),
           style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
-            color: titleColor,
+            color: context.authTitleColor,
           ),
         ),
         backgroundColor: Colors.transparent,
-        foregroundColor: titleColor,
+        foregroundColor: context.authTitleColor,
         elevation: 0,
         centerTitle: true,
       ),
@@ -95,13 +93,13 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withValues(alpha: 0.1),
+              color: context.authPrimaryTint,
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.mark_email_read_outlined,
               size: 70,
-              color: AppTheme.primaryColor,
+              color: context.authPrimaryColor,
             ),
           ),
           const SizedBox(height: 32),
@@ -110,7 +108,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
             textAlign: TextAlign.center,
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
-              color: titleColor,
+              color: context.authTitleColor,
             ),
           ),
           const SizedBox(height: 12),
@@ -144,10 +142,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                       ),
                     )
                   : Text(AppStrings.t("send_instructions"),
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          letterSpacing: 1.1)),
+                      style: context.authPrimaryButtonTextStyle),
             ),
           ),
           const SizedBox(height: 24),
@@ -156,7 +151,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
             child: Text(
               AppStrings.t("back_to_login"),
               style: TextStyle(
-                  color: isDark ? appColors.accent : appColors.heroGradientStart,
+                  color: context.authInteractiveColor,
                   fontWeight: FontWeight.bold),
             ),
           ),
