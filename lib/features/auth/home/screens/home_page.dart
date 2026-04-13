@@ -39,6 +39,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       NotificationRemoteDataSource();
 
   AnimalSyncService? syncService;
+  bool _hasPromptedInitialManagedClient = false;
 
   @override
   void initState() {
@@ -102,7 +103,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  Future<void> _openManagedClientDialog() async {
+  Future<void> _openManagedClientDialog({bool isInitialSetup = false}) async {
     final geolocationContext =
         ref.read(currentGeolocationContextProvider).valueOrNull;
     final defaultLocation = geolocationContext?.regionLabel ?? '';
@@ -113,10 +114,21 @@ class _HomePageState extends ConsumerState<HomePage> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: Text(AppStrings.t('veterinarian_add_client')),
+          title: Text(
+            AppStrings.t(
+              isInitialSetup
+                  ? 'veterinarian_first_client_dialog_title'
+                  : 'veterinarian_add_client',
+            ),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (isInitialSetup) ...[
+                Text(AppStrings.t('veterinarian_first_client_dialog_message')),
+                const SizedBox(height: 16),
+              ],
               TextField(
                 autofocus: true,
                 onChanged: (value) => clientName = value.trim(),
@@ -207,6 +219,23 @@ class _HomePageState extends ConsumerState<HomePage> {
         ),
       );
     }
+  }
+
+  void _promptInitialManagedClientIfNeeded(ManagedClientState managedClientState) {
+    if (_hasPromptedInitialManagedClient ||
+        !ref.read(profileProvider).isVeterinarian ||
+        managedClientState.clients.isNotEmpty) {
+      return;
+    }
+
+    _hasPromptedInitialManagedClient = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+
+      _openManagedClientDialog(isInitialSetup: true);
+    });
   }
 
   void _onMenuTap(String key) {
@@ -624,6 +653,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 loading: () => const SizedBox.shrink(),
                 error: (_, _) => const SizedBox.shrink(),
                 data: (managedClientState) {
+                  _promptInitialManagedClientIfNeeded(managedClientState);
                   return VeterinarianClientPanel(
                     clients: managedClientState.clients,
                     activeClientId: managedClientState.activeClientId,

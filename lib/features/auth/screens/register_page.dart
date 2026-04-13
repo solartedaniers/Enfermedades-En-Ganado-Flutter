@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_user_type.dart';
-import '../../../../core/services/managed_client_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../../../../geolocation/data/datasources/device_geolocation_datasource.dart';
-import '../../profile/presentation/providers/managed_client_provider.dart';
 import '../../profile/presentation/providers/profile_provider.dart';
 import '../services/auth_service.dart';
 import '../widgets/auth_page_shell.dart';
@@ -27,7 +25,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   final password = TextEditingController();
   final confirmPassword = TextEditingController();
   final phone = TextEditingController();
-  final firstManagedClientName = TextEditingController();
 
   final authService = AuthService();
   final formKey = GlobalKey<FormState>();
@@ -54,7 +51,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     password.dispose();
     confirmPassword.dispose();
     phone.dispose();
-    firstManagedClientName.dispose();
     super.dispose();
   }
 
@@ -127,12 +123,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       return;
     }
 
-    final isVeterinarian = userType?.isVeterinarian == true;
-    if (isVeterinarian && firstManagedClientName.text.trim().isEmpty) {
-      _showSnackBar(AppStrings.t('veterinarian_select_client_first'));
-      return;
-    }
-
     setState(() => loading = true);
 
     try {
@@ -146,16 +136,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         location: _locationLabel.trim(),
         userType: userType!,
       );
-
-      if (isVeterinarian) {
-        await ref.read(managedClientServiceProvider).savePendingDraft(
-              PendingManagedClientDraft(
-                email: email.text.trim(),
-                name: firstManagedClientName.text.trim(),
-                location: _locationLabel.trim(),
-              ),
-            );
-      }
 
       if (!mounted) {
         return;
@@ -386,23 +366,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
               validator: (value) =>
                   value == null ? AppStrings.t('select_type') : null,
             ),
-            if (userType?.isVeterinarian == true) ...[
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: firstManagedClientName,
-                decoration: _inputStyle(
-                  AppStrings.t('veterinarian_first_client_name'),
-                  Icons.groups_outlined,
-                ),
-                validator: (value) {
-                  if (userType?.isVeterinarian == true &&
-                      (value == null || value.trim().isEmpty)) {
-                    return AppStrings.t('veterinarian_select_client_first');
-                  }
-                  return null;
-                },
-              ),
-            ],
             const SizedBox(height: 24),
             TextFormField(
               controller: password,

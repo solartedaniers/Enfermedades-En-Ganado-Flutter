@@ -36,34 +36,6 @@ class ManagedClientProfile {
   }
 }
 
-class PendingManagedClientDraft {
-  final String email;
-  final String name;
-  final String location;
-
-  const PendingManagedClientDraft({
-    required this.email,
-    required this.name,
-    required this.location,
-  });
-
-  factory PendingManagedClientDraft.fromJson(Map<String, dynamic> json) {
-    return PendingManagedClientDraft(
-      email: json['email'] as String? ?? '',
-      name: json['name'] as String? ?? '',
-      location: json['location'] as String? ?? '',
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'email': email,
-      'name': name,
-      'location': location,
-    };
-  }
-}
-
 class ManagedClientStorageSnapshot {
   final List<ManagedClientProfile> clients;
   final String? activeClientId;
@@ -77,8 +49,6 @@ class ManagedClientStorageSnapshot {
 }
 
 class ManagedClientService {
-  static const String _pendingDraftKey = 'pending_managed_client_draft';
-
   final Uuid _uuid;
 
   const ManagedClientService({Uuid uuid = const Uuid()}) : _uuid = uuid;
@@ -164,30 +134,6 @@ class ManagedClientService {
       _animalAssignmentsKey(veterinarianId),
       jsonEncode(assignments),
     );
-  }
-
-  Future<void> savePendingDraft(PendingManagedClientDraft draft) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_pendingDraftKey, jsonEncode(draft.toJson()));
-  }
-
-  Future<PendingManagedClientDraft?> consumePendingDraft(String email) async {
-    final prefs = await SharedPreferences.getInstance();
-    final rawDraft = prefs.getString(_pendingDraftKey);
-
-    if (rawDraft == null || rawDraft.isEmpty) {
-      return null;
-    }
-
-    final decoded = jsonDecode(rawDraft) as Map<String, dynamic>;
-    final draft = PendingManagedClientDraft.fromJson(decoded);
-
-    if (draft.email.trim().toLowerCase() != email.trim().toLowerCase()) {
-      return null;
-    }
-
-    await prefs.remove(_pendingDraftKey);
-    return draft;
   }
 
   Future<void> _saveClients(
