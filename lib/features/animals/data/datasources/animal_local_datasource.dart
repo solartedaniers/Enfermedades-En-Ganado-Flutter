@@ -51,4 +51,22 @@ class AnimalLocalDataSource {
     final box = await _openBox();
     await box.delete(id);
   }
+
+  Future<void> markAsDeleted(String id) async {
+    final box = await _openBox();
+    final animal = box.get(id);
+
+    if (animal == null) {
+      return;
+    }
+
+    await box.put(
+      id,
+      animal.copyWith(
+        isDeleted: true,
+        isSynced: false,
+        updatedAt: DateTime.now(),
+      ),
+    );
+  }
 }

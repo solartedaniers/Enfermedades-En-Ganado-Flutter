@@ -12,6 +12,8 @@ class OfflineAuthService {
   static const _keyUserType = AppStorageKeys.offlineUserType;
   static const _keyEmail = AppStorageKeys.offlineAuthEmail;
   static const _keySecret = AppStorageKeys.offlineAuthSecret;
+  static const _keyAccounts = AppStorageKeys.offlineAuthAccounts;
+  static const _keyActiveEmail = AppStorageKeys.offlineActiveEmail;
 
   static Future<void> saveSession({
     required String userId,
@@ -26,6 +28,8 @@ class OfflineAuthService {
 
     if (avatarUrl != null) {
       await prefs.setString(_keyAvatarUrl, avatarUrl);
+    } else {
+      await prefs.remove(_keyAvatarUrl);
     }
   }
 
@@ -38,16 +42,32 @@ class OfflineAuthService {
     String? avatarUrl,
   }) async {
     final prefs = await SharedPreferences.getInstance();
+    final normalizedEmail = email.trim().toLowerCase();
+    final accounts = await _loadAccounts(prefs);
+
+    accounts[normalizedEmail] = {
+      'userId': userId,
+      'userName': userName,
+      'userType': userType,
+      'avatarUrl': avatarUrl,
+      'email': normalizedEmail,
+      'secret': _encodeSecret(email: normalizedEmail, password: password),
+    };
+
+    await prefs.setString(_keyAccounts, jsonEncode(accounts));
+    await prefs.setString(_keyActiveEmail, normalizedEmail);
+
+    // Mantenemos las claves antiguas para no romper sesiones existentes.
     await saveSession(
       userId: userId,
       userName: userName,
       userType: userType,
       avatarUrl: avatarUrl,
     );
-    await prefs.setString(_keyEmail, email.trim().toLowerCase());
+    await prefs.setString(_keyEmail, normalizedEmail);
     await prefs.setString(
       _keySecret,
-      _encodeSecret(email: email, password: password),
+      _encodeSecret(email: normalizedEmail, password: password),
     );
   }
 
@@ -56,35 +76,54 @@ class OfflineAuthService {
     required String password,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    final savedEmail = prefs.getString(_keyEmail);
-    final savedSecret = prefs.getString(_keySecret);
-    final candidateSecret = _encodeSecret(email: email, password: password);
+    await _migrateLegacyAccountIfNeeded(prefs);
 
-    if (savedEmail == null ||
-        savedSecret == null ||
-        savedEmail != email.trim().toLowerCase() ||
-        savedSecret != candidateSecret) {
+    final normalizedEmail = email.trim().toLowerCase();
+    final accounts = await _loadAccounts(prefs);
+    final account = accounts[normalizedEmail];
+    final candidateSecret = _encodeSecret(
+      email: normalizedEmail,
+      password: password,
+    );
+
+    if (account == null || account['secret'] != candidateSecret) {
       return null;
     }
 
+    await prefs.setString(_keyActiveEmail, normalizedEmail);
+    await saveSession(
+      userId: account['userId'] ?? '',
+      userName: account['userName'] ?? '',
+      userType: account['userType'] ?? '',
+      avatarUrl: account['avatarUrl'],
+    );
+    await prefs.setString(_keyEmail, normalizedEmail);
     return {
-      'userId': prefs.getString(_keyUserId),
-      'userName': prefs.getString(_keyUserName),
-      'avatarUrl': prefs.getString(_keyAvatarUrl),
-      'userType': prefs.getString(_keyUserType),
-      'email': savedEmail,
+      'userId': account['userId'],
+      'userName': account['userName'],
+      'avatarUrl': account['avatarUrl'],
+      'userType': account['userType'],
+      'email': account['email'],
     };
   }
 
   static Future<void> restoreCloudSessionIfPossible() async {
     final prefs = await SharedPreferences.getInstance();
-    final email = prefs.getString(_keyEmail);
-    final secret = prefs.getString(_keySecret);
-    final supabase = Supabase.instance.client;
+    await _migrateLegacyAccountIfNeeded(prefs);
 
-    if (email == null ||
-        secret == null ||
-        supabase.auth.currentUser != null) {
+    final supabase = Supabase.instance.client;
+    if (supabase.auth.currentUser != null) {
+      return;
+    }
+
+    final accounts = await _loadAccounts(prefs);
+    final activeEmail =
+        prefs.getString(_keyActiveEmail) ?? prefs.getString(_keyEmail);
+    final account = activeEmail == null ? null : accounts[activeEmail];
+    final secret = account?['secret'] ?? prefs.getString(_keySecret);
+    final email = account?['email'] ?? activeEmail;
+
+    if (email == null || secret == null) {
       return;
     }
 
@@ -125,6 +164,61 @@ class OfflineAuthService {
     await prefs.remove(_keyUserType);
     await prefs.remove(_keyEmail);
     await prefs.remove(_keySecret);
+    await prefs.remove(_keyActiveEmail);
+  }
+
+  static Future<Map<String, Map<String, String?>>> _loadAccounts(
+    SharedPreferences prefs,
+  ) async {
+    final rawValue = prefs.getString(_keyAccounts);
+    if (rawValue == null || rawValue.isEmpty) {
+      return {};
+    }
+
+    final decoded = jsonDecode(rawValue) as Map<String, dynamic>;
+    return decoded.map((key, value) {
+      final account = (value as Map<String, dynamic>).map(
+        (fieldKey, fieldValue) => MapEntry(fieldKey, fieldValue?.toString()),
+      );
+      return MapEntry(key, account);
+    });
+  }
+
+  static Future<void> _migrateLegacyAccountIfNeeded(
+    SharedPreferences prefs,
+  ) async {
+    final existingAccounts = prefs.getString(_keyAccounts);
+    if (existingAccounts != null && existingAccounts.isNotEmpty) {
+      return;
+    }
+
+    final legacyEmail = prefs.getString(_keyEmail);
+    final legacySecret = prefs.getString(_keySecret);
+    final legacyUserId = prefs.getString(_keyUserId);
+    final legacyUserName = prefs.getString(_keyUserName);
+    final legacyUserType = prefs.getString(_keyUserType);
+
+    if (legacyEmail == null ||
+        legacySecret == null ||
+        legacyUserId == null ||
+        legacyUserName == null ||
+        legacyUserType == null) {
+      return;
+    }
+
+    final accounts = <String, Map<String, String?>>{
+      legacyEmail: {
+        'userId': legacyUserId,
+        'userName': legacyUserName,
+        'userType': legacyUserType,
+        'avatarUrl': prefs.getString(_keyAvatarUrl),
+        'email': legacyEmail,
+        'secret': legacySecret,
+      },
+    };
+
+    await prefs.setString(_keyAccounts, jsonEncode(accounts));
+    await prefs.setString(_keyActiveEmail, legacyEmail);
   }
 
   static String _encodeSecret({

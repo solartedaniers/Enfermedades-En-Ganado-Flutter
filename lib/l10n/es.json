@@ -397,6 +397,7 @@
   "auth_otp_invalid_length": "Ingresa el codigo de verificacion completo.",
   "auth_otp_invalid_error": "El codigo de verificacion no es valido. Revisalo e intenta de nuevo.",
   "auth_otp_expired_error": "El codigo de verificacion vencio. Solicita uno nuevo.",
+  "registration_saved_offline": "El registro se guardo sin conexion. Conectate a internet para completar la cuenta y recibir el codigo de verificacion.",
   "auth_preferences": "Preferencias",
   "role_title": "Rol",
   "role_farmer": "Ganadero",

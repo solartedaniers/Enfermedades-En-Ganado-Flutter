@@ -2,12 +2,20 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/constants/app_json_keys.dart';
 import '../../../core/constants/app_user_type.dart';
+import '../../../core/services/pending_user_registration_service.dart';
 import '../../../core/utils/app_strings.dart';
+
+enum AuthRegistrationStatus {
+  online,
+  queuedOffline,
+}
 
 class AuthService {
   final SupabaseClient _client = Supabase.instance.client;
+  final PendingUserRegistrationService _pendingRegistrationService =
+      PendingUserRegistrationService();
 
-  Future<void> signUpUser({
+  Future<AuthRegistrationStatus> signUpUser({
     required String email,
     required String password,
     required String firstName,
@@ -17,12 +25,14 @@ class AuthService {
     required String location,
     required AppUserType userType,
   }) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    final normalizedFirstName = firstName.trim();
+    final normalizedLastName = lastName.trim();
+    final normalizedUsername = username.trim();
+    final normalizedPhone = phone.trim();
+    final normalizedLocation = location.trim();
+
     try {
-      final normalizedFirstName = firstName.trim();
-      final normalizedLastName = lastName.trim();
-      final normalizedUsername = username.trim();
-      final normalizedPhone = phone.trim();
-      final normalizedLocation = location.trim();
       final existing = await _client
           .from('profiles')
           .select(AppJsonKeys.username)
@@ -33,22 +43,36 @@ class AuthService {
         throw Exception(AppStrings.t('username_in_use'));
       }
 
-      await _client.auth.signUp(
-        email: email.trim(),
+      await _performRemoteSignUp(
+        email: normalizedEmail,
         password: password,
-        data: {
-          AppJsonKeys.firstName: normalizedFirstName,
-          AppJsonKeys.lastName: normalizedLastName,
-          AppJsonKeys.fullName: '$normalizedFirstName $normalizedLastName'.trim(),
-          AppJsonKeys.name: normalizedFirstName,
-          AppJsonKeys.username: normalizedUsername,
-          AppJsonKeys.phone: normalizedPhone,
-          AppJsonKeys.location: normalizedLocation,
-          AppJsonKeys.userType: userType.storageValue,
-        },
+        firstName: normalizedFirstName,
+        lastName: normalizedLastName,
+        username: normalizedUsername,
+        phone: normalizedPhone,
+        location: normalizedLocation,
+        userType: userType,
       );
+      return AuthRegistrationStatus.online;
     } on AuthException catch (e) {
       final message = e.message;
+
+      if (_shouldQueueOffline(message)) {
+        await _pendingRegistrationService.queueRegistration(
+          PendingUserRegistration(
+            email: normalizedEmail,
+            password: password,
+            firstName: normalizedFirstName,
+            lastName: normalizedLastName,
+            username: normalizedUsername,
+            phone: normalizedPhone,
+            location: normalizedLocation,
+            userType: userType,
+            createdAt: DateTime.now(),
+          ),
+        );
+        return AuthRegistrationStatus.queuedOffline;
+      }
 
       if (message.contains('already registered')) {
         throw Exception(AppStrings.t('account_already_exists'));
@@ -59,9 +83,29 @@ class AuthService {
       }
 
       throw Exception(message);
-    } on Exception {
-      rethrow;
     } catch (e) {
+      final normalizedError = e.toString().toLowerCase();
+      if (_shouldQueueOffline(normalizedError)) {
+        await _pendingRegistrationService.queueRegistration(
+          PendingUserRegistration(
+            email: normalizedEmail,
+            password: password,
+            firstName: normalizedFirstName,
+            lastName: normalizedLastName,
+            username: normalizedUsername,
+            phone: normalizedPhone,
+            location: normalizedLocation,
+            userType: userType,
+            createdAt: DateTime.now(),
+          ),
+        );
+        return AuthRegistrationStatus.queuedOffline;
+      }
+
+      if (e is Exception) {
+        rethrow;
+      }
+
       throw Exception('${AppStrings.t('unexpected_error')}: $e');
     }
   }
@@ -137,6 +181,73 @@ class AuthService {
 
   Future<void> signOut() async {
     await _client.auth.signOut();
+  }
+
+  Future<void> syncPendingRegistrations() async {
+    final pendingRegistrations =
+        await _pendingRegistrationService.getPendingRegistrations();
+
+    for (final registration in pendingRegistrations) {
+      try {
+        await _performRemoteSignUp(
+          email: registration.email,
+          password: registration.password,
+          firstName: registration.firstName,
+          lastName: registration.lastName,
+          username: registration.username,
+          phone: registration.phone,
+          location: registration.location,
+          userType: registration.userType,
+        );
+        await _pendingRegistrationService.removeRegistration(registration.email);
+      } on AuthException catch (error) {
+        if (error.message.contains('already registered')) {
+          await _pendingRegistrationService.removeRegistration(registration.email);
+          continue;
+        }
+
+        rethrow;
+      }
+    }
+  }
+
+  Future<void> _performRemoteSignUp({
+    required String email,
+    required String password,
+    required String firstName,
+    required String lastName,
+    required String username,
+    required String phone,
+    required String location,
+    required AppUserType userType,
+  }) async {
+    await _client.auth.signUp(
+      email: email,
+      password: password,
+      data: {
+        AppJsonKeys.firstName: firstName,
+        AppJsonKeys.lastName: lastName,
+        AppJsonKeys.fullName: '$firstName $lastName'.trim(),
+        AppJsonKeys.name: firstName,
+        AppJsonKeys.username: username,
+        AppJsonKeys.phone: phone,
+        AppJsonKeys.location: location,
+        AppJsonKeys.userType: userType.storageValue,
+      },
+    );
+  }
+
+  bool _shouldQueueOffline(String message) {
+    final normalizedMessage = message.toLowerCase();
+
+    return normalizedMessage.contains('failed host lookup') ||
+        normalizedMessage.contains('socketexception') ||
+        normalizedMessage.contains('network is unreachable') ||
+        normalizedMessage.contains('network request failed') ||
+        normalizedMessage.contains('xmlhttprequest error') ||
+        normalizedMessage.contains('connection closed before full header was received') ||
+        normalizedMessage.contains('clientexception') ||
+        normalizedMessage.contains('timed out');
   }
 
   String _mapOtpError(String message) {

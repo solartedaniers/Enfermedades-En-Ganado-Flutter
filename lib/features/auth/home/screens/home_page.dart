@@ -3,12 +3,10 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../../core/network/network_provider.dart';
 import '../../../../core/services/managed_client_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../../../../geolocation/presentation/providers/geolocation_provider.dart';
-import '../../../animals/data/services/animal_sync_service.dart';
 import '../../../animals/domain/entities/animal_entity.dart';
 import '../../../animals/presentation/pages/add_animal_page.dart';
 import '../../../animals/presentation/pages/animals_page.dart';
@@ -38,17 +36,11 @@ class _HomePageState extends ConsumerState<HomePage> {
   final NotificationRemoteDataSource _notificationDataSource =
       NotificationRemoteDataSource();
 
-  AnimalSyncService? syncService;
   bool _hasPromptedInitialManagedClient = false;
 
   @override
   void initState() {
     super.initState();
-    syncService = AnimalSyncService(
-      animalRepository: ref.read(animalRepositoryProvider),
-      networkInfo: ref.read(networkInfoProvider),
-    );
-    syncService?.start();
     Future.microtask(
       () => ref
           .read(currentGeolocationContextProvider.notifier)
@@ -57,10 +49,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   @override
-  void dispose() {
-    syncService?.stop();
-    super.dispose();
-  }
+  void dispose() => super.dispose();
 
   Future<void> logout() async {
     final confirm = await showDialog<bool>(
@@ -89,7 +78,6 @@ class _HomePageState extends ConsumerState<HomePage> {
       return;
     }
 
-    syncService?.stop();
     await supabase.auth.signOut();
 
     if (!mounted) {

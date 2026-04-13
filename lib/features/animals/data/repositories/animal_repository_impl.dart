@@ -62,10 +62,16 @@ class AnimalRepositoryImpl implements AnimalRepository {
       }
 
       await localDataSource.syncFromRemote(mergedAnimals.values.toList());
-      return mergedAnimals.values.map((animal) => animal.toEntity()).toList();
+      return mergedAnimals.values
+          .where((animal) => !animal.isDeleted)
+          .map((animal) => animal.toEntity())
+          .toList();
     } catch (_) {
       final localAnimals = await localDataSource.getAnimals();
-      return localAnimals.map((model) => model.toEntity()).toList();
+      return localAnimals
+          .where((animal) => !animal.isDeleted)
+          .map((model) => model.toEntity())
+          .toList();
     }
   }
 
@@ -103,9 +109,10 @@ class AnimalRepositoryImpl implements AnimalRepository {
 
   @override
   Future<void> deleteAnimal(String id) async {
-    await localDataSource.deleteAnimal(id);
+    await localDataSource.markAsDeleted(id);
     try {
       await remoteDataSource.deleteAnimal(id);
+      await localDataSource.deleteAnimal(id);
     } catch (_) {
       // Reintento pendiente.
     }
@@ -117,6 +124,12 @@ class AnimalRepositoryImpl implements AnimalRepository {
 
     for (final pendingAnimal in pendingAnimals) {
       try {
+        if (pendingAnimal.isDeleted) {
+          await remoteDataSource.deleteAnimal(pendingAnimal.id);
+          await localDataSource.deleteAnimal(pendingAnimal.id);
+          continue;
+        }
+
         final profileImageUrl = await _resolveImageUrl(
           userId: pendingAnimal.userId,
           localImagePath: pendingAnimal.pendingImagePath,

@@ -127,7 +127,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     setState(() => loading = true);
 
     try {
-      await authService.signUpUser(
+      final registrationStatus = await authService.signUpUser(
         email: email.text.trim(),
         password: password.text.trim(),
         firstName: firstName.text.trim(),
@@ -142,17 +142,22 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         return;
       }
 
-      _showSnackBar(AppStrings.t('auth_otp_sent'));
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => AuthOtpPage(
-            email: email.text.trim(),
-            password: password.text.trim(),
-            flow: AuthOtpFlow.signup,
+      if (registrationStatus == AuthRegistrationStatus.online) {
+        _showSnackBar(AppStrings.t('auth_otp_sent'));
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AuthOtpPage(
+              email: email.text.trim(),
+              password: password.text.trim(),
+              flow: AuthOtpFlow.signup,
+            ),
           ),
-        ),
-      );
+        );
+      } else {
+        _showSnackBar(AppStrings.t('registration_saved_offline'));
+        Navigator.pop(context);
+      }
     } catch (error) {
       if (!mounted) {
         return;

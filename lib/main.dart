@@ -5,14 +5,19 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/services/notification_service.dart';
+import 'core/services/app_sync_service.dart';
 import 'core/constants/app_route_paths.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/app_strings.dart';
 import 'features/animals/data/models/animal_model.dart';
+import 'features/animals/presentation/providers/animal_provider.dart';
 import 'features/auth/home/screens/home_page.dart';
 import 'features/auth/screens/login_page.dart';
 import 'features/auth/screens/reset_password_page.dart';
+import 'features/profile/presentation/providers/managed_client_provider.dart';
 import 'features/profile/presentation/providers/profile_provider.dart';
+import 'features/auth/services/auth_service.dart';
+import 'core/network/network_provider.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -53,6 +58,27 @@ class AgrovetAI extends ConsumerStatefulWidget {
 }
 
 class _AgrovetAIState extends ConsumerState<AgrovetAI> {
+  AppSyncService? _appSyncService;
+
+  @override
+  void initState() {
+    super.initState();
+    _appSyncService = AppSyncService(
+      animalRepository: ref.read(animalRepositoryProvider),
+      networkInfo: ref.read(networkInfoProvider),
+      managedClientService: ref.read(managedClientServiceProvider),
+      authService: AuthService(),
+      supabaseClient: Supabase.instance.client,
+    );
+    _appSyncService?.start();
+  }
+
+  @override
+  void dispose() {
+    _appSyncService?.stop();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(profileProvider).themeMode;

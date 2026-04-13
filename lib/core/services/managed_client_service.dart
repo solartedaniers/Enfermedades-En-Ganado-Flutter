@@ -1,38 +1,69 @@
 import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
+
+import '../constants/app_json_keys.dart';
+import '../constants/app_storage_keys.dart';
 
 class ManagedClientProfile {
   final String id;
   final String name;
   final String location;
   final DateTime createdAt;
+  final DateTime updatedAt;
+  final bool isSynced;
 
   const ManagedClientProfile({
     required this.id,
     required this.name,
     required this.location,
     required this.createdAt,
+    required this.updatedAt,
+    this.isSynced = false,
   });
 
   factory ManagedClientProfile.fromJson(Map<String, dynamic> json) {
     return ManagedClientProfile(
-      id: json['id'] as String? ?? '',
-      name: json['name'] as String? ?? '',
-      location: json['location'] as String? ?? '',
-      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ??
+      id: json[AppJsonKeys.id] as String? ?? '',
+      name: json[AppJsonKeys.name] as String? ?? '',
+      location: json[AppJsonKeys.location] as String? ?? '',
+      createdAt: DateTime.tryParse(json[AppJsonKeys.createdAt] as String? ?? '') ??
           DateTime.now(),
+      updatedAt: DateTime.tryParse(json[AppJsonKeys.updatedAt] as String? ?? '') ??
+          DateTime.now(),
+      isSynced: json[AppJsonKeys.isSynced] as bool? ?? false,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
-      'name': name,
-      'location': location,
-      'created_at': createdAt.toIso8601String(),
+      AppJsonKeys.id: id,
+      AppJsonKeys.name: name,
+      AppJsonKeys.location: location,
+      AppJsonKeys.createdAt: createdAt.toIso8601String(),
+      AppJsonKeys.updatedAt: updatedAt.toIso8601String(),
+      AppJsonKeys.isSynced: isSynced,
     };
+  }
+
+  ManagedClientProfile copyWith({
+    String? id,
+    String? name,
+    String? location,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    bool? isSynced,
+  }) {
+    return ManagedClientProfile(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      location: location ?? this.location,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isSynced: isSynced ?? this.isSynced,
+    );
   }
 }
 
@@ -76,11 +107,14 @@ class ManagedClientService {
     required String location,
   }) async {
     final snapshot = await loadSnapshot(veterinarianId);
+    final now = DateTime.now();
     final newClient = ManagedClientProfile(
       id: _uuid.v4(),
       name: name.trim(),
       location: location.trim(),
-      createdAt: DateTime.now(),
+      createdAt: now,
+      updatedAt: now,
+      isSynced: false,
     );
     final updatedClients = [...snapshot.clients, newClient];
 
@@ -136,6 +170,58 @@ class ManagedClientService {
     );
   }
 
+  Future<void> syncToRemote({
+    required SupabaseClient supabaseClient,
+    required String veterinarianId,
+  }) async {
+    final snapshot = await loadSnapshot(veterinarianId);
+
+    if (snapshot.clients.isNotEmpty) {
+      final payload = snapshot.clients
+          .map(
+            (client) => {
+              AppJsonKeys.id: client.id,
+              AppJsonKeys.veterinarianId: veterinarianId,
+              AppJsonKeys.name: client.name,
+              AppJsonKeys.location: client.location,
+              AppJsonKeys.createdAt: client.createdAt.toIso8601String(),
+              AppJsonKeys.updatedAt: client.updatedAt.toIso8601String(),
+            },
+          )
+          .toList();
+
+      await supabaseClient
+          .from(AppStorageKeys.managedClientsTable)
+          .upsert(payload, onConflict: AppJsonKeys.id);
+
+      final syncedClients = snapshot.clients
+          .map((client) => client.copyWith(isSynced: true))
+          .toList();
+      await _saveClients(veterinarianId, syncedClients);
+    }
+
+    if (snapshot.animalAssignments.isNotEmpty) {
+      final assignmentPayload = snapshot.animalAssignments.entries
+          .map(
+            (entry) => {
+              AppJsonKeys.veterinarianId: veterinarianId,
+              AppJsonKeys.animalId: entry.key,
+              AppJsonKeys.clientId: entry.value,
+              AppJsonKeys.updatedAt: DateTime.now().toIso8601String(),
+            },
+          )
+          .toList();
+
+      await supabaseClient
+          .from(AppStorageKeys.managedClientAnimalsTable)
+          .upsert(
+            assignmentPayload,
+            onConflict:
+                '${AppJsonKeys.veterinarianId},${AppJsonKeys.animalId}',
+          );
+    }
+  }
+
   Future<void> _saveClients(
     String veterinarianId,
     List<ManagedClientProfile> clients,
@@ -153,7 +239,9 @@ class ManagedClientService {
 
     final decoded = jsonDecode(rawValue) as List<dynamic>;
     return decoded
-        .map((item) => ManagedClientProfile.fromJson(item as Map<String, dynamic>))
+        .map(
+          (item) => ManagedClientProfile.fromJson(item as Map<String, dynamic>),
+        )
         .toList();
   }
 
@@ -169,11 +257,11 @@ class ManagedClientService {
   }
 
   String _clientsKey(String veterinarianId) =>
-      'managed_clients_$veterinarianId';
+      '${AppStorageKeys.managedClientsStoragePrefix}$veterinarianId';
 
   String _activeClientKey(String veterinarianId) =>
-      'active_managed_client_$veterinarianId';
+      '${AppStorageKeys.activeManagedClientStoragePrefix}$veterinarianId';
 
   String _animalAssignmentsKey(String veterinarianId) =>
-      'managed_client_animal_assignments_$veterinarianId';
+      '${AppStorageKeys.managedClientAssignmentsStoragePrefix}$veterinarianId';
 }

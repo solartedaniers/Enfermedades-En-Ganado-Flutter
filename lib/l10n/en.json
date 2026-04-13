@@ -142,6 +142,7 @@
   "auth_otp_invalid_length": "Enter the complete verification code.",
   "auth_otp_invalid_error": "Invalid verification code. Check it and try again.",
   "auth_otp_expired_error": "The verification code expired. Request a new one.",
+  "registration_saved_offline": "Registration saved offline. Connect to the internet to finish account creation and receive the verification code.",
   "unexpected_error": "An unexpected error occurred",
   "view_medical_history": "View medical history",
   "breed_label": "Breed",
