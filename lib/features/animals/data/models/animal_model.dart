@@ -53,6 +53,9 @@ class AnimalModel {
   @HiveField(AnimalHiveFields.ageLabel)
   final String ageLabel;
 
+  @HiveField(AnimalHiveFields.isDeleted)
+  final bool isDeleted;
+
   const AnimalModel({
     required this.id,
     required this.userId,
@@ -69,6 +72,7 @@ class AnimalModel {
     this.profileImageUrl,
     this.pendingImagePath,
     this.isSynced = false,
+    this.isDeleted = false,
   });
 
   factory AnimalModel.fromEntity(
@@ -94,6 +98,7 @@ class AnimalModel {
       profileImageUrl: entity.profileImageUrl,
       pendingImagePath: pendingImagePath,
       isSynced: isSynced,
+      isDeleted: false,
     );
   }
 
@@ -133,6 +138,7 @@ class AnimalModel {
     Object? profileImageUrl = _sentinel,
     Object? pendingImagePath = _sentinel,
     bool? isSynced,
+    bool? isDeleted,
   }) {
     return AnimalModel(
       id: id ?? this.id,
@@ -154,6 +160,7 @@ class AnimalModel {
           ? this.pendingImagePath
           : pendingImagePath as String?,
       isSynced: isSynced ?? this.isSynced,
+      isDeleted: isDeleted ?? this.isDeleted,
     );
   }
 }
@@ -192,6 +199,7 @@ class AnimalModelAdapter extends TypeAdapter<AnimalModel> {
       pendingImagePath: fields[AnimalHiveFields.pendingImagePath] as String?,
       ageLabel: (fields[AnimalHiveFields.ageLabel] as String?) ??
           AgeLabelFormatter.format(age),
+      isDeleted: (fields[AnimalHiveFields.isDeleted] as bool?) ?? false,
     );
   }
 
@@ -228,7 +236,9 @@ class AnimalModelAdapter extends TypeAdapter<AnimalModel> {
       ..writeByte(AnimalHiveFields.pendingImagePath)
       ..write(obj.pendingImagePath)
       ..writeByte(AnimalHiveFields.ageLabel)
-      ..write(obj.ageLabel);
+      ..write(obj.ageLabel)
+      ..writeByte(AnimalHiveFields.isDeleted)
+      ..write(obj.isDeleted);
   }
 
   @override

@@ -3,11 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../../core/constants/app_json_keys.dart';
-import '../../../../core/constants/app_user_type.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_strings.dart';
-import '../../profile/presentation/providers/managed_client_provider.dart';
 import '../../profile/presentation/providers/profile_provider.dart';
 import '../widgets/auth_preferences_button.dart';
 import '../widgets/auth_page_shell.dart';
@@ -67,7 +64,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               email: emailController.text.trim(),
               password: passwordController.text.trim(),
             );
-        await _importPendingVeterinarianClient(currentUser!);
       } else {
         final authenticated = await ref
             .read(profileProvider.notifier)
@@ -100,34 +96,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         setState(() => loading = false);
       }
     }
-  }
-
-  Future<void> _importPendingVeterinarianClient(User currentUser) async {
-    final userType = AppUserTypeCodec.fromValue(
-      currentUser.userMetadata?[AppJsonKeys.userType] as String?,
-    );
-    if (!userType.isVeterinarian) {
-      return;
-    }
-
-    final managedClientService = ref.read(managedClientServiceProvider);
-    final pendingDraft = await managedClientService.consumePendingDraft(
-      emailController.text.trim(),
-    );
-
-    if (pendingDraft == null) {
-      return;
-    }
-
-    final snapshot = await managedClientService.loadSnapshot(currentUser.id);
-    if (snapshot.clients.isNotEmpty) {
-      return;
-    }
-
-    await ref.read(managedClientProvider.notifier).createClient(
-          name: pendingDraft.name,
-          location: pendingDraft.location,
-        );
   }
 
   void _showSnackBar(String message) {

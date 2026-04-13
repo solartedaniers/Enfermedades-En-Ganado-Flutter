@@ -3,12 +3,10 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../../core/network/network_provider.dart';
 import '../../../../core/services/managed_client_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../../../../geolocation/presentation/providers/geolocation_provider.dart';
-import '../../../animals/data/services/animal_sync_service.dart';
 import '../../../animals/domain/entities/animal_entity.dart';
 import '../../../animals/presentation/pages/add_animal_page.dart';
 import '../../../animals/presentation/pages/animals_page.dart';
@@ -38,16 +36,11 @@ class _HomePageState extends ConsumerState<HomePage> {
   final NotificationRemoteDataSource _notificationDataSource =
       NotificationRemoteDataSource();
 
-  AnimalSyncService? syncService;
+  bool _hasPromptedInitialManagedClient = false;
 
   @override
   void initState() {
     super.initState();
-    syncService = AnimalSyncService(
-      animalRepository: ref.read(animalRepositoryProvider),
-      networkInfo: ref.read(networkInfoProvider),
-    );
-    syncService?.start();
     Future.microtask(
       () => ref
           .read(currentGeolocationContextProvider.notifier)
@@ -56,10 +49,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   @override
-  void dispose() {
-    syncService?.stop();
-    super.dispose();
-  }
+  void dispose() => super.dispose();
 
   Future<void> logout() async {
     final confirm = await showDialog<bool>(
@@ -88,7 +78,6 @@ class _HomePageState extends ConsumerState<HomePage> {
       return;
     }
 
-    syncService?.stop();
     await supabase.auth.signOut();
 
     if (!mounted) {
@@ -102,7 +91,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  Future<void> _openManagedClientDialog() async {
+  Future<void> _openManagedClientDialog({bool isInitialSetup = false}) async {
     final geolocationContext =
         ref.read(currentGeolocationContextProvider).valueOrNull;
     final defaultLocation = geolocationContext?.regionLabel ?? '';
@@ -113,10 +102,21 @@ class _HomePageState extends ConsumerState<HomePage> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: Text(AppStrings.t('veterinarian_add_client')),
+          title: Text(
+            AppStrings.t(
+              isInitialSetup
+                  ? 'veterinarian_first_client_dialog_title'
+                  : 'veterinarian_add_client',
+            ),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (isInitialSetup) ...[
+                Text(AppStrings.t('veterinarian_first_client_dialog_message')),
+                const SizedBox(height: 16),
+              ],
               TextField(
                 autofocus: true,
                 onChanged: (value) => clientName = value.trim(),
@@ -207,6 +207,23 @@ class _HomePageState extends ConsumerState<HomePage> {
         ),
       );
     }
+  }
+
+  void _promptInitialManagedClientIfNeeded(ManagedClientState managedClientState) {
+    if (_hasPromptedInitialManagedClient ||
+        !ref.read(profileProvider).isVeterinarian ||
+        managedClientState.clients.isNotEmpty) {
+      return;
+    }
+
+    _hasPromptedInitialManagedClient = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+
+      _openManagedClientDialog(isInitialSetup: true);
+    });
   }
 
   void _onMenuTap(String key) {
@@ -624,6 +641,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 loading: () => const SizedBox.shrink(),
                 error: (_, _) => const SizedBox.shrink(),
                 data: (managedClientState) {
+                  _promptInitialManagedClientIfNeeded(managedClientState);
                   return VeterinarianClientPanel(
                     clients: managedClientState.clients,
                     activeClientId: managedClientState.activeClientId,
