@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../services/auth_service.dart';
-import '../../../../core/utils/app_strings.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/app_strings.dart';
+import '../models/auth_otp_flow.dart';
+import '../services/auth_service.dart';
 import '../widgets/auth_page_shell.dart';
 import '../widgets/auth_text_field.dart';
 import '../../profile/presentation/providers/profile_provider.dart';
+import 'auth_otp_page.dart';
 
 class ForgotPasswordPage extends ConsumerStatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -34,15 +36,28 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
     setState(() => loading = true);
     try {
       await authService.resetPassword(emailController.text.trim());
-      if (!mounted) return;
-      _showSnackBar(AppStrings.t("email_sent"));
-      Future.delayed(
-          const Duration(seconds: 2), () => mounted ? Navigator.pop(context) : null);
+      if (!mounted) {
+        return;
+      }
+      _showSnackBar(AppStrings.t('auth_otp_sent'));
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AuthOtpPage(
+            email: emailController.text.trim(),
+            flow: AuthOtpFlow.recovery,
+          ),
+        ),
+      );
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       _showSnackBar(e.toString().replaceAll("Exception: ", ""));
     } finally {
-      if (mounted) setState(() => loading = false);
+      if (mounted) {
+        setState(() => loading = false);
+      }
     }
   }
 

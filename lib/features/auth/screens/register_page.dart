@@ -5,10 +5,11 @@ import '../../../../core/constants/app_user_type.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../../../../geolocation/data/datasources/device_geolocation_datasource.dart';
+import '../models/auth_otp_flow.dart';
 import '../../profile/presentation/providers/profile_provider.dart';
 import '../services/auth_service.dart';
 import '../widgets/auth_page_shell.dart';
-import 'login_page.dart';
+import 'auth_otp_page.dart';
 
 class RegisterPage extends ConsumerStatefulWidget {
   const RegisterPage({super.key});
@@ -141,10 +142,16 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         return;
       }
 
-      _showSnackBar(AppStrings.t('account_created'));
+      _showSnackBar(AppStrings.t('auth_otp_sent'));
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const LoginPage()),
+        MaterialPageRoute(
+          builder: (_) => AuthOtpPage(
+            email: email.text.trim(),
+            password: password.text.trim(),
+            flow: AuthOtpFlow.signup,
+          ),
+        ),
       );
     } catch (error) {
       if (!mounted) {

@@ -1,7 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/constants/app_json_keys.dart';
-import '../../../core/constants/app_route_paths.dart';
 import '../../../core/constants/app_user_type.dart';
 import '../../../core/utils/app_strings.dart';
 
@@ -37,7 +36,6 @@ class AuthService {
       await _client.auth.signUp(
         email: email.trim(),
         password: password,
-        emailRedirectTo: AppDeepLinkPaths.authConfirm,
         data: {
           AppJsonKeys.firstName: normalizedFirstName,
           AppJsonKeys.lastName: normalizedLastName,
@@ -61,8 +59,36 @@ class AuthService {
       }
 
       throw Exception(message);
+    } on Exception {
+      rethrow;
     } catch (e) {
       throw Exception('${AppStrings.t('unexpected_error')}: $e');
+    }
+  }
+
+  Future<void> verifySignUpOtp({
+    required String email,
+    required String token,
+  }) async {
+    try {
+      await _client.auth.verifyOTP(
+        email: email.trim(),
+        token: token.trim(),
+        type: OtpType.signup,
+      );
+    } on AuthException catch (e) {
+      throw Exception(_mapOtpError(e.message));
+    }
+  }
+
+  Future<void> resendSignUpOtp(String email) async {
+    try {
+      await _client.auth.resend(
+        email: email.trim(),
+        type: OtpType.signup,
+      );
+    } on AuthException catch (e) {
+      throw Exception(_mapOtpError(e.message));
     }
   }
 
@@ -88,16 +114,46 @@ class AuthService {
 
   Future<void> resetPassword(String email) async {
     try {
-      await _client.auth.resetPasswordForEmail(
-        email,
-        redirectTo: AppDeepLinkPaths.resetPassword,
+      await _client.auth.resetPasswordForEmail(email.trim());
+    } on AuthException catch (e) {
+      throw Exception(_mapOtpError(e.message));
+    }
+  }
+
+  Future<void> verifyRecoveryOtp({
+    required String email,
+    required String token,
+  }) async {
+    try {
+      await _client.auth.verifyOTP(
+        email: email.trim(),
+        token: token.trim(),
+        type: OtpType.recovery,
       );
     } on AuthException catch (e) {
-      throw Exception(e.message);
+      throw Exception(_mapOtpError(e.message));
     }
   }
 
   Future<void> signOut() async {
     await _client.auth.signOut();
+  }
+
+  String _mapOtpError(String message) {
+    final normalizedMessage = message.toLowerCase();
+
+    if (normalizedMessage.contains('expired')) {
+      return AppStrings.t('auth_otp_expired_error');
+    }
+
+    if (normalizedMessage.contains('invalid')) {
+      return AppStrings.t('auth_otp_invalid_error');
+    }
+
+    if (normalizedMessage.contains('over_email_send_rate_limit')) {
+      return AppStrings.t('wait_email');
+    }
+
+    return message;
   }
 }
