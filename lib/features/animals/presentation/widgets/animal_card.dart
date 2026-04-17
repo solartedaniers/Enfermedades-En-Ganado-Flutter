@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_durations.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/app_sizes.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/app_strings.dart';
-import '../../domain/constants/animal_breed_catalog.dart';
+import '../../data/services/animal_reference_catalog_service.dart';
 import '../../domain/entities/animal_entity.dart';
 import '../../shared/age_label_formatter.dart';
+import '../providers/animal_reference_catalog_provider.dart';
 
-class AnimalCard extends StatelessWidget {
+class AnimalCard extends ConsumerWidget {
   final AnimalEntity animalData;
   final VoidCallback onTap;
 
@@ -21,10 +23,12 @@ class AnimalCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final appColors = context.appColors;
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final breedChoices =
+        ref.watch(animalBreedChoicesProvider).valueOrNull ?? const [];
 
     return GestureDetector(
       onTap: onTap,
@@ -85,7 +89,10 @@ class AnimalCard extends StatelessWidget {
                     ),
                     const SizedBox(height: AppSizes.xSmall),
                     Text(
-                      AnimalBreedCatalog.displayLabel(animalData.breed),
+                      AnimalReferenceCatalogService.resolveBreedLabel(
+                        animalData.breed,
+                        choices: breedChoices,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.caption(

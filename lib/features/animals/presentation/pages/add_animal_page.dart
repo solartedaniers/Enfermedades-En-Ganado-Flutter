@@ -9,11 +9,11 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/app_sizes.dart';
 import '../../../../core/utils/app_strings.dart';
+import '../../data/services/animal_reference_catalog_service.dart';
 import '../../domain/constants/animal_constants.dart';
-import '../../domain/constants/animal_breed_catalog.dart';
 import '../../domain/entities/animal_entity.dart';
-import '../../shared/age_label_formatter.dart';
 import '../../shared/animal_input_formatters.dart';
+import '../providers/animal_reference_catalog_provider.dart';
 import '../../../profile/presentation/providers/managed_client_provider.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
 import '../providers/animal_provider.dart';
@@ -75,7 +75,18 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
     );
   }
 
-  void _showBreedSelector() {
+  Future<void> _showBreedSelector() async {
+    final breedChoices = await ref.read(animalBreedChoicesProvider.future);
+    if (!mounted) {
+      return;
+    }
+
+    if (breedChoices.isEmpty) {
+
+      _showSnack(AppStrings.t('internet_required_default'));
+      return;
+    }
+
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -83,11 +94,11 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
       builder: (_) {
         return AnimalOptionPickerSheet(
           title: AppStrings.t('select_breed'),
-          options: AnimalBreedCatalog.options()
+          options: breedChoices
               .map(
-                (breed) => AnimalOptionItem(
-                  value: breed.value,
-                  label: AppStrings.t(breed.labelKey),
+                (breedChoice) => AnimalOptionItem(
+                  value: breedChoice.value,
+                  label: breedChoice.label,
                 ),
               )
               .toList(),
@@ -101,8 +112,17 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
     );
   }
 
-  void _showAgeSelector() {
-    final ageOptions = AgeLabelFormatter.buildAgeOptions();
+  Future<void> _showAgeSelector() async {
+    final ageOptions = await ref.read(animalAgeOptionsProvider.future);
+    if (!mounted) {
+      return;
+    }
+
+    if (ageOptions.isEmpty) {
+
+      _showSnack(AppStrings.t('internet_required_default'));
+      return;
+    }
 
     showModalBottomSheet<void>(
       context: context,
@@ -210,6 +230,8 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
   @override
   Widget build(BuildContext context) {
     final appColors = context.appColors;
+    final breedChoices =
+        ref.watch(animalBreedChoicesProvider).valueOrNull ?? const [];
 
     return Scaffold(
       appBar: AppBar(title: Text(AppStrings.t('add_animal'))),
@@ -252,7 +274,10 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
                 label: '${AppStrings.t('breed')} *',
                 value: _selectedBreedKey == null
                     ? null
-                    : AnimalBreedCatalog.displayLabel(_selectedBreedKey),
+                    : AnimalReferenceCatalogService.resolveBreedLabel(
+                        _selectedBreedKey,
+                        choices: breedChoices,
+                      ),
                 icon: Icons.category_outlined,
                 onTap: _showBreedSelector,
               ).animate().fadeIn(duration: 300.ms).slideX(begin: 0.03),

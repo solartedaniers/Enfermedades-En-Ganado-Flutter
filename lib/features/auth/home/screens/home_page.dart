@@ -10,6 +10,7 @@ import '../../../../geolocation/presentation/providers/geolocation_provider.dart
 import '../../../animals/domain/entities/animal_entity.dart';
 import '../../../animals/presentation/pages/add_animal_page.dart';
 import '../../../animals/presentation/pages/animals_page.dart';
+import '../../../animals/presentation/providers/animal_reference_catalog_provider.dart';
 import '../../../animals/presentation/providers/animal_provider.dart';
 import '../../../diagnosis/screens/scanner_screen.dart';
 import '../../../medical/domain/entities/medical_record_entity.dart';
@@ -42,9 +43,14 @@ class _HomePageState extends ConsumerState<HomePage> {
   void initState() {
     super.initState();
     Future.microtask(
-      () => ref
-          .read(currentGeolocationContextProvider.notifier)
-          .loadCurrentContext(),
+      () async {
+        await ref
+            .read(currentGeolocationContextProvider.notifier)
+            .loadCurrentContext();
+        // Precarga el catalogo para dejar copia local disponible tras el primer acceso con internet.
+        await ref.read(animalBreedChoicesProvider.future);
+        await ref.read(animalAgeOptionsProvider.future);
+      },
     );
   }
 

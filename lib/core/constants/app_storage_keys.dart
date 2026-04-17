@@ -19,6 +19,8 @@ class AppStorageKeys {
   static const String preferredThemeMode = 'preferred_theme_mode';
   static const String preferredLanguageScopePrefix = 'preferred_language_';
   static const String preferredThemeModeScopePrefix = 'preferred_theme_mode_';
+  static const String animalBreedCatalogCache = 'animal_breed_catalog_cache';
+  static const String animalAgeCatalogCache = 'animal_age_catalog_cache';
 
   static const String managedClientsStoragePrefix = 'managed_clients_';
   static const String activeManagedClientStoragePrefix =
