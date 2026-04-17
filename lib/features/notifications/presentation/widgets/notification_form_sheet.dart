@@ -5,6 +5,7 @@ import '../../../../../core/theme/app_theme.dart';
 import '../../../../../core/theme/app_text_styles.dart';
 import '../../../../../core/utils/app_date_formatter.dart';
 import '../../../../../core/utils/app_strings.dart';
+import '../../../../../core/widgets/livestock_icon.dart';
 import '../../../animals/domain/entities/animal_entity.dart';
 
 class NotificationFormResult {
@@ -132,7 +133,9 @@ class _NotificationFormSheetState extends State<NotificationFormSheet> {
           DropdownButtonFormField<AnimalEntity>(
             decoration: InputDecoration(
               labelText: AppStrings.t("notification_animal"),
-              prefixIcon: const Icon(Icons.set_meal),
+              prefixIcon: const LivestockIcon(
+                padding: EdgeInsets.all(12),
+              ),
             ),
             items: widget.animals
                 .map(

@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/app_sync_service.dart';
 import 'core/constants/app_route_paths.dart';
+import 'core/services/local_preferences_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/app_strings.dart';
 import 'features/animals/data/models/animal_model.dart';
@@ -44,10 +45,24 @@ Future<void> main() async {
     ),
   );
 
-  await AppStrings.load('es');
+  final currentUser = Supabase.instance.client.auth.currentUser;
+  final localPreferences = await LocalPreferencesService.load(
+    scope: LocalPreferencesService.scopeFromIdentity(
+      email: currentUser?.email,
+      userId: currentUser?.id,
+    ),
+  );
+  await AppStrings.load(localPreferences.language);
   await NotificationService.init();
 
-  runApp(const ProviderScope(child: AgrovetAI()));
+  runApp(
+    ProviderScope(
+      overrides: [
+        profilePreferencesProvider.overrideWithValue(localPreferences),
+      ],
+      child: const AgrovetAI(),
+    ),
+  );
 }
 
 class AgrovetAI extends ConsumerStatefulWidget {

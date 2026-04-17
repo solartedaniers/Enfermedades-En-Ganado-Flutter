@@ -4,13 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../../profile/presentation/providers/profile_provider.dart';
 import '../constants/auth_otp_constants.dart';
 import '../models/auth_otp_flow.dart';
 import '../services/auth_service.dart';
 import '../widgets/auth_page_shell.dart';
+import '../widgets/auth_ui.dart';
 import '../../auth/home/screens/home_page.dart';
 import 'login_page.dart';
 import 'reset_password_page.dart';
@@ -32,8 +32,9 @@ class AuthOtpPage extends ConsumerStatefulWidget {
 }
 
 class _AuthOtpPageState extends ConsumerState<AuthOtpPage> {
-  final _codeController = TextEditingController();
   final _authService = AuthService();
+  late final List<TextEditingController> _digitControllers;
+  late final List<FocusNode> _digitFocusNodes;
 
   Timer? _countdownTimer;
   bool _isVerifying = false;
@@ -43,18 +44,35 @@ class _AuthOtpPageState extends ConsumerState<AuthOtpPage> {
   @override
   void initState() {
     super.initState();
+    _digitControllers = List.generate(
+      AuthOtpConstants.codeLength,
+      (_) => TextEditingController(),
+    );
+    _digitFocusNodes = List.generate(
+      AuthOtpConstants.codeLength,
+      (_) => FocusNode(),
+    );
     _startCountdown();
   }
 
   @override
   void dispose() {
     _countdownTimer?.cancel();
-    _codeController.dispose();
+    for (final controller in _digitControllers) {
+      controller.dispose();
+    }
+    for (final focusNode in _digitFocusNodes) {
+      focusNode.dispose();
+    }
     super.dispose();
   }
 
+  String get _enteredCode {
+    return _digitControllers.map((controller) => controller.text).join();
+  }
+
   Future<void> _verifyCode() async {
-    final code = _codeController.text.trim();
+    final code = _enteredCode.trim();
     if (code.length != AuthOtpConstants.codeLength) {
       _showSnackBar(AppStrings.t('auth_otp_invalid_length'));
       return;
@@ -128,7 +146,7 @@ class _AuthOtpPageState extends ConsumerState<AuthOtpPage> {
           break;
       }
 
-      _codeController.clear();
+      _clearCode();
       _startCountdown();
 
       if (!mounted) {
@@ -167,6 +185,58 @@ class _AuthOtpPageState extends ConsumerState<AuthOtpPage> {
 
       setState(() => _remainingSeconds -= 1);
     });
+  }
+
+  void _clearCode() {
+    for (final controller in _digitControllers) {
+      controller.clear();
+    }
+    if (_digitFocusNodes.isNotEmpty) {
+      _digitFocusNodes.first.requestFocus();
+    }
+    setState(() {});
+  }
+
+  void _handleDigitChanged(int index, String value) {
+    if (value.isEmpty) {
+      setState(() {});
+      return;
+    }
+
+    final digit = value.substring(value.length - 1);
+    _digitControllers[index].value = TextEditingValue(
+      text: digit,
+      selection: TextSelection.collapsed(offset: digit.length),
+    );
+
+    if (index < AuthOtpConstants.codeLength - 1) {
+      _digitFocusNodes[index + 1].requestFocus();
+    } else {
+      _digitFocusNodes[index].unfocus();
+    }
+
+    setState(() {});
+  }
+
+  void _handleBackspace(int index, KeyEvent event) {
+    if (event is! KeyDownEvent ||
+        event.logicalKey != LogicalKeyboardKey.backspace) {
+      return;
+    }
+
+    if (_digitControllers[index].text.isNotEmpty) {
+      _digitControllers[index].clear();
+      setState(() {});
+      return;
+    }
+
+    if (index == 0) {
+      return;
+    }
+
+    _digitControllers[index - 1].clear();
+    _digitFocusNodes[index - 1].requestFocus();
+    setState(() {});
   }
 
   String _formatRemainingTime() {
@@ -208,7 +278,7 @@ class _AuthOtpPageState extends ConsumerState<AuthOtpPage> {
     ref.watch(profileProvider);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final appColors = context.appColors;
+    final appColors = context.authColors;
     final isDark = theme.brightness == Brightness.dark;
 
     return AuthPageShell(
@@ -217,11 +287,11 @@ class _AuthOtpPageState extends ConsumerState<AuthOtpPage> {
           AppStrings.t('auth_otp_page_title'),
           style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
-            color: colorScheme.onSurface,
+            color: context.authTitleColor,
           ),
         ),
         backgroundColor: Colors.transparent,
-        foregroundColor: colorScheme.onSurface,
+        foregroundColor: context.authTitleColor,
         elevation: 0,
         centerTitle: true,
       ),
@@ -231,13 +301,13 @@ class _AuthOtpPageState extends ConsumerState<AuthOtpPage> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withValues(alpha: 0.1),
+              color: context.authPrimaryTint,
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.pin_outlined,
               size: 68,
-              color: AppTheme.primaryColor,
+              color: context.authPrimaryColor,
             ),
           ),
           const SizedBox(height: 28),
@@ -246,7 +316,7 @@ class _AuthOtpPageState extends ConsumerState<AuthOtpPage> {
             textAlign: TextAlign.center,
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
-              color: colorScheme.onSurface,
+              color: context.authTitleColor,
             ),
           ),
           const SizedBox(height: 12),
@@ -258,30 +328,13 @@ class _AuthOtpPageState extends ConsumerState<AuthOtpPage> {
             ),
           ),
           const SizedBox(height: 32),
-          TextField(
-            controller: _codeController,
-            keyboardType: TextInputType.number,
-            textInputAction: TextInputAction.done,
-            textAlign: TextAlign.center,
-            maxLength: AuthOtpConstants.codeLength,
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(AuthOtpConstants.codeLength),
-            ],
-            onSubmitted: (_) => _verifyCode(),
-            decoration: InputDecoration(
-              labelText: AppStrings.t('auth_otp_code_label'),
-              hintText: AppStrings.t('auth_otp_code_hint'),
-              prefixIcon: Icon(
-                Icons.password_rounded,
-                color: appColors.chipForeground,
-              ),
-              counterText: '',
-              filled: true,
-              fillColor: isDark
-                  ? appColors.inputFillDark
-                  : colorScheme.surface,
-            ),
+          _OtpCodeBoxes(
+            controllers: _digitControllers,
+            focusNodes: _digitFocusNodes,
+            isDark: isDark,
+            onChanged: _handleDigitChanged,
+            onCompleted: _verifyCode,
+            onBackspace: _handleBackspace,
           ),
           const SizedBox(height: 16),
           Text(
@@ -313,11 +366,7 @@ class _AuthOtpPageState extends ConsumerState<AuthOtpPage> {
                     )
                   : Text(
                       AppStrings.t('auth_otp_verify_button'),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        letterSpacing: 1.1,
-                      ),
+                      style: context.authPrimaryButtonTextStyle,
                     ),
             ),
           ),
@@ -336,9 +385,7 @@ class _AuthOtpPageState extends ConsumerState<AuthOtpPage> {
                 : Text(
                     AppStrings.t('auth_otp_resend_button'),
                     style: TextStyle(
-                      color: isDark
-                          ? appColors.accent
-                          : appColors.heroGradientStart,
+                      color: context.authInteractiveColor,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -362,6 +409,115 @@ class _AuthOtpPageState extends ConsumerState<AuthOtpPage> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _OtpCodeBoxes extends StatelessWidget {
+  final List<TextEditingController> controllers;
+  final List<FocusNode> focusNodes;
+  final bool isDark;
+  final void Function(int index, String value) onChanged;
+  final VoidCallback onCompleted;
+  final void Function(int index, KeyEvent event) onBackspace;
+
+  const _OtpCodeBoxes({
+    required this.controllers,
+    required this.focusNodes,
+    required this.isDark,
+    required this.onChanged,
+    required this.onCompleted,
+    required this.onBackspace,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final appColors = context.authColors;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const spacing = 10.0;
+        final totalSpacing = spacing * (AuthOtpConstants.codeLength - 1);
+        final boxWidth = ((constraints.maxWidth - totalSpacing) /
+                AuthOtpConstants.codeLength)
+            .clamp(44.0, 56.0);
+
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(AuthOtpConstants.codeLength, (index) {
+            final hasValue = controllers[index].text.isNotEmpty;
+            final isActive = focusNodes[index].hasFocus;
+
+            return Padding(
+              padding: EdgeInsets.only(
+                right: index == AuthOtpConstants.codeLength - 1 ? 0 : spacing,
+              ),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                width: boxWidth,
+                height: 58,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: isDark ? appColors.inputFillDark : colorScheme.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isActive
+                        ? context.authPrimaryColor
+                        : colorScheme.outlineVariant,
+                    width: isActive ? 1.8 : 1.2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: hasValue
+                          ? context.authPrimaryColor.withValues(alpha: 0.12)
+                          : appColors.lightShadow,
+                      blurRadius: hasValue ? 12 : 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Focus(
+                  onKeyEvent: (_, event) {
+                    onBackspace(index, event);
+                    return KeyEventResult.ignored;
+                  },
+                  child: TextField(
+                    controller: controllers[index],
+                    focusNode: focusNodes[index],
+                    autofocus: index == 0,
+                    keyboardType: TextInputType.number,
+                    textInputAction: index == AuthOtpConstants.codeLength - 1
+                        ? TextInputAction.done
+                        : TextInputAction.next,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: context.authTitleColor,
+                    ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(1),
+                    ],
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      counterText: '',
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    onChanged: (value) => onChanged(index, value),
+                    onSubmitted: (_) {
+                      if (index == AuthOtpConstants.codeLength - 1) {
+                        onCompleted();
+                      }
+                    },
+                  ),
+                ),
+              ),
+            );
+          }),
+        );
+      },
     );
   }
 }

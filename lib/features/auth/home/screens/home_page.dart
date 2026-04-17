@@ -7,9 +7,11 @@ import '../../../../core/services/managed_client_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../../../../geolocation/presentation/providers/geolocation_provider.dart';
+import '../../../animals/domain/constants/animal_constants.dart';
 import '../../../animals/domain/entities/animal_entity.dart';
 import '../../../animals/presentation/pages/add_animal_page.dart';
 import '../../../animals/presentation/pages/animals_page.dart';
+import '../../../animals/presentation/providers/animal_reference_catalog_provider.dart';
 import '../../../animals/presentation/providers/animal_provider.dart';
 import '../../../diagnosis/screens/scanner_screen.dart';
 import '../../../medical/domain/entities/medical_record_entity.dart';
@@ -42,9 +44,14 @@ class _HomePageState extends ConsumerState<HomePage> {
   void initState() {
     super.initState();
     Future.microtask(
-      () => ref
-          .read(currentGeolocationContextProvider.notifier)
-          .loadCurrentContext(),
+      () async {
+        await ref
+            .read(currentGeolocationContextProvider.notifier)
+            .loadCurrentContext();
+        // Precarga el catalogo para dejar copia local disponible tras el primer acceso con internet.
+        await ref.read(animalBreedChoicesProvider.future);
+        await ref.read(animalAgeOptionsProvider.future);
+      },
     );
   }
 
@@ -89,6 +96,20 @@ class _HomePageState extends ConsumerState<HomePage> {
       MaterialPageRoute(builder: (_) => const LoginPage()),
       (route) => false,
     );
+  }
+
+  Future<void> _handleAppBarAction(_HomeAppBarAction action) async {
+    switch (action) {
+      case _HomeAppBarAction.profile:
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ProfilePage()),
+        );
+        break;
+      case _HomeAppBarAction.logout:
+        await logout();
+        break;
+    }
   }
 
   Future<void> _openManagedClientDialog({bool isInitialSetup = false}) async {
@@ -464,31 +485,49 @@ class _HomePageState extends ConsumerState<HomePage> {
         keyName: 'register_animal',
         imagePath: 'lib/images/Taureau.webp',
         foregroundColor: appColors.success,
-        backgroundColor: appColors.selectionBackground,
+        backgroundColor:
+            Color.lerp(appColors.selectionBackground, appColors.success, 0.18)!,
+        cardColor:
+            Color.lerp(colorScheme.surface, appColors.selectionBackground, 0.82)!,
       ),
       _HomeMenuItem(
         keyName: 'diagnosis',
         icon: Icons.health_and_safety,
         foregroundColor: colorScheme.secondary,
-        backgroundColor: colorScheme.secondaryContainer,
+        backgroundColor:
+            Color.lerp(colorScheme.secondaryContainer, colorScheme.secondary, 0.18)!,
+        cardColor:
+            Color.lerp(colorScheme.surface, colorScheme.secondaryContainer, 0.78)!,
       ),
       _HomeMenuItem(
         keyName: 'history',
-        icon: Icons.pets,
+        imagePath: AnimalConstants.livestockAssetPath,
         foregroundColor: colorScheme.tertiary,
-        backgroundColor: colorScheme.tertiaryContainer,
+        backgroundColor:
+            Color.lerp(colorScheme.tertiaryContainer, colorScheme.tertiary, 0.2)!,
+        cardColor:
+            Color.lerp(colorScheme.surface, colorScheme.tertiaryContainer, 0.78)!,
       ),
       _HomeMenuItem(
         keyName: 'vaccines',
         icon: Icons.vaccines,
         foregroundColor: appColors.danger,
-        backgroundColor: colorScheme.errorContainer,
+        backgroundColor:
+            Color.lerp(colorScheme.errorContainer, appColors.danger, 0.14)!,
+        cardColor:
+            Color.lerp(colorScheme.surface, colorScheme.errorContainer, 0.76)!,
       ),
       _HomeMenuItem(
         keyName: 'notifications',
         icon: Icons.alarm,
         foregroundColor: appColors.warning,
-        backgroundColor: colorScheme.surfaceContainerHighest,
+        backgroundColor:
+            Color.lerp(colorScheme.surfaceContainerHighest, appColors.warning, 0.22)!,
+        cardColor: Color.lerp(
+          colorScheme.surface,
+          colorScheme.surfaceContainerHighest,
+          0.64,
+        )!,
       ),
     ];
 
@@ -499,6 +538,56 @@ class _HomePageState extends ConsumerState<HomePage> {
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: logout,
+          ),
+          PopupMenuButton<_HomeAppBarAction>(
+            icon: const Icon(Icons.more_vert),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            elevation: 6,
+            color: isDark ? appColors.cardDark : colorScheme.surface,
+            offset: const Offset(0, 56),
+            onSelected: _handleAppBarAction,
+            itemBuilder: (context) => [
+              PopupMenuItem<_HomeAppBarAction>(
+                value: _HomeAppBarAction.profile,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.person_outline,
+                      color: appColors.chipForeground,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      AppStrings.t('my_profile'),
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              PopupMenuItem<_HomeAppBarAction>(
+                value: _HomeAppBarAction.logout,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.logout,
+                      color: appColors.danger,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      AppStrings.t('logout'),
+                      style: TextStyle(
+                        color: appColors.danger,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -708,6 +797,11 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 }
 
+enum _HomeAppBarAction {
+  profile,
+  logout,
+}
+
 class _ManagedClientDraft {
   final String name;
   final String location;
@@ -724,11 +818,13 @@ class _HomeMenuItem {
   final String? imagePath;
   final Color foregroundColor;
   final Color backgroundColor;
+  final Color cardColor;
 
   const _HomeMenuItem({
     required this.keyName,
     required this.foregroundColor,
     required this.backgroundColor,
+    required this.cardColor,
     this.icon,
     this.imagePath,
   });
@@ -748,19 +844,42 @@ class _MenuCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appColors = context.appColors;
+    final theme = Theme.of(context);
+    final cardSurfaceColor = isDark ? appColors.cardDark : item.cardColor;
+    final cardBorderColor = item.foregroundColor.withValues(
+      alpha: isDark ? 0.18 : 0.14,
+    );
+    final cardShadowColor = item.foregroundColor.withValues(
+      alpha: isDark ? 0.18 : 0.22,
+    );
+    final cardHighlightColor = isDark
+        ? cardSurfaceColor
+        : Color.lerp(item.cardColor, theme.colorScheme.surface, 0.42)!;
 
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         decoration: BoxDecoration(
-          color: isDark ? appColors.cardDark : Theme.of(context).colorScheme.surface,
+          color: isDark ? cardSurfaceColor : null,
+          gradient: isDark
+              ? null
+              : LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    cardHighlightColor,
+                    cardSurfaceColor,
+                  ],
+                ),
           borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: cardBorderColor),
           boxShadow: [
             BoxShadow(
-              color: item.foregroundColor.withValues(alpha: 0.18),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
+              color: cardShadowColor,
+              blurRadius: 20,
+              spreadRadius: 1,
+              offset: const Offset(0, 8),
             ),
           ],
         ),

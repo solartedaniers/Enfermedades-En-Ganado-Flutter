@@ -10,6 +10,7 @@ class AnimalConstants {
       AppStorageKeys.animalProfileImageUrlColumn;
   static const int maxAgeYears = 25;
   static const String cattleSpecies = 'bovine';
+  static const String livestockAssetPath = 'lib/images/animals.webp';
 }
 
 class AnimalAgeOption {

@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_user_type.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../../../../geolocation/data/datasources/device_geolocation_datasource.dart';
 import '../models/auth_otp_flow.dart';
 import '../../profile/presentation/providers/profile_provider.dart';
 import '../services/auth_service.dart';
 import '../widgets/auth_page_shell.dart';
+import '../widgets/auth_ui.dart';
 import 'auth_otp_page.dart';
 
 class RegisterPage extends ConsumerStatefulWidget {
@@ -180,21 +180,22 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   }
 
   InputDecoration _inputStyle(String label, IconData icon) {
-    final appColors = context.appColors;
+    final appColors = context.authColors;
+    final theme = Theme.of(context);
 
     return InputDecoration(
       labelText: label,
       prefixIcon: Icon(icon, color: appColors.chipForeground),
       labelStyle: TextStyle(color: appColors.mutedForeground),
       filled: true,
-      fillColor: Theme.of(context).brightness == Brightness.dark
+      fillColor: theme.brightness == Brightness.dark
           ? appColors.inputFillDark
-          : Theme.of(context).colorScheme.surface,
+          : theme.colorScheme.surface,
     );
   }
 
   Widget _passwordRule(String text, bool valid) {
-    final appColors = context.appColors;
+    final appColors = context.authColors;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
@@ -221,16 +222,17 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   }
 
   Widget _buildLocationCard() {
-    final appColors = context.appColors;
+    final appColors = context.authColors;
+    final theme = Theme.of(context);
     final hasLocation = _locationLabel.trim().isNotEmpty;
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.dark
+        color: theme.brightness == Brightness.dark
             ? appColors.cardDark
-            : Theme.of(context).colorScheme.surface,
+            : theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: appColors.inputBorderLight),
       ),
@@ -285,9 +287,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     ref.watch(profileProvider);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final appColors = context.appColors;
+    final appColors = context.authColors;
     final isDark = theme.brightness == Brightness.dark;
-    final titleColor = isDark ? colorScheme.onSurface : colorScheme.onSurface;
 
     return AuthPageShell(
       appBar: AppBar(
@@ -295,11 +296,11 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
           AppStrings.t('create_account'),
           style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
-            color: titleColor,
+            color: context.authTitleColor,
           ),
         ),
         backgroundColor: Colors.transparent,
-        foregroundColor: titleColor,
+        foregroundColor: context.authTitleColor,
         elevation: 0,
         centerTitle: true,
       ),
@@ -311,7 +312,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
               AppStrings.t('join_app'),
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: titleColor,
+                color: context.authTitleColor,
               ),
             ),
             const SizedBox(height: 30),
@@ -451,11 +452,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                       )
                     : Text(
                         AppStrings.t('register_btn'),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          letterSpacing: 1.1,
-                        ),
+                        style: context.authPrimaryButtonTextStyle,
                       ),
               ),
             ),
@@ -469,7 +466,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                   child: Text(
                     AppStrings.t('sign_in'),
                     style: TextStyle(
-                      color: isDark ? appColors.accent : appColors.heroGradientStart,
+                      color: context.authInteractiveColor,
                       fontWeight: FontWeight.bold,
                     ),
                   ),

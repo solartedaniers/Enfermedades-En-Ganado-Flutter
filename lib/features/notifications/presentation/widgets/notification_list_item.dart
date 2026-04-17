@@ -6,6 +6,7 @@ import '../../../../../core/theme/app_sizes.dart';
 import '../../../../../core/theme/app_theme.dart';
 import '../../../../../core/theme/app_text_styles.dart';
 import '../../../../../core/utils/app_date_formatter.dart';
+import '../../../../../core/widgets/livestock_icon.dart';
 import '../../domain/entities/notification_entity.dart';
 
 class NotificationListItem extends StatelessWidget {
@@ -48,10 +49,9 @@ class NotificationListItem extends StatelessWidget {
             const SizedBox(height: AppSizes.xSmall),
             Row(
               children: [
-                Icon(
-                  Icons.set_meal,
-                  size: AppSizes.medium,
-                  color: appColors.mutedForeground,
+                LivestockIcon(
+                  size: AppSizes.medium + 4,
+                  padding: const EdgeInsets.only(right: 2),
                 ),
                 const SizedBox(width: AppSizes.xSmall),
                 Text(

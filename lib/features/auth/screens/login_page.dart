@@ -3,12 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../../profile/presentation/providers/profile_provider.dart';
 import '../widgets/auth_preferences_button.dart';
 import '../widgets/auth_page_shell.dart';
 import '../widgets/auth_text_field.dart';
+import '../widgets/auth_ui.dart';
 import '../../auth/home/screens/home_page.dart';
 import '../services/auth_service.dart';
 import 'forgot_password_page.dart';
@@ -113,8 +113,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     ref.watch(profileProvider);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final appColors = context.appColors;
-    final isDark = theme.brightness == Brightness.dark;
+    final appColors = context.authColors;
 
     return AuthPageShell(
       appBar: AppBar(
@@ -151,13 +150,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     color: colorScheme.surface,
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.2),
+                      color: context.authPrimaryColor.withValues(alpha: 0.2),
                     ),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.pets,
                     size: 60,
-                    color: AppTheme.primaryColor,
+                    color: context.authPrimaryColor,
                   ),
                 ),
               ),
@@ -195,7 +194,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               child: Text(
                 AppStrings.t('forgot_password'),
                 style: TextStyle(
-                  color: isDark ? appColors.accent : appColors.heroGradientStart,
+                  color: context.authInteractiveColor,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -218,10 +217,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     )
                   : Text(
                       AppStrings.t('login'),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
+                      style: context.authPrimaryButtonTextStyle
+                          .copyWith(letterSpacing: 0),
                     ),
             ),
           ),
@@ -240,7 +237,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 child: Text(
                   AppStrings.t('register_here'),
                   style: TextStyle(
-                    color: isDark ? appColors.accent : appColors.heroGradientStart,
+                    color: context.authInteractiveColor,
                     fontWeight: FontWeight.bold,
                   ),
                 ),

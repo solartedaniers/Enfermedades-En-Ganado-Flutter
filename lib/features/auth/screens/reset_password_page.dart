@@ -5,11 +5,11 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../../profile/presentation/providers/profile_provider.dart';
 import '../widgets/auth_page_shell.dart';
 import '../widgets/auth_text_field.dart';
+import '../widgets/auth_ui.dart';
 import 'login_page.dart';
 
 class ResetPasswordPage extends ConsumerStatefulWidget {
@@ -112,8 +112,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
     ref.watch(profileProvider);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final appColors = context.appColors;
-    final isDark = theme.brightness == Brightness.dark;
+    final appColors = context.authColors;
 
     return AuthPageShell(
       child: Column(
@@ -122,7 +121,9 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: (_passwordUpdated ? appColors.success : AppTheme.primaryColor)
+              color: (_passwordUpdated
+                      ? appColors.success
+                      : context.authPrimaryColor)
                   .withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
@@ -131,7 +132,9 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
                   ? Icons.check_circle_rounded
                   : Icons.lock_reset_rounded,
               size: 70,
-              color: _passwordUpdated ? appColors.success : AppTheme.primaryColor,
+              color: _passwordUpdated
+                  ? appColors.success
+                  : context.authPrimaryColor,
             ),
           )
               .animate(target: _passwordUpdated ? 1 : 0)
@@ -148,7 +151,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
             textAlign: TextAlign.center,
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
-              color: isDark ? colorScheme.onSurface : appColors.heroGradientStart,
+              color: context.authTitleColor,
             ),
           ).animate().fadeIn(duration: 400.ms),
           const SizedBox(height: 8),
@@ -205,10 +208,8 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
                       )
                     : Text(
                         AppStrings.t("update_exit"),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+                        style: context.authPrimaryButtonTextStyle
+                            .copyWith(letterSpacing: 0),
                       ),
               ),
             ).animate().fadeIn(delay: 400.ms),
@@ -227,7 +228,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
           if (_passwordUpdated)
             Padding(
               padding: const EdgeInsets.only(top: 24),
-              child: CircularProgressIndicator(color: AppTheme.primaryColor),
+              child: CircularProgressIndicator(color: context.authPrimaryColor),
             ),
         ],
       ),

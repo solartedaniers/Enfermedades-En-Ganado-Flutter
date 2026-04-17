@@ -8,12 +8,15 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/app_sizes.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/app_strings.dart';
+import '../../../../core/widgets/livestock_icon.dart';
 import '../../../medical/presentation/pages/medical_history_page.dart';
+import '../../data/services/animal_reference_catalog_service.dart';
 import '../../domain/constants/animal_constants.dart';
 import '../../domain/constants/animal_breed_catalog.dart';
 import '../../domain/entities/animal_entity.dart';
 import '../../shared/age_label_formatter.dart';
 import '../../shared/animal_input_formatters.dart';
+import '../providers/animal_reference_catalog_provider.dart';
 import '../providers/animal_provider.dart';
 import '../widgets/animal_image_card.dart';
 import '../widgets/animal_image_source_sheet.dart';
@@ -59,7 +62,7 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
     );
     _selectedBreedKey = AnimalBreedCatalog.storageValue(_currentAnimal.breed);
 
-    final ageOptions = AgeLabelFormatter.buildAgeOptions();
+    final ageOptions = ref.read(animalAgeOptionsProvider).valueOrNull ?? const [];
     _selectedAgeOption = ageOptions.firstWhere(
       (ageOption) => ageOption.months == _currentAnimal.age,
       orElse: () => AnimalAgeOption(
@@ -112,7 +115,18 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
     );
   }
 
-  void _showBreedSelector() {
+  Future<void> _showBreedSelector() async {
+    final breedChoices = await ref.read(animalBreedChoicesProvider.future);
+    if (!mounted) {
+      return;
+    }
+
+    if (breedChoices.isEmpty) {
+
+      _showSnack(AppStrings.t('internet_required_default'));
+      return;
+    }
+
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -120,11 +134,11 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
       builder: (_) {
         return AnimalOptionPickerSheet(
           title: AppStrings.t('select_breed'),
-          options: AnimalBreedCatalog.options()
+          options: breedChoices
               .map(
-                (breed) => AnimalOptionItem(
-                  value: breed.value,
-                  label: AppStrings.t(breed.labelKey),
+                (breedChoice) => AnimalOptionItem(
+                  value: breedChoice.value,
+                  label: breedChoice.label,
                 ),
               )
               .toList(),
@@ -138,8 +152,17 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
     );
   }
 
-  void _showAgeSelector() {
-    final ageOptions = AgeLabelFormatter.buildAgeOptions();
+  Future<void> _showAgeSelector() async {
+    final ageOptions = await ref.read(animalAgeOptionsProvider.future);
+    if (!mounted) {
+      return;
+    }
+
+    if (ageOptions.isEmpty) {
+
+      _showSnack(AppStrings.t('internet_required_default'));
+      return;
+    }
 
     showModalBottomSheet<void>(
       context: context,
@@ -365,6 +388,8 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
   }
 
   Widget _buildViewMode() {
+    final breedChoices =
+        ref.watch(animalBreedChoicesProvider).valueOrNull ?? const [];
     final weightText = _currentAnimal.weight != null
         ? '${_currentAnimal.weight} ${AppStrings.t('kg')}'
         : AppStrings.t('weight_no_data');
@@ -373,9 +398,12 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildInfoRow(
-          Icons.pets,
+          null,
           AppStrings.t('breed_label'),
-          AnimalBreedCatalog.displayLabel(_currentAnimal.breed),
+          AnimalReferenceCatalogService.resolveBreedLabel(
+            _currentAnimal.breed,
+            choices: breedChoices,
+          ),
         ),
         _buildInfoRow(
           Icons.cake,
@@ -420,7 +448,7 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
+  Widget _buildInfoRow(IconData? icon, String label, String value) {
     final appColors = context.appColors;
 
     return Padding(
@@ -428,7 +456,13 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: appColors.chipForeground, size: AppIconSizes.large),
+          if (icon != null)
+            Icon(icon, color: appColors.chipForeground, size: AppIconSizes.large)
+          else
+            const LivestockIcon(
+              size: AppIconSizes.large,
+              padding: EdgeInsets.only(top: 2),
+            ),
           const SizedBox(width: AppSizes.small + 2),
           Text(
             '$label: ',
@@ -447,6 +481,8 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
 
   Widget _buildEditForm() {
     final appColors = context.appColors;
+    final breedChoices =
+        ref.watch(animalBreedChoicesProvider).valueOrNull ?? const [];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -456,7 +492,9 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
           inputFormatters: [AnimalInputFormatters.name],
           decoration: InputDecoration(
             labelText: '${AppStrings.t('name')} *',
-            prefixIcon: Icon(Icons.pets, color: appColors.chipForeground),
+            prefixIcon: const LivestockIcon(
+              padding: EdgeInsets.all(12),
+            ),
           ),
         ),
         const SizedBox(height: AppSizes.sectionSpacing),
@@ -464,7 +502,10 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
           label: AppStrings.t('breed_label'),
           value: _selectedBreedKey == null
               ? null
-              : AnimalBreedCatalog.displayLabel(_selectedBreedKey),
+              : AnimalReferenceCatalogService.resolveBreedLabel(
+                  _selectedBreedKey,
+                  choices: breedChoices,
+                ),
           icon: Icons.category_outlined,
           onTap: _showBreedSelector,
         ),

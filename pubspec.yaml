@@ -53,6 +53,7 @@ flutter:
     - lib/images/AgroVet.webp
     - lib/images/icon.webp
     - lib/images/Taureau.webp
+    - lib/images/animals.webp
     - lib/l10n/es.json
     - lib/l10n/en.json
     - lib/geolocation/config/region_disease_profiles.json
