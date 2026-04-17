@@ -541,15 +541,51 @@ class _HomePageState extends ConsumerState<HomePage> {
           ),
           PopupMenuButton<_HomeAppBarAction>(
             icon: const Icon(Icons.more_vert),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            elevation: 6,
+            color: isDark ? appColors.cardDark : colorScheme.surface,
+            offset: const Offset(0, 56),
             onSelected: _handleAppBarAction,
             itemBuilder: (context) => [
               PopupMenuItem<_HomeAppBarAction>(
                 value: _HomeAppBarAction.profile,
-                child: Text(AppStrings.t('my_profile')),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.person_outline,
+                      color: appColors.chipForeground,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      AppStrings.t('my_profile'),
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
               ),
+              const PopupMenuDivider(),
               PopupMenuItem<_HomeAppBarAction>(
                 value: _HomeAppBarAction.logout,
-                child: Text(AppStrings.t('logout')),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.logout,
+                      color: appColors.danger,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      AppStrings.t('logout'),
+                      style: TextStyle(
+                        color: appColors.danger,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
