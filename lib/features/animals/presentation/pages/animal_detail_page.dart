@@ -8,6 +8,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/app_sizes.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/app_strings.dart';
+import '../../../../core/widgets/livestock_icon.dart';
 import '../../../medical/presentation/pages/medical_history_page.dart';
 import '../../data/services/animal_reference_catalog_service.dart';
 import '../../domain/constants/animal_constants.dart';
@@ -397,7 +398,7 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildInfoRow(
-          Icons.pets,
+          null,
           AppStrings.t('breed_label'),
           AnimalReferenceCatalogService.resolveBreedLabel(
             _currentAnimal.breed,
@@ -447,7 +448,7 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
+  Widget _buildInfoRow(IconData? icon, String label, String value) {
     final appColors = context.appColors;
 
     return Padding(
@@ -455,7 +456,13 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: appColors.chipForeground, size: AppIconSizes.large),
+          if (icon != null)
+            Icon(icon, color: appColors.chipForeground, size: AppIconSizes.large)
+          else
+            const LivestockIcon(
+              size: AppIconSizes.large,
+              padding: EdgeInsets.only(top: 2),
+            ),
           const SizedBox(width: AppSizes.small + 2),
           Text(
             '$label: ',
@@ -485,7 +492,9 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
           inputFormatters: [AnimalInputFormatters.name],
           decoration: InputDecoration(
             labelText: '${AppStrings.t('name')} *',
-            prefixIcon: Icon(Icons.pets, color: appColors.chipForeground),
+            prefixIcon: const LivestockIcon(
+              padding: EdgeInsets.all(12),
+            ),
           ),
         ),
         const SizedBox(height: AppSizes.sectionSpacing),

@@ -7,6 +7,7 @@ import '../../../../core/services/managed_client_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../../../../geolocation/presentation/providers/geolocation_provider.dart';
+import '../../../animals/domain/constants/animal_constants.dart';
 import '../../../animals/domain/entities/animal_entity.dart';
 import '../../../animals/presentation/pages/add_animal_page.dart';
 import '../../../animals/presentation/pages/animals_page.dart';
@@ -486,7 +487,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       ),
       _HomeMenuItem(
         keyName: 'history',
-        icon: Icons.pets,
+        imagePath: AnimalConstants.livestockAssetPath,
         foregroundColor: colorScheme.tertiary,
         backgroundColor:
             Color.lerp(colorScheme.tertiaryContainer, colorScheme.tertiary, 0.2)!,

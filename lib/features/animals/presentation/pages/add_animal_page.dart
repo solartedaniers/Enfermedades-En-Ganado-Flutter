@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/app_sizes.dart';
 import '../../../../core/utils/app_strings.dart';
+import '../../../../core/widgets/livestock_icon.dart';
 import '../../data/services/animal_reference_catalog_service.dart';
 import '../../domain/constants/animal_constants.dart';
 import '../../domain/entities/animal_entity.dart';
@@ -260,7 +261,9 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
                 inputFormatters: [AnimalInputFormatters.name],
                 decoration: InputDecoration(
                   labelText: '${AppStrings.t('name')} *',
-                  prefixIcon: Icon(Icons.pets, color: appColors.chipForeground),
+                  prefixIcon: const LivestockIcon(
+                    padding: EdgeInsets.all(12),
+                  ),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
