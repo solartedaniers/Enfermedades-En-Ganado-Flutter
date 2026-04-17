@@ -464,31 +464,49 @@ class _HomePageState extends ConsumerState<HomePage> {
         keyName: 'register_animal',
         imagePath: 'lib/images/Taureau.webp',
         foregroundColor: appColors.success,
-        backgroundColor: appColors.selectionBackground,
+        backgroundColor:
+            Color.lerp(appColors.selectionBackground, appColors.success, 0.18)!,
+        cardColor:
+            Color.lerp(colorScheme.surface, appColors.selectionBackground, 0.82)!,
       ),
       _HomeMenuItem(
         keyName: 'diagnosis',
         icon: Icons.health_and_safety,
         foregroundColor: colorScheme.secondary,
-        backgroundColor: colorScheme.secondaryContainer,
+        backgroundColor:
+            Color.lerp(colorScheme.secondaryContainer, colorScheme.secondary, 0.18)!,
+        cardColor:
+            Color.lerp(colorScheme.surface, colorScheme.secondaryContainer, 0.78)!,
       ),
       _HomeMenuItem(
         keyName: 'history',
         icon: Icons.pets,
         foregroundColor: colorScheme.tertiary,
-        backgroundColor: colorScheme.tertiaryContainer,
+        backgroundColor:
+            Color.lerp(colorScheme.tertiaryContainer, colorScheme.tertiary, 0.2)!,
+        cardColor:
+            Color.lerp(colorScheme.surface, colorScheme.tertiaryContainer, 0.78)!,
       ),
       _HomeMenuItem(
         keyName: 'vaccines',
         icon: Icons.vaccines,
         foregroundColor: appColors.danger,
-        backgroundColor: colorScheme.errorContainer,
+        backgroundColor:
+            Color.lerp(colorScheme.errorContainer, appColors.danger, 0.14)!,
+        cardColor:
+            Color.lerp(colorScheme.surface, colorScheme.errorContainer, 0.76)!,
       ),
       _HomeMenuItem(
         keyName: 'notifications',
         icon: Icons.alarm,
         foregroundColor: appColors.warning,
-        backgroundColor: colorScheme.surfaceContainerHighest,
+        backgroundColor:
+            Color.lerp(colorScheme.surfaceContainerHighest, appColors.warning, 0.22)!,
+        cardColor: Color.lerp(
+          colorScheme.surface,
+          colorScheme.surfaceContainerHighest,
+          0.64,
+        )!,
       ),
     ];
 
@@ -724,11 +742,13 @@ class _HomeMenuItem {
   final String? imagePath;
   final Color foregroundColor;
   final Color backgroundColor;
+  final Color cardColor;
 
   const _HomeMenuItem({
     required this.keyName,
     required this.foregroundColor,
     required this.backgroundColor,
+    required this.cardColor,
     this.icon,
     this.imagePath,
   });
@@ -748,19 +768,42 @@ class _MenuCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appColors = context.appColors;
+    final theme = Theme.of(context);
+    final cardSurfaceColor = isDark ? appColors.cardDark : item.cardColor;
+    final cardBorderColor = item.foregroundColor.withValues(
+      alpha: isDark ? 0.18 : 0.14,
+    );
+    final cardShadowColor = item.foregroundColor.withValues(
+      alpha: isDark ? 0.18 : 0.22,
+    );
+    final cardHighlightColor = isDark
+        ? cardSurfaceColor
+        : Color.lerp(item.cardColor, theme.colorScheme.surface, 0.42)!;
 
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         decoration: BoxDecoration(
-          color: isDark ? appColors.cardDark : Theme.of(context).colorScheme.surface,
+          color: isDark ? cardSurfaceColor : null,
+          gradient: isDark
+              ? null
+              : LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    cardHighlightColor,
+                    cardSurfaceColor,
+                  ],
+                ),
           borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: cardBorderColor),
           boxShadow: [
             BoxShadow(
-              color: item.foregroundColor.withValues(alpha: 0.18),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
+              color: cardShadowColor,
+              blurRadius: 20,
+              spreadRadius: 1,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
