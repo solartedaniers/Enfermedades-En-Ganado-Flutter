@@ -15,6 +15,10 @@ class AppStorageKeys {
   static const String offlineAuthSecret = 'offline_auth_secret';
   static const String offlineAuthAccounts = 'offline_auth_accounts';
   static const String offlineActiveEmail = 'offline_active_email';
+  static const String preferredLanguage = 'preferred_language';
+  static const String preferredThemeMode = 'preferred_theme_mode';
+  static const String preferredLanguageScopePrefix = 'preferred_language_';
+  static const String preferredThemeModeScopePrefix = 'preferred_theme_mode_';
 
   static const String managedClientsStoragePrefix = 'managed_clients_';
   static const String activeManagedClientStoragePrefix =

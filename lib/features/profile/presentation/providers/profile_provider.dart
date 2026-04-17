@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/constants/app_json_keys.dart';
 import '../../../../core/constants/app_user_type.dart';
+import '../../../../core/services/local_preferences_service.dart';
 import '../../../../core/services/offline_auth_service.dart';
 import '../../../../core/utils/app_strings.dart';
 
@@ -67,11 +68,25 @@ class ProfileState {
 }
 
 class ProfileNotifier extends StateNotifier<ProfileState> {
-  ProfileNotifier() : super(ProfileState.empty()) {
+  ProfileNotifier({
+    required LocalPreferencesSnapshot initialPreferences,
+  }) : super(
+         ProfileState.empty().copyWith(
+           language: initialPreferences.language,
+           themeMode: initialPreferences.themeMode,
+         ),
+       ) {
     _listenToAuthChanges();
   }
 
   final _supabase = Supabase.instance.client;
+
+  String? get _preferenceScope {
+    return LocalPreferencesService.scopeFromIdentity(
+      email: state.email,
+      userId: state.userId,
+    );
+  }
 
   void _listenToAuthChanges() {
     _supabase.auth.onAuthStateChange.listen((data) async {
@@ -98,8 +113,14 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
   Future<void> _loadFromSupabase() async {
     try {
       final currentUser = _supabase.auth.currentUser;
-      final currentLanguage = state.language;
-      final currentThemeMode = state.themeMode;
+      final scopedPreferences = await LocalPreferencesService.load(
+        scope: LocalPreferencesService.scopeFromIdentity(
+          email: currentUser?.email,
+          userId: currentUser?.id,
+        ),
+      );
+      final currentLanguage = scopedPreferences.language;
+      final currentThemeMode = scopedPreferences.themeMode;
 
       if (currentUser == null) {
         await AppStrings.load(currentLanguage);
@@ -197,10 +218,18 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
   Future<void> changeLanguage(String language) async {
     await AppStrings.load(language);
     state = state.copyWith(language: language);
+    await LocalPreferencesService.saveLanguage(
+      language,
+      scope: _preferenceScope,
+    );
   }
 
   Future<void> changeTheme(ThemeMode mode) async {
     state = state.copyWith(themeMode: mode);
+    await LocalPreferencesService.saveThemeMode(
+      mode,
+      scope: _preferenceScope,
+    );
   }
 
   Future<void> changeAvatar(String url) async {
@@ -240,12 +269,17 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       return false;
     }
 
-    await AppStrings.load(state.language);
+    final scopedPreferences = await LocalPreferencesService.load(
+      scope: LocalPreferencesService.scopeFromIdentity(email: email),
+    );
+    await AppStrings.load(scopedPreferences.language);
 
     state = state.copyWith(
       userId: offlineSnapshot['userId'],
       name: offlineSnapshot['userName'] ?? AppStrings.t('default_username'),
       email: offlineSnapshot['email'] ?? email.trim(),
+      language: scopedPreferences.language,
+      themeMode: scopedPreferences.themeMode,
       userType: AppUserTypeCodec.fromValue(offlineSnapshot['userType']),
       avatarUrl: offlineSnapshot['avatarUrl'],
       isLoaded: true,
@@ -255,6 +289,15 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
   }
 }
 
+final profilePreferencesProvider = Provider<LocalPreferencesSnapshot>(
+  (ref) => const LocalPreferencesSnapshot(
+    language: LocalPreferencesService.defaultLanguage,
+    themeMode: LocalPreferencesService.defaultThemeMode,
+  ),
+);
+
 final profileProvider = StateNotifierProvider<ProfileNotifier, ProfileState>(
-  (ref) => ProfileNotifier(),
+  (ref) => ProfileNotifier(
+    initialPreferences: ref.watch(profilePreferencesProvider),
+  ),
 );
