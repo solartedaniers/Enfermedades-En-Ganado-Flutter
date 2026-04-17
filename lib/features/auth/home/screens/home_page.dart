@@ -98,6 +98,20 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
+  Future<void> _handleAppBarAction(_HomeAppBarAction action) async {
+    switch (action) {
+      case _HomeAppBarAction.profile:
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ProfilePage()),
+        );
+        break;
+      case _HomeAppBarAction.logout:
+        await logout();
+        break;
+    }
+  }
+
   Future<void> _openManagedClientDialog({bool isInitialSetup = false}) async {
     final geolocationContext =
         ref.read(currentGeolocationContextProvider).valueOrNull;
@@ -525,6 +539,20 @@ class _HomePageState extends ConsumerState<HomePage> {
             icon: const Icon(Icons.logout),
             onPressed: logout,
           ),
+          PopupMenuButton<_HomeAppBarAction>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: _handleAppBarAction,
+            itemBuilder: (context) => [
+              PopupMenuItem<_HomeAppBarAction>(
+                value: _HomeAppBarAction.profile,
+                child: Text(AppStrings.t('my_profile')),
+              ),
+              PopupMenuItem<_HomeAppBarAction>(
+                value: _HomeAppBarAction.logout,
+                child: Text(AppStrings.t('logout')),
+              ),
+            ],
+          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -731,6 +759,11 @@ class _HomePageState extends ConsumerState<HomePage> {
       ),
     );
   }
+}
+
+enum _HomeAppBarAction {
+  profile,
+  logout,
 }
 
 class _ManagedClientDraft {
