@@ -20,6 +20,7 @@ import '../../animals/domain/constants/animal_constants.dart';
 import '../../animals/domain/entities/animal_entity.dart';
 import '../../animals/presentation/providers/animal_provider.dart';
 import '../../medical/data/models/medical_record_model.dart';
+import '../../medical/presentation/pages/medical_history_page.dart';
 import '../../medical/presentation/providers/medical_provider.dart';
 import '../widgets/scanner_camera_view.dart';
 import '../widgets/scanner_intake_view.dart';
@@ -57,6 +58,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   bool _isInitializingCamera = false;
   bool _isSubmitting = false;
   bool _isSaving = false;
+  bool _hasSavedCurrentResult = false;
   String? _errorMessage;
 
   @override
@@ -297,6 +299,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
           _capturedImageBytes = imageBytes;
           _report = response.report;
           _currentStep = _ScannerStep.result;
+          _hasSavedCurrentResult = false;
         });
         break;
     }
@@ -361,7 +364,11 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     final report = _report;
     final currentUser = Supabase.instance.client.auth.currentUser;
 
-    if (animal == null || report == null || currentUser == null) {
+    if (animal == null ||
+        report == null ||
+        currentUser == null ||
+        _isSaving ||
+        _hasSavedCurrentResult) {
       return;
     }
 
@@ -424,8 +431,18 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
 
       setState(() {
         _selectedAnimal = updatedAnimal;
+        _hasSavedCurrentResult = true;
       });
+      ref.invalidate(animalsListProvider);
+      ref.invalidate(rawAnimalsListProvider);
+
       _showMessage(AppStrings.t('diagnosis_saved_message'));
+
+      await Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => MedicalHistoryPage(animal: updatedAnimal),
+        ),
+      );
     } catch (error) {
       if (!mounted) {
         return;
@@ -447,6 +464,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       _report = null;
       _errorMessage = null;
       _currentStep = _ScannerStep.intake;
+      _hasSavedCurrentResult = false;
     });
   }
 
