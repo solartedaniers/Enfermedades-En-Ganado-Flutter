@@ -47,7 +47,7 @@
   "main_panel": "Panel principal",
   "coming_soon_diagnosis": "Próximamente: Diagnóstico IA 🤖",
   "coming_soon_vaccines": "Próximamente: Vacunas 💉",
-  "scanner_title": "Escáner IA",
+  "scanner_title": "Diagnóstico",
   "scanner_instruction": "Centra el síntoma dentro del recuadro para analizarlo.",
   "scanner_capture": "Capturar y analizar",
   "scanner_analyzing": "Analizando imagen...",

@@ -66,37 +66,81 @@ class ScannerIntakeView extends StatelessWidget {
 
         final animals = snapshot.data ?? [];
         if (animals.isEmpty) {
+          final theme = Theme.of(context);
+          final appColors = context.appColors;
+
           return Center(
             child: Padding(
               padding: const EdgeInsets.all(AppSizes.xxLarge),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.pets_outlined,
-                    size: AppIconSizes.xxxLarge,
-                    color: context.appColors.mutedForeground,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(AppSizes.xxLarge),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(AppSizes.cardRadius),
+                    boxShadow: [
+                      BoxShadow(
+                        color: appColors.scannerAccent.withValues(alpha: 0.10),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: AppSizes.large),
-                  Text(
-                    AppStrings.t('diagnosis_register_animal_first'),
-                    textAlign: TextAlign.center,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.pets_outlined,
+                        size: AppIconSizes.xxxLarge,
+                        color: appColors.mutedForeground,
+                      ),
+                      const SizedBox(height: AppSizes.large),
+                      Text(
+                        AppStrings.t('diagnosis'),
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.title(theme),
+                      ),
+                      const SizedBox(height: AppSizes.medium),
+                      Text(
+                        AppStrings.t('diagnosis_register_animal_first'),
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.bodyMuted(
+                          theme,
+                          appColors.subduedForeground,
+                        ),
+                      ),
+                      const SizedBox(height: AppSizes.xLarge),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const AddAnimalPage(),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            minimumSize: const Size(
+                              double.infinity,
+                              AppSizes.largeButtonHeight,
+                            ),
+                            backgroundColor: appColors.scannerAccent,
+                            foregroundColor: appColors.onSolid,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSizes.large,
+                              vertical: AppSizes.large,
+                            ),
+                          ),
+                          icon: const Icon(Icons.add),
+                          label: Text(AppStrings.t('register_animal')),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: AppSizes.large),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const AddAnimalPage()),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: context.appColors.scannerAccent,
-                      foregroundColor: context.appColors.onSolid,
-                    ),
-                    icon: const Icon(Icons.add),
-                    label: Text(AppStrings.t('register_animal')),
-                  ),
-                ],
+                ),
               ),
             ),
           );
