@@ -217,6 +217,8 @@
   "diagnosis_contagion": "Contagion",
   "diagnosis_saved_message": "Diagnosis saved to the medical history.",
   "diagnosis_save_error": "The diagnosis could not be saved",
+  "diagnosis_save_button": "Save record",
+  "diagnosis_saved_button": "Record saved",
   "diagnosis_load_animals_error": "The animals could not be loaded",
   "diagnosis_register_animal_first": "You need to register an animal in \"My Animals\" before running a real diagnosis.",
   "diagnosis_select_animal_first": "You must select an animal first.",

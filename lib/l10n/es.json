@@ -199,6 +199,8 @@
   "diagnosis_contagion": "Contagio",
   "diagnosis_saved_message": "Diagnóstico guardado en el historial clínico.",
   "diagnosis_save_error": "No se pudo guardar el diagnóstico",
+  "diagnosis_save_button": "Guardar registro",
+  "diagnosis_saved_button": "Registro guardado",
   "diagnosis_load_animals_error": "No se pudieron cargar los animales",
   "diagnosis_register_animal_first": "Primero necesitas registrar un animal en \"Mis animales\" para poder hacer un diagnóstico real.",
   "diagnosis_select_animal_first": "Primero debes seleccionar un animal.",

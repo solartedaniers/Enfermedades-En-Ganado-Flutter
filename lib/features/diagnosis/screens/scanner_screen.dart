@@ -538,6 +538,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
             animal: _selectedAnimal,
             capturedImageBytes: _capturedImageBytes,
             isSaving: _isSaving,
+            hasSaved: _hasSavedCurrentResult,
             onSave: _saveDiagnosis,
             onReset: _resetFlow,
           ),
