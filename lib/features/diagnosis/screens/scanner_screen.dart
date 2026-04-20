@@ -298,6 +298,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
         ref.read(currentGeolocationContextProvider).valueOrNull;
     final normalizedTemperature =
         _temperatureController.text.trim().replaceAll(',', '.');
+    final trimmedAnimalSymptoms = animal?.symptoms.trim() ?? '';
 
     if (animal == null) {
       throw Exception(AppStrings.t('diagnosis_select_animal_first'));
@@ -328,13 +329,18 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       breed: animal.breed,
       ageInYears: animal.age,
       clinicalQuestion: _mainReasonController.text.trim(),
-      reportedSymptoms:
-          symptomLines.isNotEmpty ? symptomLines : [animal.symptoms],
+      reportedSymptoms: symptomLines.isNotEmpty
+          ? symptomLines
+          : trimmedAnimalSymptoms.isNotEmpty
+              ? [trimmedAnimalSymptoms]
+              : const [],
       temperature: double.tryParse(normalizedTemperature),
       weight: animal.weight,
       imageBytes: imageBytes,
       imageUrl: animal.imageUrl,
-      visualFindings: const [],
+      visualFindings: imageBytes == null
+          ? const []
+          : const ['Captured symptom photo attached for visual analysis.'],
       geolocationContext: geolocationContext,
     );
   }
@@ -353,6 +359,32 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     });
 
     try {
+      final reportUrl = await ref.read(storageServiceProvider).uploadDiagnosisReportJson(
+        diagnosisJson: {
+          'source': 'scanner',
+          'animal_id': animal.id,
+          'animal_name': animal.name,
+          'user_id': currentUser.id,
+          'has_captured_image': _capturedImageBytes != null,
+          'image_url': _capturedImageBytes != null ? animal.imageUrl : null,
+          'report': report.toJson(),
+          'generated_at': report.generatedAt.toIso8601String(),
+        },
+        animalName: animal.name,
+      );
+
+      await Supabase.instance.client.from('animal_diagnostics').insert({
+        'id': const Uuid().v4(),
+        'animal_id': animal.id,
+        'user_id': currentUser.id,
+        'animal_name': animal.name,
+        'primary_diagnosis': report.primaryDiagnosis,
+        'diagnostic_statement': report.diagnosticStatement,
+        'report_url': reportUrl,
+        'image_url': animal.imageUrl,
+        'created_at': report.generatedAt.toIso8601String(),
+      });
+
       final normalizedTemperature =
           _temperatureController.text.trim().replaceAll(',', '.');
       final updatedAnimal = animal.copyWith(
