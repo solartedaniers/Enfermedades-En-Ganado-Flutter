@@ -199,6 +199,7 @@
   "diagnosis_contagion": "Contagio",
   "diagnosis_saved_message": "Diagnóstico guardado en el historial clínico.",
   "diagnosis_save_error": "No se pudo guardar el diagnóstico",
+  "diagnosis_missing_reports_table": "El diagnóstico se guardó en el historial clínico, pero falta crear la tabla animal_diagnostics en Supabase para registrar el enlace del reporte.",
   "diagnosis_save_button": "Guardar registro",
   "diagnosis_saved_button": "Registro guardado",
   "diagnosis_load_animals_error": "No se pudieron cargar los animales",

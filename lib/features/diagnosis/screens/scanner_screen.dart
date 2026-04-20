@@ -377,6 +377,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     });
 
     try {
+      String? saveWarningMessage;
       final reportUrl = await ref.read(storageServiceProvider).uploadDiagnosisReportJson(
         diagnosisJson: {
           'source': 'scanner',
@@ -391,17 +392,25 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
         animalName: animal.name,
       );
 
-      await Supabase.instance.client.from('animal_diagnostics').insert({
-        'id': const Uuid().v4(),
-        'animal_id': animal.id,
-        'user_id': currentUser.id,
-        'animal_name': animal.name,
-        'primary_diagnosis': report.primaryDiagnosis,
-        'diagnostic_statement': report.diagnosticStatement,
-        'report_url': reportUrl,
-        'image_url': animal.imageUrl,
-        'created_at': report.generatedAt.toIso8601String(),
-      });
+      try {
+        await Supabase.instance.client.from('animal_diagnostics').insert({
+          'id': const Uuid().v4(),
+          'animal_id': animal.id,
+          'user_id': currentUser.id,
+          'animal_name': animal.name,
+          'primary_diagnosis': report.primaryDiagnosis,
+          'diagnostic_statement': report.diagnosticStatement,
+          'report_url': reportUrl,
+          'image_url': animal.imageUrl,
+          'created_at': report.generatedAt.toIso8601String(),
+        });
+      } on PostgrestException catch (error) {
+        if (error.code == 'PGRST205') {
+          saveWarningMessage = AppStrings.t('diagnosis_missing_reports_table');
+        } else {
+          rethrow;
+        }
+      }
 
       final normalizedTemperature =
           _temperatureController.text.trim().replaceAll(',', '.');
@@ -436,7 +445,9 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       ref.invalidate(animalsListProvider);
       ref.invalidate(rawAnimalsListProvider);
 
-      _showMessage(AppStrings.t('diagnosis_saved_message'));
+      _showMessage(
+        saveWarningMessage ?? AppStrings.t('diagnosis_saved_message'),
+      );
 
       await Navigator.of(context).pushReplacement(
         MaterialPageRoute(

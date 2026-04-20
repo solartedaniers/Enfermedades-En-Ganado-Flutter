@@ -217,6 +217,7 @@
   "diagnosis_contagion": "Contagion",
   "diagnosis_saved_message": "Diagnosis saved to the medical history.",
   "diagnosis_save_error": "The diagnosis could not be saved",
+  "diagnosis_missing_reports_table": "The diagnosis was saved to the medical history, but the animal_diagnostics table still needs to be created in Supabase to store the report link.",
   "diagnosis_save_button": "Save record",
   "diagnosis_saved_button": "Record saved",
   "diagnosis_load_animals_error": "The animals could not be loaded",
