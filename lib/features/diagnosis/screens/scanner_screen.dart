@@ -10,6 +10,8 @@ import 'package:uuid/uuid.dart';
 import '../../../core/ai/models/diagnosis_request.dart';
 import '../../../core/ai/models/diagnosis_response.dart';
 import '../../../core/ai/providers/ai_diagnosis_provider.dart';
+import '../../../core/network/network_provider.dart';
+import '../../../core/services/connectivity_message_presenter.dart';
 import '../../../core/theme/app_sizes.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/app_strings.dart';
@@ -39,6 +41,8 @@ class ScannerScreen extends ConsumerStatefulWidget {
 class _ScannerScreenState extends ConsumerState<ScannerScreen>
     with WidgetsBindingObserver {
   static const double _targetSize = 260;
+  static const ConnectivityMessagePresenter _connectivityPresenter =
+      ConnectivityMessagePresenter();
 
   final TextEditingController _mainReasonController = TextEditingController();
   final TextEditingController _symptomsController = TextEditingController();
@@ -279,7 +283,14 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       case DiagnosisStatus.needsClinicalQuestion:
       case DiagnosisStatus.needsVisualEvidence:
       case DiagnosisStatus.readyToAnalyze:
-        _showMessage(response.nextStep.message);
+        if (response.status == DiagnosisStatus.needsInternet) {
+          _connectivityPresenter.showOfflineSnackBar(
+            context,
+            message: response.nextStep.message,
+          );
+        } else {
+          _showMessage(response.nextStep.message);
+        }
         break;
       case DiagnosisStatus.completed:
         setState(() {
@@ -489,6 +500,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
             capturedImageBytes: _capturedImageBytes,
             isSubmitting: _isSubmitting,
             errorMessage: _errorMessage,
+            connectivityState: ref.watch(networkStatusProvider),
             geolocationState: ref.watch(currentGeolocationContextProvider),
             onAnimalSelected: _selectAnimal,
             onOpenCamera: _openCamera,
