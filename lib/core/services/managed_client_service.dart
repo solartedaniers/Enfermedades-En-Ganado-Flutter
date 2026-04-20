@@ -84,20 +84,70 @@ class ManagedClientService {
 
   const ManagedClientService({Uuid uuid = const Uuid()}) : _uuid = uuid;
 
-  Future<ManagedClientStorageSnapshot> loadSnapshot(String veterinarianId) async {
+  Future<ManagedClientStorageSnapshot> loadSnapshot(
+    String veterinarianId, {
+    SupabaseClient? supabaseClient,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
-    final clients = _decodeClients(
+    final localClients = _decodeClients(
       prefs.getString(_clientsKey(veterinarianId)),
     );
-    final activeClientId = prefs.getString(_activeClientKey(veterinarianId));
-    final animalAssignments = _decodeAssignments(
+    final localActiveClientId = prefs.getString(_activeClientKey(veterinarianId));
+    final localAnimalAssignments = _decodeAssignments(
       prefs.getString(_animalAssignmentsKey(veterinarianId)),
     );
 
+    if (supabaseClient == null) {
+      return ManagedClientStorageSnapshot(
+        clients: localClients,
+        activeClientId: localActiveClientId,
+        animalAssignments: localAnimalAssignments,
+      );
+    }
+
+    try {
+      final remoteClients = await _fetchRemoteClients(
+        supabaseClient: supabaseClient,
+        veterinarianId: veterinarianId,
+      );
+      final remoteAnimalAssignments = await _fetchRemoteAnimalAssignments(
+        supabaseClient: supabaseClient,
+        veterinarianId: veterinarianId,
+      );
+
+      final mergedClients = _mergeClients(
+        localClients: localClients,
+        remoteClients: remoteClients,
+      );
+      final mergedAnimalAssignments = {
+        ...localAnimalAssignments,
+        ...remoteAnimalAssignments,
+      };
+      final resolvedActiveClientId = _resolveActiveClientId(
+        clients: mergedClients,
+        activeClientId: localActiveClientId,
+      );
+
+      await _saveClients(veterinarianId, mergedClients);
+      await _saveAnimalAssignments(veterinarianId, mergedAnimalAssignments);
+
+      if (resolvedActiveClientId != localActiveClientId) {
+        await setActiveClient(veterinarianId, resolvedActiveClientId);
+      }
+
+      return ManagedClientStorageSnapshot(
+        clients: mergedClients,
+        activeClientId: resolvedActiveClientId,
+        animalAssignments: mergedAnimalAssignments,
+      );
+    } catch (_) {
+      // Si falla la lectura remota seguimos operando con la copia local.
+    }
+
     return ManagedClientStorageSnapshot(
-      clients: clients,
-      activeClientId: activeClientId,
-      animalAssignments: animalAssignments,
+      clients: localClients,
+      activeClientId: localActiveClientId,
+      animalAssignments: localAnimalAssignments,
     );
   }
 
@@ -105,8 +155,8 @@ class ManagedClientService {
     required String veterinarianId,
     required String name,
     required String location,
+    SupabaseClient? supabaseClient,
   }) async {
-    final snapshot = await loadSnapshot(veterinarianId);
     final now = DateTime.now();
     final newClient = ManagedClientProfile(
       id: _uuid.v4(),
@@ -116,12 +166,41 @@ class ManagedClientService {
       updatedAt: now,
       isSynced: false,
     );
-    final updatedClients = [...snapshot.clients, newClient];
 
-    await _saveClients(veterinarianId, updatedClients);
-    await setActiveClient(veterinarianId, newClient.id);
+    try {
+      if (supabaseClient == null) {
+        throw StateError('Supabase client unavailable');
+      }
 
-    return newClient;
+      await supabaseClient.from(AppStorageKeys.managedClientsTable).upsert({
+        AppJsonKeys.id: newClient.id,
+        AppJsonKeys.veterinarianId: veterinarianId,
+        AppJsonKeys.name: newClient.name,
+        AppJsonKeys.location: newClient.location,
+        AppJsonKeys.createdAt: newClient.createdAt.toIso8601String(),
+        AppJsonKeys.updatedAt: newClient.updatedAt.toIso8601String(),
+      }, onConflict: AppJsonKeys.id);
+
+      final syncedClient = newClient.copyWith(isSynced: true);
+      final snapshot = await loadSnapshot(
+        veterinarianId,
+        supabaseClient: supabaseClient,
+      );
+      final updatedClients = _upsertLocalClient(snapshot.clients, syncedClient);
+
+      await _saveClients(veterinarianId, updatedClients);
+      await setActiveClient(veterinarianId, syncedClient.id);
+
+      return syncedClient;
+    } catch (_) {
+      final snapshot = await loadSnapshot(veterinarianId);
+      final updatedClients = _upsertLocalClient(snapshot.clients, newClient);
+
+      await _saveClients(veterinarianId, updatedClients);
+      await setActiveClient(veterinarianId, newClient.id);
+
+      return newClient;
+    }
   }
 
   Future<void> setActiveClient(String veterinarianId, String? clientId) async {
@@ -139,6 +218,7 @@ class ManagedClientService {
     required String veterinarianId,
     required String animalId,
     required String clientId,
+    SupabaseClient? supabaseClient,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final assignments = _decodeAssignments(
@@ -151,6 +231,21 @@ class ManagedClientService {
       _animalAssignmentsKey(veterinarianId),
       jsonEncode(assignments),
     );
+
+    if (supabaseClient == null) {
+      return;
+    }
+
+    try {
+      await supabaseClient.from(AppStorageKeys.managedClientAnimalsTable).upsert({
+        AppJsonKeys.veterinarianId: veterinarianId,
+        AppJsonKeys.animalId: animalId,
+        AppJsonKeys.clientId: clientId,
+        AppJsonKeys.updatedAt: DateTime.now().toIso8601String(),
+      }, onConflict: '${AppJsonKeys.veterinarianId},${AppJsonKeys.animalId}');
+    } catch (_) {
+      // La asignacion queda local para sincronizarse despues.
+    }
   }
 
   Future<void> removeAnimalAssignment({
@@ -220,6 +315,125 @@ class ManagedClientService {
                 '${AppJsonKeys.veterinarianId},${AppJsonKeys.animalId}',
           );
     }
+  }
+
+  Future<List<ManagedClientProfile>> _fetchRemoteClients({
+    required SupabaseClient supabaseClient,
+    required String veterinarianId,
+  }) async {
+    final response = await supabaseClient
+        .from(AppStorageKeys.managedClientsTable)
+        .select()
+        .eq(AppJsonKeys.veterinarianId, veterinarianId)
+        .order(AppJsonKeys.createdAt);
+
+    return (response as List<dynamic>)
+        .map((item) => item as Map<String, dynamic>)
+        .map(
+          (item) => ManagedClientProfile.fromJson({
+            ...item,
+            AppJsonKeys.isSynced: true,
+          }),
+        )
+        .toList();
+  }
+
+  Future<Map<String, String>> _fetchRemoteAnimalAssignments({
+    required SupabaseClient supabaseClient,
+    required String veterinarianId,
+  }) async {
+    final response = await supabaseClient
+        .from(AppStorageKeys.managedClientAnimalsTable)
+        .select('${AppJsonKeys.animalId}, ${AppJsonKeys.clientId}')
+        .eq(AppJsonKeys.veterinarianId, veterinarianId);
+
+    final rows = response as List<dynamic>;
+    final assignments = <String, String>{};
+
+    for (final row in rows) {
+      final data = row as Map<String, dynamic>;
+      final animalId = data[AppJsonKeys.animalId]?.toString();
+      final clientId = data[AppJsonKeys.clientId]?.toString();
+
+      if (animalId == null ||
+          animalId.isEmpty ||
+          clientId == null ||
+          clientId.isEmpty) {
+        continue;
+      }
+
+      assignments[animalId] = clientId;
+    }
+
+    return assignments;
+  }
+
+  List<ManagedClientProfile> _mergeClients({
+    required List<ManagedClientProfile> localClients,
+    required List<ManagedClientProfile> remoteClients,
+  }) {
+    final mergedById = <String, ManagedClientProfile>{
+      for (final client in remoteClients) client.id: client,
+    };
+
+    for (final client in localClients) {
+      final remoteClient = mergedById[client.id];
+      if (remoteClient == null || client.updatedAt.isAfter(remoteClient.updatedAt)) {
+        mergedById[client.id] = client;
+      }
+    }
+
+    final mergedClients = mergedById.values.toList()
+      ..sort((left, right) => left.createdAt.compareTo(right.createdAt));
+
+    return mergedClients;
+  }
+
+  List<ManagedClientProfile> _upsertLocalClient(
+    List<ManagedClientProfile> clients,
+    ManagedClientProfile client,
+  ) {
+    final updatedClients = [...clients];
+    final existingIndex = updatedClients.indexWhere((item) => item.id == client.id);
+
+    if (existingIndex == -1) {
+      updatedClients.add(client);
+    } else {
+      updatedClients[existingIndex] = client;
+    }
+
+    updatedClients.sort((left, right) => left.createdAt.compareTo(right.createdAt));
+    return updatedClients;
+  }
+
+  Future<void> _saveAnimalAssignments(
+    String veterinarianId,
+    Map<String, String> assignments,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _animalAssignmentsKey(veterinarianId),
+      jsonEncode(assignments),
+    );
+  }
+
+  String? _resolveActiveClientId({
+    required List<ManagedClientProfile> clients,
+    required String? activeClientId,
+  }) {
+    if (clients.isEmpty) {
+      return null;
+    }
+
+    final hasExistingActiveClient = clients.any(
+      (client) => client.id == activeClientId,
+    );
+
+    if (hasExistingActiveClient) {
+      return activeClientId;
+    }
+
+    return clients.first.id;
   }
 
   Future<void> _saveClients(

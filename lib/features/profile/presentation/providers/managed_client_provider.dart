@@ -60,19 +60,14 @@ class ManagedClientNotifier extends AsyncNotifier<ManagedClientState> {
       return ManagedClientState.empty();
     }
 
-    final snapshot = await _service.loadSnapshot(currentUserId);
-    final resolvedActiveClientId = _resolveActiveClientId(
-      clients: snapshot.clients,
-      activeClientId: snapshot.activeClientId,
+    final snapshot = await _service.loadSnapshot(
+      currentUserId,
+      supabaseClient: _supabase,
     );
-
-    if (resolvedActiveClientId != snapshot.activeClientId) {
-      await _service.setActiveClient(currentUserId, resolvedActiveClientId);
-    }
 
     return ManagedClientState(
       clients: snapshot.clients,
-      activeClientId: resolvedActiveClientId,
+      activeClientId: snapshot.activeClientId,
       animalAssignments: snapshot.animalAssignments,
     );
   }
@@ -92,6 +87,7 @@ class ManagedClientNotifier extends AsyncNotifier<ManagedClientState> {
       veterinarianId: currentUserId,
       name: name,
       location: location,
+      supabaseClient: _supabase,
     );
 
     state = AsyncData(
@@ -134,6 +130,7 @@ class ManagedClientNotifier extends AsyncNotifier<ManagedClientState> {
       veterinarianId: currentUserId,
       animalId: animalId,
       clientId: activeClientId,
+      supabaseClient: _supabase,
     );
 
     state = AsyncData(
@@ -146,24 +143,5 @@ class ManagedClientNotifier extends AsyncNotifier<ManagedClientState> {
         },
       ),
     );
-  }
-
-  String? _resolveActiveClientId({
-    required List<ManagedClientProfile> clients,
-    required String? activeClientId,
-  }) {
-    if (clients.isEmpty) {
-      return null;
-    }
-
-    final hasExistingActiveClient = clients.any(
-      (client) => client.id == activeClientId,
-    );
-
-    if (hasExistingActiveClient) {
-      return activeClientId;
-    }
-
-    return clients.first.id;
   }
 }

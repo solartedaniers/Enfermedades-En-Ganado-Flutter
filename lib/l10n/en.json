@@ -47,7 +47,7 @@
   "main_panel": "Main panel",
   "coming_soon_diagnosis": "Coming soon: AI Diagnosis 🤖",
   "coming_soon_vaccines": "Coming soon: Vaccines 💉",
-  "scanner_title": "AI Scanner",
+  "scanner_title": "Diagnosis",
   "scanner_instruction": "Center the symptom inside the frame to analyze it.",
   "scanner_capture": "Capture and analyze",
   "scanner_analyzing": "Analyzing image...",

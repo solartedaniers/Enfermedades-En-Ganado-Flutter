@@ -432,20 +432,25 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   @override
   Widget build(BuildContext context) {
     final appColors = context.appColors;
+    final theme = Theme.of(context);
+    final isCameraStep = _currentStep == _ScannerStep.camera;
+    final appBarBackgroundColor =
+        isCameraStep ? appColors.authBackgroundDark : theme.colorScheme.surface;
+    final appBarForegroundColor =
+        isCameraStep ? appColors.onSolid : theme.colorScheme.onSurface;
 
     return Scaffold(
       backgroundColor:
-          _currentStep == _ScannerStep.camera
+          isCameraStep
               ? appColors.authBackgroundDark
               : appColors.scannerBackground,
       appBar: AppBar(
         title: Text(AppStrings.t('scanner_title')),
-        backgroundColor:
-            _currentStep == _ScannerStep.camera
-                ? appColors.authBackgroundDark
-                : Theme.of(context).colorScheme.surface.withValues(alpha: 0),
-        foregroundColor:
-            _currentStep == _ScannerStep.camera ? appColors.onSolid : null,
+        centerTitle: true,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        backgroundColor: appBarBackgroundColor,
+        foregroundColor: appBarForegroundColor,
       ),
       body: switch (_currentStep) {
         _ScannerStep.intake => ScannerIntakeView(
