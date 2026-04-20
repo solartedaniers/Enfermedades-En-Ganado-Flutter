@@ -201,8 +201,8 @@ class ScannerIntakeView extends StatelessWidget {
                       ),
                     ),
                   const SizedBox(height: AppSizes.large),
-                  Row(
-                    children: [
+                   Row(
+                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: onOpenCamera,
@@ -251,6 +251,14 @@ class ScannerIntakeView extends StatelessWidget {
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: AppSizes.medium),
+                  Text(
+                    AppStrings.t('diagnosis_camera_optional'),
+                    style: AppTextStyles.bodyMuted(
+                      Theme.of(context),
+                      context.appColors.subduedForeground,
+                    ),
                   ),
                   if (errorMessage != null) ...[
                     const SizedBox(height: AppSizes.large),
