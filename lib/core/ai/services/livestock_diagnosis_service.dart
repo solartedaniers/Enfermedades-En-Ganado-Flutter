@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import '../../network/network_info.dart';
 import '../models/diagnosis_request.dart';
 import '../models/diagnosis_response.dart';
@@ -62,8 +64,13 @@ class LivestockDiagnosisService {
           ),
           report: report,
         );
-      } catch (error) {
-        print('FALLÓ GROQ: $error');
+      } catch (error, stackTrace) {
+        developer.log(
+          'Groq no respondió, se usará el motor local',
+          name: 'LivestockDiagnosisService',
+          error: error,
+          stackTrace: stackTrace,
+        );
       }
     }
 

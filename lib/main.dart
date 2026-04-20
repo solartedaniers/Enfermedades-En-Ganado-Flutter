@@ -23,9 +23,8 @@ Future<void> main() async {
   // Carga de variables de entorno (Groq API Key)
   try {
     await dotenv.load(fileName: ".env");
-    print("Archivo .env cargado con éxito ✅");
   } catch (e) {
-    print("Error cargando .env: $e");
+    logger.w('No se pudo cargar el archivo .env', error: e);
   }
 
   await Hive.initFlutter();

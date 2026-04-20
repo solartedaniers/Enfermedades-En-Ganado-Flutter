@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'dart:io';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -66,9 +67,13 @@ class GroqDiagnosisApi {
       );
     } on SocketException {
       throw Exception('Sin conexión a internet para el diagnóstico.');
-    } catch (e) {
-      // Importante: esto nos dirá en consola si el JSON venía mal
-      print('DEBUG GROQ ERROR: $e');
+    } catch (e, stackTrace) {
+      developer.log(
+        'Error procesando respuesta de Groq',
+        name: 'GroqDiagnosisApi',
+        error: e,
+        stackTrace: stackTrace,
+      );
       throw Exception('Error procesando diagnóstico: $e');
     } finally {
       client.close();
@@ -114,7 +119,7 @@ class GroqDiagnosisApi {
     - Especie: ${request.species}
     - Síntomas reportados: ${request.reportedSymptoms.join(", ")}
     - Hallazgos visuales: ${request.visualFindings.join(", ")}
-    - Pregunta del usuario: ${request.clinicalQuestion ?? "No provista"}''';
+    - Pregunta del usuario: ${request.clinicalQuestion}''';
   }
 
   List<DiagnosisFinding> _parseFindings(dynamic raw) {
