@@ -14,6 +14,7 @@ class ScannerResultView extends StatelessWidget {
   final AnimalEntity? animal;
   final Uint8List? capturedImageBytes;
   final bool isSaving;
+  final bool hasSaved;
   final VoidCallback onSave;
   final VoidCallback onReset;
 
@@ -23,6 +24,7 @@ class ScannerResultView extends StatelessWidget {
     required this.animal,
     required this.capturedImageBytes,
     required this.isSaving,
+    required this.hasSaved,
     required this.onSave,
     required this.onReset,
   });
@@ -31,6 +33,7 @@ class ScannerResultView extends StatelessWidget {
   Widget build(BuildContext context) {
     final currentReport = report;
     final currentAnimal = animal;
+    final isSaveDisabled = isSaving || hasSaved;
 
     if (currentReport == null || currentAnimal == null) {
       return Center(child: Text(AppStrings.t('diagnosis_not_available')));
@@ -125,9 +128,11 @@ class ScannerResultView extends StatelessWidget {
                   children: [
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: isSaving ? null : onSave,
+                        onPressed: isSaveDisabled ? null : onSave,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: context.appColors.scannerAccent,
+                          backgroundColor: hasSaved
+                              ? context.appColors.success
+                              : context.appColors.scannerAccent,
                           foregroundColor: context.appColors.onSolid,
                         ),
                         icon: isSaving
@@ -136,8 +141,12 @@ class ScannerResultView extends StatelessWidget {
                                 height: AppIconSizes.medium,
                                 child: CircularProgressIndicator(strokeWidth: 2),
                               )
-                            : const Icon(Icons.save),
-                        label: Text(AppStrings.t('save')),
+                            : Icon(hasSaved ? Icons.check_circle : Icons.save),
+                        label: Text(
+                          hasSaved
+                              ? AppStrings.t('diagnosis_saved_button')
+                              : AppStrings.t('diagnosis_save_button'),
+                        ),
                       ),
                     ),
                     const SizedBox(width: AppSizes.medium),

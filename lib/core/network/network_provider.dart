@@ -10,3 +10,7 @@ final connectivityProvider = Provider<Connectivity>((ref) {
 final networkInfoProvider = Provider<NetworkInfo>((ref) {
   return NetworkInfo(ref.watch(connectivityProvider));
 });
+
+final networkStatusProvider = StreamProvider<bool>((ref) {
+  return ref.watch(networkInfoProvider).onConnectivityChanged;
+});

@@ -1,13 +1,16 @@
+import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:logger/logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'core/services/notification_service.dart';
-import 'core/services/app_sync_service.dart';
 import 'core/constants/app_route_paths.dart';
+import 'core/network/network_provider.dart';
+import 'core/services/app_sync_service.dart';
 import 'core/services/local_preferences_service.dart';
+import 'core/services/notification_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/app_strings.dart';
 import 'features/animals/data/models/animal_model.dart';
@@ -15,11 +18,11 @@ import 'features/animals/presentation/providers/animal_provider.dart';
 import 'features/auth/home/screens/home_page.dart';
 import 'features/auth/screens/login_page.dart';
 import 'features/auth/screens/reset_password_page.dart';
+import 'features/auth/services/auth_service.dart';
 import 'features/profile/presentation/providers/managed_client_provider.dart';
 import 'features/profile/presentation/providers/profile_provider.dart';
-import 'features/auth/services/auth_service.dart';
-import 'core/network/network_provider.dart';
 
+final logger = Logger();
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
@@ -35,7 +38,9 @@ Future<void> main() async {
   }
 
   await Hive.initFlutter();
-  Hive.registerAdapter(AnimalModelAdapter());
+  if (!Hive.isAdapterRegistered(0)) {
+    Hive.registerAdapter(AnimalModelAdapter());
+  }
 
   await Supabase.initialize(
     url: supabaseUrl,
@@ -74,10 +79,14 @@ class AgrovetAI extends ConsumerStatefulWidget {
 
 class _AgrovetAIState extends ConsumerState<AgrovetAI> {
   AppSyncService? _appSyncService;
+  final AppLinks _appLinks = AppLinks();
+  final _supabase = Supabase.instance.client;
 
   @override
   void initState() {
     super.initState();
+    _listenToAuthEvents();
+    _listenToDeepLinks();
     _appSyncService = AppSyncService(
       animalRepository: ref.read(animalRepositoryProvider),
       networkInfo: ref.read(networkInfoProvider),
@@ -86,6 +95,35 @@ class _AgrovetAIState extends ConsumerState<AgrovetAI> {
       supabaseClient: Supabase.instance.client,
     );
     _appSyncService?.start();
+  }
+
+  void _listenToAuthEvents() {
+    _supabase.auth.onAuthStateChange.listen((data) {
+      if (data.event == AuthChangeEvent.passwordRecovery) {
+        navigatorKey.currentState?.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const ResetPasswordPage()),
+          (route) => false,
+        );
+      }
+    });
+  }
+
+  void _listenToDeepLinks() {
+    _appLinks.uriLinkStream.listen((uri) => _handleDeepLink(uri));
+  }
+
+  Future<void> _handleDeepLink(Uri uri) async {
+    try {
+      await _supabase.auth.getSessionFromUrl(uri);
+      if (uri.host == 'auth-confirm') {
+        navigatorKey.currentState?.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      logger.e('Error handling deep link', error: e);
+    }
   }
 
   @override
@@ -97,6 +135,7 @@ class _AgrovetAIState extends ConsumerState<AgrovetAI> {
   @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(profileProvider).themeMode;
+    final session = _supabase.auth.currentSession;
 
     return MaterialApp(
       navigatorKey: navigatorKey,
@@ -109,7 +148,7 @@ class _AgrovetAIState extends ConsumerState<AgrovetAI> {
         AppRoutePaths.home: (_) => const HomePage(),
         AppRoutePaths.resetPassword: (_) => const ResetPasswordPage(),
       },
-      home: const LoginPage(),
+      home: session == null ? const LoginPage() : const HomePage(),
     );
   }
 }

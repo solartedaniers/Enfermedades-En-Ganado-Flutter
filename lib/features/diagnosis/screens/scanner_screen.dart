@@ -10,6 +10,8 @@ import 'package:uuid/uuid.dart';
 import '../../../core/ai/models/diagnosis_request.dart';
 import '../../../core/ai/models/diagnosis_response.dart';
 import '../../../core/ai/providers/ai_diagnosis_provider.dart';
+import '../../../core/network/network_provider.dart';
+import '../../../core/services/connectivity_message_presenter.dart';
 import '../../../core/theme/app_sizes.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/app_strings.dart';
@@ -18,6 +20,7 @@ import '../../animals/domain/constants/animal_constants.dart';
 import '../../animals/domain/entities/animal_entity.dart';
 import '../../animals/presentation/providers/animal_provider.dart';
 import '../../medical/data/models/medical_record_model.dart';
+import '../../medical/presentation/pages/medical_history_page.dart';
 import '../../medical/presentation/providers/medical_provider.dart';
 import '../widgets/scanner_camera_view.dart';
 import '../widgets/scanner_intake_view.dart';
@@ -39,6 +42,8 @@ class ScannerScreen extends ConsumerStatefulWidget {
 class _ScannerScreenState extends ConsumerState<ScannerScreen>
     with WidgetsBindingObserver {
   static const double _targetSize = 260;
+  static const ConnectivityMessagePresenter _connectivityPresenter =
+      ConnectivityMessagePresenter();
 
   final TextEditingController _mainReasonController = TextEditingController();
   final TextEditingController _symptomsController = TextEditingController();
@@ -53,6 +58,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   bool _isInitializingCamera = false;
   bool _isSubmitting = false;
   bool _isSaving = false;
+  bool _hasSavedCurrentResult = false;
   String? _errorMessage;
 
   @override
@@ -279,13 +285,21 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       case DiagnosisStatus.needsClinicalQuestion:
       case DiagnosisStatus.needsVisualEvidence:
       case DiagnosisStatus.readyToAnalyze:
-        _showMessage(response.nextStep.message);
+        if (response.status == DiagnosisStatus.needsInternet) {
+          _connectivityPresenter.showOfflineSnackBar(
+            context,
+            message: response.nextStep.message,
+          );
+        } else {
+          _showMessage(response.nextStep.message);
+        }
         break;
       case DiagnosisStatus.completed:
         setState(() {
           _capturedImageBytes = imageBytes;
           _report = response.report;
           _currentStep = _ScannerStep.result;
+          _hasSavedCurrentResult = false;
         });
         break;
     }
@@ -298,6 +312,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
         ref.read(currentGeolocationContextProvider).valueOrNull;
     final normalizedTemperature =
         _temperatureController.text.trim().replaceAll(',', '.');
+    final trimmedAnimalSymptoms = animal?.symptoms.trim() ?? '';
 
     if (animal == null) {
       throw Exception(AppStrings.t('diagnosis_select_animal_first'));
@@ -328,13 +343,18 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       breed: animal.breed,
       ageInYears: animal.age,
       clinicalQuestion: _mainReasonController.text.trim(),
-      reportedSymptoms:
-          symptomLines.isNotEmpty ? symptomLines : [animal.symptoms],
+      reportedSymptoms: symptomLines.isNotEmpty
+          ? symptomLines
+          : trimmedAnimalSymptoms.isNotEmpty
+              ? [trimmedAnimalSymptoms]
+              : const [],
       temperature: double.tryParse(normalizedTemperature),
       weight: animal.weight,
       imageBytes: imageBytes,
       imageUrl: animal.imageUrl,
-      visualFindings: const [],
+      visualFindings: imageBytes == null
+          ? const []
+          : const ['Captured symptom photo attached for visual analysis.'],
       geolocationContext: geolocationContext,
     );
   }
@@ -344,7 +364,11 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     final report = _report;
     final currentUser = Supabase.instance.client.auth.currentUser;
 
-    if (animal == null || report == null || currentUser == null) {
+    if (animal == null ||
+        report == null ||
+        currentUser == null ||
+        _isSaving ||
+        _hasSavedCurrentResult) {
       return;
     }
 
@@ -353,6 +377,41 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     });
 
     try {
+      String? saveWarningMessage;
+      final reportUrl = await ref.read(storageServiceProvider).uploadDiagnosisReportJson(
+        diagnosisJson: {
+          'source': 'scanner',
+          'animal_id': animal.id,
+          'animal_name': animal.name,
+          'user_id': currentUser.id,
+          'has_captured_image': _capturedImageBytes != null,
+          'image_url': _capturedImageBytes != null ? animal.imageUrl : null,
+          'report': report.toJson(),
+          'generated_at': report.generatedAt.toIso8601String(),
+        },
+        animalName: animal.name,
+      );
+
+      try {
+        await Supabase.instance.client.from('animal_diagnostics').insert({
+          'id': const Uuid().v4(),
+          'animal_id': animal.id,
+          'user_id': currentUser.id,
+          'animal_name': animal.name,
+          'primary_diagnosis': report.primaryDiagnosis,
+          'diagnostic_statement': report.diagnosticStatement,
+          'report_url': reportUrl,
+          'image_url': animal.imageUrl,
+          'created_at': report.generatedAt.toIso8601String(),
+        });
+      } on PostgrestException catch (error) {
+        if (error.code == 'PGRST205') {
+          saveWarningMessage = AppStrings.t('diagnosis_missing_reports_table');
+        } else {
+          rethrow;
+        }
+      }
+
       final normalizedTemperature =
           _temperatureController.text.trim().replaceAll(',', '.');
       final updatedAnimal = animal.copyWith(
@@ -381,8 +440,20 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
 
       setState(() {
         _selectedAnimal = updatedAnimal;
+        _hasSavedCurrentResult = true;
       });
-      _showMessage(AppStrings.t('diagnosis_saved_message'));
+      ref.invalidate(animalsListProvider);
+      ref.invalidate(rawAnimalsListProvider);
+
+      _showMessage(
+        saveWarningMessage ?? AppStrings.t('diagnosis_saved_message'),
+      );
+
+      await Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => MedicalHistoryPage(animal: updatedAnimal),
+        ),
+      );
     } catch (error) {
       if (!mounted) {
         return;
@@ -404,6 +475,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       _report = null;
       _errorMessage = null;
       _currentStep = _ScannerStep.intake;
+      _hasSavedCurrentResult = false;
     });
   }
 
@@ -462,6 +534,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
             capturedImageBytes: _capturedImageBytes,
             isSubmitting: _isSubmitting,
             errorMessage: _errorMessage,
+            connectivityState: ref.watch(networkStatusProvider),
             geolocationState: ref.watch(currentGeolocationContextProvider),
             onAnimalSelected: _selectAnimal,
             onOpenCamera: _openCamera,
@@ -481,6 +554,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
             animal: _selectedAnimal,
             capturedImageBytes: _capturedImageBytes,
             isSaving: _isSaving,
+            hasSaved: _hasSavedCurrentResult,
             onSave: _saveDiagnosis,
             onReset: _resetFlow,
           ),

@@ -21,6 +21,7 @@ class ScannerIntakeView extends StatelessWidget {
   final Uint8List? capturedImageBytes;
   final bool isSubmitting;
   final String? errorMessage;
+  final AsyncValue<bool> connectivityState;
   final AsyncValue<dynamic> geolocationState;
   final ValueChanged<AnimalEntity> onAnimalSelected;
   final VoidCallback onOpenCamera;
@@ -36,6 +37,7 @@ class ScannerIntakeView extends StatelessWidget {
     required this.capturedImageBytes,
     required this.isSubmitting,
     required this.errorMessage,
+    required this.connectivityState,
     required this.geolocationState,
     required this.onAnimalSelected,
     required this.onOpenCamera,
@@ -144,6 +146,8 @@ class ScannerIntakeView extends StatelessWidget {
           );
         }
 
+        final isOnline = connectivityState.valueOrNull ?? true;
+
         return ListView(
           padding: const EdgeInsets.all(AppSizes.pagePadding),
           children: [
@@ -176,6 +180,10 @@ class ScannerIntakeView extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: AppSizes.xLarge),
+                  if (!isOnline) ...[
+                    _ScannerOfflineBanner(),
+                    const SizedBox(height: AppSizes.large),
+                  ],
                   _ScannerGeolocationCard(geolocationState: geolocationState),
                   const SizedBox(height: AppSizes.large),
                   DropdownButtonFormField<String>(
@@ -245,8 +253,8 @@ class ScannerIntakeView extends StatelessWidget {
                       ),
                     ),
                   const SizedBox(height: AppSizes.large),
-                  Row(
-                    children: [
+                   Row(
+                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: onOpenCamera,
@@ -270,7 +278,9 @@ class ScannerIntakeView extends StatelessWidget {
                       const SizedBox(width: AppSizes.medium),
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: isSubmitting ? null : onDiagnoseWithoutImage,
+                          onPressed: isSubmitting || !isOnline
+                              ? null
+                              : onDiagnoseWithoutImage,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: context.appColors.scannerAccent,
                             foregroundColor: context.appColors.onSolid,
@@ -296,6 +306,14 @@ class ScannerIntakeView extends StatelessWidget {
                       ),
                     ],
                   ),
+                  const SizedBox(height: AppSizes.medium),
+                  Text(
+                    AppStrings.t('diagnosis_camera_optional'),
+                    style: AppTextStyles.bodyMuted(
+                      Theme.of(context),
+                      context.appColors.subduedForeground,
+                    ),
+                  ),
                   if (errorMessage != null) ...[
                     const SizedBox(height: AppSizes.large),
                     Text(
@@ -312,6 +330,71 @@ class ScannerIntakeView extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _ScannerOfflineBanner extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final appColors = context.appColors;
+
+    return Container(
+      padding: const EdgeInsets.all(AppSizes.large),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            appColors.danger.withValues(alpha: 0.14),
+            appColors.warning.withValues(alpha: 0.18),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(AppSizes.xxLarge),
+        border: Border.all(
+          color: appColors.danger.withValues(alpha: 0.35),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(AppSizes.small),
+            decoration: BoxDecoration(
+              color: appColors.danger,
+              borderRadius: BorderRadius.circular(AppSizes.large),
+            ),
+            child: Icon(
+              Icons.wifi_off_rounded,
+              color: appColors.onSolid,
+              size: AppIconSizes.large,
+            ),
+          ),
+          const SizedBox(width: AppSizes.medium),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  AppStrings.t('diagnosis_wifi_required_title'),
+                  style: AppTextStyles.bodyStrong(
+                    Theme.of(context),
+                    Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: AppSizes.xSmall),
+                Text(
+                  AppStrings.t('diagnosis_wifi_required_message'),
+                  style: AppTextStyles.bodyMuted(
+                    Theme.of(context),
+                    appColors.subduedForeground,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
