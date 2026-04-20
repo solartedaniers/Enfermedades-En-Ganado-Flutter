@@ -1,0 +1,4 @@
+enum AuthOtpFlow {
+  signup,
+  recovery,
+}

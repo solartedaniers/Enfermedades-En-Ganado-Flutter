@@ -1,99 +1,122 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../../../core/utils/app_strings.dart';
-import '../../domain/entities/animal_entity.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class AnimalCard extends StatelessWidget {
-  final AnimalEntity animal;
+import '../../../../core/theme/app_durations.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_sizes.dart';
+import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/utils/app_strings.dart';
+import '../../data/services/animal_reference_catalog_service.dart';
+import '../../domain/entities/animal_entity.dart';
+import '../../shared/age_label_formatter.dart';
+import '../providers/animal_reference_catalog_provider.dart';
+
+class AnimalCard extends ConsumerWidget {
+  final AnimalEntity animalData;
   final VoidCallback onTap;
 
   const AnimalCard({
     super.key,
-    required this.animal,
+    required this.animalData,
     required this.onTap,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final appColors = context.appColors;
+    final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final breedChoices =
+        ref.watch(animalBreedChoicesProvider).valueOrNull ?? const [];
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        margin: const EdgeInsets.symmetric(
+          horizontal: AppSizes.large,
+          vertical: AppSizes.small,
+        ),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
+          color: isDark ? appColors.cardDark : colorScheme.surface,
+          borderRadius: BorderRadius.circular(AppSizes.cardRadius),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.07),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+              color: appColors.lightShadow,
+              blurRadius: AppSizes.medium,
+              offset: const Offset(0, AppSizes.xSmall),
             ),
           ],
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // ── Imagen de perfil ────────────────────────────────────
             ClipRRect(
               borderRadius:
-                  const BorderRadius.horizontal(left: Radius.circular(20)),
-              child: animal.profileImageUrl != null &&
-                      animal.profileImageUrl!.isNotEmpty
+                  const BorderRadius.horizontal(
+                    left: Radius.circular(AppSizes.cardRadius),
+                  ),
+              child: animalData.profileImageUrl != null &&
+                      animalData.profileImageUrl!.isNotEmpty
                   ? Image.network(
-                      animal.profileImageUrl!,
-                      width: 100,
-                      height: 100,
+                      animalData.profileImageUrl!,
+                      width: AppSizes.animalCardImageSize,
+                      height: AppSizes.animalCardImageSize,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) =>
-                          _placeholder(),
+                          _buildPlaceholder(),
                     )
-                  : _placeholder(),
+                  : _buildPlaceholder(),
             ),
-
-            // ── Info ────────────────────────────────────────────────
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 12),
+                  horizontal: AppSizes.medium,
+                  vertical: AppSizes.medium,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      animal.name,
+                      animalData.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 16,
+                      style: AppTextStyles.sectionTitle(Theme.of(context)).copyWith(
                         fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : Colors.grey[900],
+                        color: isDark ? appColors.onSolid : appColors.subduedForeground,
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: AppSizes.xSmall),
                     Text(
-                      animal.breed,
+                      AnimalReferenceCatalogService.resolveBreedLabel(
+                        animalData.breed,
+                        choices: breedChoices,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style:
-                          TextStyle(color: Colors.grey[600], fontSize: 13),
+                      style: AppTextStyles.caption(
+                        Theme.of(context),
+                        appColors.mutedForeground,
+                      ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSizes.small),
                     Wrap(
                       spacing: 6,
                       runSpacing: 4,
                       children: [
-                        _chip(
+                        _buildChip(
+                          context,
                           Icons.cake,
-                          animal.ageLabel.isNotEmpty
-                              ? animal.ageLabel
-                              : AnimalEntity.defaultAgeLabel(animal.age),
+                          animalData.ageLabel.isNotEmpty
+                              ? animalData.ageLabel
+                              : AgeLabelFormatter.format(animalData.age),
                         ),
-                        if (animal.weight != null)
-                          _chip(
+                        if (animalData.weight != null)
+                          _buildChip(
+                            context,
                             Icons.monitor_weight,
-                            '${animal.weight} ${AppStrings.t("kg")}',
+                            '${animalData.weight} ${AppStrings.t('kg')}',
                           ),
                       ],
                     ),
@@ -101,39 +124,44 @@ class AnimalCard extends StatelessWidget {
                 ),
               ),
             ),
-
-            // ── Flecha ──────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.only(right: 10),
-              child: Icon(Icons.arrow_forward_ios,
-                  size: 14, color: Colors.grey[400]),
+              child: Icon(
+                Icons.arrow_forward_ios,
+                size: AppIconSizes.small,
+                color: appColors.inputBorderLight,
+              ),
             ),
           ],
         ),
       ),
-    ).animate().fadeIn(duration: 300.ms).slideX(begin: 0.05);
+    ).animate().fadeIn(duration: AppDurations.medium).slideX(begin: 0.05);
   }
 
-  Widget _chip(IconData icon, String label) {
+  Widget _buildChip(BuildContext context, IconData icon, String label) {
+    final appColors = context.appColors;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFFE8F5E9),
-        borderRadius: BorderRadius.circular(20),
+        color: appColors.selectionBackground,
+        borderRadius: BorderRadius.circular(AppSizes.cardRadius),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: const Color(0xFF2E7D32)),
-          const SizedBox(width: 4),
+          Icon(icon, size: AppIconSizes.small, color: appColors.chipForeground),
+          const SizedBox(width: AppSizes.xSmall),
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 120),
             child: Text(
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style:
-                  const TextStyle(fontSize: 11, color: Color(0xFF2E7D32)),
+              style: AppTextStyles.caption(
+                Theme.of(context),
+                appColors.chipForeground,
+              ),
             ),
           ),
         ],
@@ -141,11 +169,11 @@ class AnimalCard extends StatelessWidget {
     );
   }
 
-  Widget _placeholder() {
+  Widget _buildPlaceholder() {
     return Image.asset(
       AppStrings.t('animal_default_image'),
-      width: 100,
-      height: 100,
+      width: AppSizes.animalCardImageSize,
+      height: AppSizes.animalCardImageSize,
       fit: BoxFit.cover,
     );
   }

@@ -19,4 +19,18 @@ class MedicalRemoteDataSource {
   Future<void> insertRecord(MedicalRecordModel record) async {
     await _supabase.from('medical_records').insert(record.toJson());
   }
+
+  Future<void> updateRecord({
+    required String recordId,
+    required String diagnosis,
+  }) async {
+    await _supabase
+        .from('medical_records')
+        .update({'diagnosis': diagnosis})
+        .eq('id', recordId);
+  }
+
+  Future<void> deleteRecord(String recordId) async {
+    await _supabase.from('medical_records').delete().eq('id', recordId);
+  }
 }

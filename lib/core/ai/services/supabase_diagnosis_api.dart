@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/utils/app_strings.dart';
 import '../models/diagnosis_request.dart';
 import '../models/diagnosis_response.dart';
 
@@ -21,7 +22,7 @@ class SupabaseDiagnosisApi {
       final data = response.data;
       if (data is! Map<String, dynamic>) {
         throw Exception(
-          'La función de diagnóstico no devolvió un formato válido.',
+          AppStrings.t('diagnosis_remote_invalid_format'),
         );
       }
 
@@ -29,7 +30,7 @@ class SupabaseDiagnosisApi {
       if (reportJson is! Map<String, dynamic>) {
         throw Exception(
           data['error']?.toString() ??
-              'La función de diagnóstico no devolvió un informe válido.',
+              AppStrings.t('diagnosis_remote_invalid_report'),
         );
       }
 
@@ -50,7 +51,7 @@ class SupabaseDiagnosisApi {
       }
 
       throw Exception(
-        'No se pudo completar el diagnostico desde Supabase. Intenta nuevamente.',
+        AppStrings.t('diagnosis_remote_supabase_error'),
       );
     } catch (_) {
       rethrow;

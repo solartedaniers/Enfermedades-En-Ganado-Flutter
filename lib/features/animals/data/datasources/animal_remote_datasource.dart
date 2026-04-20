@@ -1,46 +1,58 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../models/animal_model.dart';
+
+import '../../domain/constants/animal_constants.dart';
+import '../../domain/entities/animal_entity.dart';
+import '../models/animal_remote_model.dart';
 
 class AnimalRemoteDataSource {
-  final _supabase = Supabase.instance.client;
+  final SupabaseClient _supabaseClient;
 
-  Future<List<AnimalModel>> getAnimals() async {
-    final user = _supabase.auth.currentUser;
-    if (user == null) return [];
+  AnimalRemoteDataSource(this._supabaseClient);
 
-    final response = await _supabase
-        .from('animals')
+  Future<List<AnimalEntity>> getAnimals() async {
+    final currentUser = _supabaseClient.auth.currentUser;
+    if (currentUser == null) {
+      throw StateError('Remote session unavailable');
+    }
+
+    final response = await _supabaseClient
+        .from(AnimalConstants.tableName)
         .select()
-        .eq('user_id', user.id)
-        .order('created_at', ascending: false);
+        .eq(AnimalConstants.userIdColumn, currentUser.id)
+        .order(AnimalConstants.createdAtColumn, ascending: false);
 
-    // FIX: cast seguro de la respuesta
-    final list = response as List<dynamic>;
-    return list
-        .map((json) => AnimalModel.fromJson(json as Map<String, dynamic>))
+    // Cast seguro de la respuesta remota.
+    final responseList = response as List<dynamic>;
+    return responseList
+        .map((json) => AnimalRemoteModel.fromJson(json as Map<String, dynamic>))
+        .map((animal) => animal.toEntity())
         .toList();
   }
 
-  Future<void> insertAnimal(AnimalModel animal) async {
-    await _supabase.from('animals').insert(animal.toJson());
+  Future<void> insertAnimal(AnimalEntity animal) async {
+    await _supabaseClient
+        .from(AnimalConstants.tableName)
+        .insert(AnimalRemoteModel.fromEntity(animal).toJson());
   }
 
-  /// FIX NUEVO: upsert para sincronización offline → evita duplicate key errors
-  /// cuando el animal ya fue insertado parcialmente en un intento previo.
-  Future<void> upsertAnimal(AnimalModel animal) async {
-    await _supabase
-        .from('animals')
-        .upsert(animal.toJson(), onConflict: 'id');
+  /// Upsert para sincronizacion offline y evitar duplicados al reintentar.
+  Future<void> upsertAnimal(AnimalEntity animal) async {
+    await _supabaseClient
+        .from(AnimalConstants.tableName)
+        .upsert(AnimalRemoteModel.fromEntity(animal).toJson(), onConflict: 'id');
   }
 
-  Future<void> updateAnimal(AnimalModel animal) async {
-    await _supabase
-        .from('animals')
-        .update(animal.toJson())
-        .eq('id', animal.id);
+  Future<void> updateAnimal(AnimalEntity animal) async {
+    await _supabaseClient
+        .from(AnimalConstants.tableName)
+        .update(AnimalRemoteModel.fromEntity(animal).toJson())
+        .eq(AnimalConstants.idColumn, animal.id);
   }
 
   Future<void> deleteAnimal(String id) async {
-    await _supabase.from('animals').delete().eq('id', id);
+    await _supabaseClient
+        .from(AnimalConstants.tableName)
+        .delete()
+        .eq(AnimalConstants.idColumn, id);
   }
 }

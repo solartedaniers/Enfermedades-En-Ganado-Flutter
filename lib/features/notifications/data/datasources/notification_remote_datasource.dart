@@ -1,17 +1,18 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../models/notification_model.dart';
 
 class NotificationRemoteDataSource {
-  final _supabase = Supabase.instance.client;
+  final _supabaseClient = Supabase.instance.client;
 
   Future<List<NotificationModel>> getNotifications() async {
-    final user = _supabase.auth.currentUser;
-    if (user == null) return [];
+    final currentUser = _supabaseClient.auth.currentUser;
+    if (currentUser == null) return [];
 
-    final response = await _supabase
+    final response = await _supabaseClient
         .from('notifications')
         .select('*, animals(name)')
-        .eq('user_id', user.id)
+        .eq('user_id', currentUser.id)
         .order('scheduled_at', ascending: true);
 
     return (response as List)
@@ -19,11 +20,11 @@ class NotificationRemoteDataSource {
         .toList();
   }
 
-  Future<void> insertNotification(NotificationModel n) async {
-    await _supabase.from('notifications').insert(n.toJson());
+  Future<void> insertNotification(NotificationModel notification) async {
+    await _supabaseClient.from('notifications').insert(notification.toJson());
   }
 
   Future<void> deleteNotification(String id) async {
-    await _supabase.from('notifications').delete().eq('id', id);
+    await _supabaseClient.from('notifications').delete().eq('id', id);
   }
 }

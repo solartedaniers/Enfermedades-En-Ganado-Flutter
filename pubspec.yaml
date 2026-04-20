@@ -11,17 +11,15 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # --- Base de Datos y Estado ---
   supabase_flutter: ^2.12.0
   provider: ^6.1.2
   flutter_riverpod: ^2.6.1
+  flutter_dotenv: ^6.0.0
 
-  # --- Almacenamiento Local (Hive) ---
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   shared_preferences: ^2.3.2
 
-  # --- Utilidades y UI ---
   fluttertoast: ^9.0.0
   cupertino_icons: ^1.0.8
   image_picker: ^1.1.2
@@ -30,19 +28,16 @@ dependencies:
   logger: ^2.6.2
   connectivity_plus: ^6.0.3
   uuid: ^4.5.3
-  
-  # --- Notificaciones y Animaciones ---
+  geolocator: ^13.0.2
+  geocoding: ^3.0.0
   flutter_local_notifications: ^18.0.1
   flutter_animate: ^4.5.0
   timezone: ^0.10.1
-  flutter_dotenv: ^6.0.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
-  
-  # --- Generación de Código ---
   build_runner: ^2.4.9
   hive_generator: ^2.0.1
 
@@ -50,10 +45,12 @@ flutter:
   uses-material-design: true
 
   assets:
-    - .env  # <--- ESTE ES EL CAMBIO CLAVE
+    - .env
     - lib/images/logo.webp
     - lib/images/AgroVet.webp
     - lib/images/icon.webp
     - lib/images/Taureau.webp
+    - lib/images/animals.webp
     - lib/l10n/es.json
     - lib/l10n/en.json
+    - lib/geolocation/config/region_disease_profiles.json

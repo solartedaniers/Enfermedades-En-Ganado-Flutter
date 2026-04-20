@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_sizes.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../providers/animal_provider.dart';
 import '../widgets/animal_card.dart';
@@ -11,18 +15,18 @@ class AnimalsPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final animalRepo = ref.watch(animalRepositoryProvider);
+    final animalsAsync = ref.watch(animalsListProvider);
+    final appColors = context.appColors;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(AppStrings.t("my_animals")),
+        title: Text(AppStrings.t('my_animals')),
         actions: [
-          // ── Icono casa → volver al panel principal ─────────────
           IconButton(
             icon: const Icon(Icons.home_outlined),
-            tooltip: AppStrings.t("go_home"),
+            tooltip: AppStrings.t('go_home'),
             onPressed: () =>
-                Navigator.of(context).popUntil((r) => r.isFirst),
+                Navigator.of(context).popUntil((route) => route.isFirst),
           ),
         ],
       ),
@@ -32,70 +36,85 @@ class AnimalsPage extends ConsumerWidget {
             context,
             MaterialPageRoute(builder: (_) => const AddAnimalPage()),
           );
-          ref.invalidate(animalRepositoryProvider);
+          ref.invalidate(animalsListProvider);
         },
         child: const Icon(Icons.add),
       ),
-      body: FutureBuilder(
-        future: animalRepo.getAnimals(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline,
-                      size: 64, color: Colors.redAccent),
-                  const SizedBox(height: 16),
-                  Text(AppStrings.t("load_error"),
-                      style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 8),
-                  ElevatedButton(
-                    onPressed: () =>
-                        ref.invalidate(animalRepositoryProvider),
-                    child: Text(AppStrings.t("retry")),
-                  ),
-                ],
+      body: animalsAsync.when(
+        loading: () => Center(
+          child: CircularProgressIndicator(
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+        error: (_, _) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: AppSizes.emptyStateIcon,
+                color: appColors.danger,
               ),
-            );
-          }
-          final animals = snapshot.data ?? [];
+              const SizedBox(height: AppSizes.large),
+              Text(
+                AppStrings.t('load_error'),
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: AppSizes.small),
+              ElevatedButton(
+                onPressed: () => ref.invalidate(animalsListProvider),
+                child: Text(AppStrings.t('retry')),
+              ),
+            ],
+          ),
+        ),
+        data: (animals) {
           if (animals.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.pets, size: 80, color: Colors.grey[400]),
-                  const SizedBox(height: 16),
-                  Text(AppStrings.t("no_animals"),
-                      style: TextStyle(
-                          fontSize: 16, color: Colors.grey[600])),
-                  const SizedBox(height: 8),
-                  Text(AppStrings.t("add_first"),
-                      style: TextStyle(color: Colors.grey[400])),
+                  Icon(
+                    Icons.pets,
+                    size: AppSizes.notificationEmptyIcon,
+                    color: appColors.inputBorderLight,
+                  ),
+                  const SizedBox(height: AppSizes.large),
+                  Text(
+                    AppStrings.t('no_animals'),
+                    style: AppTextStyles.bodyMuted(
+                      Theme.of(context),
+                      appColors.mutedForeground,
+                    ),
+                  ),
+                  const SizedBox(height: AppSizes.small),
+                  Text(
+                    AppStrings.t('add_first'),
+                    style: AppTextStyles.bodyMuted(
+                      Theme.of(context),
+                      appColors.inputBorderLight,
+                    ),
+                  ),
                 ],
               ),
             );
           }
+
           return ListView.builder(
             padding: const EdgeInsets.symmetric(vertical: 8),
             itemCount: animals.length,
             itemBuilder: (context, index) {
-              final animal = animals[index];
+              final currentAnimal = animals[index];
               return AnimalCard(
-                animal: animal,
+                animalData: currentAnimal,
                 onTap: () async {
                   await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => AnimalDetailPage(animal: animal),
+                      builder: (_) => AnimalDetailPage(animal: currentAnimal),
                     ),
                   );
-                  // Recargar lista tras edición o eliminación
-                  ref.invalidate(animalRepositoryProvider);
+                  ref.invalidate(animalsListProvider);
                 },
               );
             },

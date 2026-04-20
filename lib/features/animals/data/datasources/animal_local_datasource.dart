@@ -1,11 +1,11 @@
 import 'package:hive/hive.dart';
+
+import '../../domain/constants/animal_constants.dart';
 import '../models/animal_model.dart';
 
 class AnimalLocalDataSource {
-  static const String boxName = 'animals_box';
-
   Future<Box<AnimalModel>> _openBox() async {
-    return await Hive.openBox<AnimalModel>(boxName);
+    return Hive.openBox<AnimalModel>(AnimalConstants.localBoxName);
   }
 
   Future<void> saveAnimal(AnimalModel animal) async {
@@ -16,8 +16,9 @@ class AnimalLocalDataSource {
   Future<void> syncFromRemote(List<AnimalModel> remoteAnimals) async {
     final box = await _openBox();
     await box.clear();
-    for (final animal in remoteAnimals) {
-      await box.put(animal.id, animal);
+
+    for (final remoteAnimal in remoteAnimals) {
+      await box.put(remoteAnimal.id, remoteAnimal);
     }
   }
 
@@ -28,23 +29,44 @@ class AnimalLocalDataSource {
 
   Future<List<AnimalModel>> getUnsyncedAnimals() async {
     final box = await _openBox();
-    return box.values.where((a) => !a.isSynced).toList();
+    return box.values.where((animal) => !animal.isSynced).toList();
   }
 
   Future<void> markAsSynced(String id) async {
     final box = await _openBox();
     final animal = box.get(id);
-    if (animal != null) {
-      await box.put(
-        id,
-        // Usamos copyWith para no perder ningún campo al marcar como synced
-        animal.copyWith(isSynced: true),
-      );
+
+    if (animal == null) {
+      return;
     }
+
+    await box.put(
+      id,
+      // Usamos copyWith para no perder ningun campo al marcar como synced.
+      animal.copyWith(isSynced: true),
+    );
   }
 
   Future<void> deleteAnimal(String id) async {
     final box = await _openBox();
     await box.delete(id);
+  }
+
+  Future<void> markAsDeleted(String id) async {
+    final box = await _openBox();
+    final animal = box.get(id);
+
+    if (animal == null) {
+      return;
+    }
+
+    await box.put(
+      id,
+      animal.copyWith(
+        isDeleted: true,
+        isSynced: false,
+        updatedAt: DateTime.now(),
+      ),
+    );
   }
 }

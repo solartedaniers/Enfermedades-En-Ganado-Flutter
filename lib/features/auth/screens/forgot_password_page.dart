@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../services/auth_service.dart';
 import '../../../../core/utils/app_strings.dart';
-import '../../../../core/theme/app_theme.dart';
+import '../models/auth_otp_flow.dart';
+import '../services/auth_service.dart';
+import '../widgets/auth_page_shell.dart';
+import '../widgets/auth_text_field.dart';
+import '../widgets/auth_ui.dart';
 import '../../profile/presentation/providers/profile_provider.dart';
+import 'auth_otp_page.dart';
 
 class ForgotPasswordPage extends ConsumerStatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -32,15 +36,28 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
     setState(() => loading = true);
     try {
       await authService.resetPassword(emailController.text.trim());
-      if (!mounted) return;
-      _showSnackBar(AppStrings.t("email_sent"));
-      Future.delayed(
-          const Duration(seconds: 2), () => mounted ? Navigator.pop(context) : null);
+      if (!mounted) {
+        return;
+      }
+      _showSnackBar(AppStrings.t('auth_otp_sent'));
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AuthOtpPage(
+            email: emailController.text.trim(),
+            flow: AuthOtpFlow.recovery,
+          ),
+        ),
+      );
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       _showSnackBar(e.toString().replaceAll("Exception: ", ""));
     } finally {
-      if (mounted) setState(() => loading = false);
+      if (mounted) {
+        setState(() => loading = false);
+      }
     }
   }
 
@@ -52,112 +69,93 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
   @override
   Widget build(BuildContext context) {
     ref.watch(profileProvider);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primaryGreen = AppTheme.primaryColor;
-    final darkGreen = const Color(0xFF1B4332);
-    final bgColor =
-        isDark ? const Color(0xFF121212) : const Color(0xFFF1F8F5);
+    final theme = Theme.of(context);
+    final appColors = context.authColors;
+    final colorScheme = theme.colorScheme;
 
-    return Scaffold(
-      backgroundColor: bgColor,
+    return AuthPageShell(
       appBar: AppBar(
-        title: Text(AppStrings.t("recover_access"),
-            style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          AppStrings.t("recover_access"),
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: context.authTitleColor,
+          ),
+        ),
         backgroundColor: Colors.transparent,
-        foregroundColor: isDark ? Colors.white : darkGreen,
+        foregroundColor: context.authTitleColor,
         elevation: 0,
         centerTitle: true,
       ),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: primaryGreen.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(Icons.mark_email_read_outlined,
-                      size: 70, color: primaryGreen),
-                ),
-                const SizedBox(height: 32),
-                Text(
-                  AppStrings.t("forgot_title"),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : darkGreen),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  AppStrings.t("forgot_subtitle"),
-                  textAlign: TextAlign.center,
-                  style:
-                      const TextStyle(color: Colors.grey, fontSize: 15),
-                ),
-                const SizedBox(height: 40),
-                TextField(
-                  controller: emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    labelText: AppStrings.t("email"),
-                    prefixIcon:
-                        Icon(Icons.email_outlined, color: primaryGreen),
-                    labelStyle: const TextStyle(color: Colors.grey),
-                    filled: true,
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide:
-                          const BorderSide(color: Color(0xFFDEE2E6)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide:
-                          BorderSide(color: primaryGreen, width: 2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 30),
-                SizedBox(
-                  width: double.infinity,
-                  height: 55,
-                  child: ElevatedButton(
-                    onPressed: loading ? null : reset,
-                    child: loading
-                        ? const SizedBox(
-                            height: 24,
-                            width: 24,
-                            child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2),
-                          )
-                        : Text(AppStrings.t("send_instructions"),
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                letterSpacing: 1.1)),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text(
-                    AppStrings.t("back_to_login"),
-                    style: TextStyle(
-                        color: isDark ? Colors.greenAccent : darkGreen,
-                        fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: context.authPrimaryTint,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.mark_email_read_outlined,
+              size: 70,
+              color: context.authPrimaryColor,
             ),
           ),
-        ),
+          const SizedBox(height: 32),
+          Text(
+            AppStrings.t("forgot_title"),
+            textAlign: TextAlign.center,
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: context.authTitleColor,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            AppStrings.t("forgot_subtitle"),
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: appColors.mutedForeground,
+            ),
+          ),
+          const SizedBox(height: 40),
+          AuthTextField(
+            controller: emailController,
+            keyboardType: TextInputType.emailAddress,
+            label: AppStrings.t("email"),
+            icon: Icons.email_outlined,
+          ),
+          const SizedBox(height: 30),
+          SizedBox(
+            width: double.infinity,
+            height: 55,
+            child: ElevatedButton(
+              onPressed: loading ? null : reset,
+              child: loading
+                  ? SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: CircularProgressIndicator(
+                        color: colorScheme.onPrimary,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Text(AppStrings.t("send_instructions"),
+                      style: context.authPrimaryButtonTextStyle),
+            ),
+          ),
+          const SizedBox(height: 24),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              AppStrings.t("back_to_login"),
+              style: TextStyle(
+                  color: context.authInteractiveColor,
+                  fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
       ),
     );
   }

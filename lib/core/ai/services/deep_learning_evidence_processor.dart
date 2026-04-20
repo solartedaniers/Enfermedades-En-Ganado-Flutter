@@ -36,7 +36,7 @@ class LivestockEvidenceProcessor implements DeepLearningEvidenceProcessor {
       'udder inflammation',
       'milk clots',
     ],
-    'fiebre aftosa': [
+    'foot_and_mouth_disease': [
       'fiebre aftosa',
       'vesiculas',
       'llagas en boca',
@@ -48,7 +48,7 @@ class LivestockEvidenceProcessor implements DeepLearningEvidenceProcessor {
       'drooling',
       'limping',
     ],
-    'neumonia bovina': [
+    'bovine_pneumonia': [
       'tos',
       'secrecion nasal',
       'dificultad respiratoria',
@@ -57,7 +57,7 @@ class LivestockEvidenceProcessor implements DeepLearningEvidenceProcessor {
       'nasal discharge',
       'labored breathing',
     ],
-    'dermatofitosis': [
+    'dermatophytosis': [
       'lesiones en piel',
       'caida de pelo',
       'manchas circulares',
@@ -85,28 +85,29 @@ class LivestockEvidenceProcessor implements DeepLearningEvidenceProcessor {
       request.clinicalQuestion,
       ...request.reportedSymptoms,
       ...request.visualFindings,
-    ].map(_normalize).where((item) => item.isNotEmpty).toList();
+    ].map(_normalizeText).where((item) => item.isNotEmpty).toList();
 
     for (final entry in _diseaseKeywords.entries) {
       var score = 0.0;
 
       for (final keyword in entry.value) {
         if (normalizedSignals.any(
-          (signal) => signal.contains(_normalize(keyword)),
+          (signal) => signal.contains(_normalizeText(keyword)),
         )) {
           score += 0.18;
           findings.add(
             DiagnosisFinding(
               label: keyword,
-              source:
-                  request.visualFindings.any(
-                    (visualFinding) =>
-                        _normalize(visualFinding).contains(_normalize(keyword)),
-                  )
+              source: request.visualFindings.any(
+                (visualFinding) => _normalizeText(visualFinding).contains(
+                  _normalizeText(keyword),
+                ),
+              )
                   ? 'vision'
                   : 'clinical',
               confidence: 0.72,
-              interpretation: 'Patrón compatible con ${entry.key}.',
+              interpretation:
+                  'Relevant pattern compatible with ${entry.key}.',
             ),
           );
         }
@@ -116,15 +117,32 @@ class LivestockEvidenceProcessor implements DeepLearningEvidenceProcessor {
         if (entry.key == 'mastitis' && request.temperature! >= 39.7) {
           score += 0.12;
         }
-        if (entry.key == 'fiebre aftosa' && request.temperature! >= 40.0) {
+        if (entry.key == 'foot_and_mouth_disease' &&
+            request.temperature! >= 40.0) {
           score += 0.18;
         }
-        if (entry.key == 'neumonia bovina' && request.temperature! >= 39.5) {
+        if (entry.key == 'bovine_pneumonia' &&
+            request.temperature! >= 39.5) {
           score += 0.15;
         }
-        if (entry.key == 'gastroenteritis' && request.temperature! >= 39.2) {
+        if (entry.key == 'gastroenteritis' &&
+            request.temperature! >= 39.2) {
           score += 0.08;
         }
+      }
+
+      if (request.geolocationContext?.commonDiseaseKeys.contains(entry.key) ??
+          false) {
+        score += 0.10;
+        findings.add(
+          DiagnosisFinding(
+            label: request.geolocationContext!.regionLabel,
+            source: 'regional',
+            confidence: 0.64,
+            interpretation:
+                'Regional epidemiology increases the relevance of ${entry.key}.',
+          ),
+        );
       }
 
       diseaseScores[entry.key] = score.clamp(0.0, 0.98).toDouble();
@@ -137,7 +155,6 @@ class LivestockEvidenceProcessor implements DeepLearningEvidenceProcessor {
           signal.contains('ubre') ||
           signal.contains('udder') ||
           signal.contains('lesion') ||
-          signal.contains('lesión') ||
           signal.contains('pezu') ||
           signal.contains('hoof'),
     );
@@ -149,7 +166,7 @@ class LivestockEvidenceProcessor implements DeepLearningEvidenceProcessor {
     );
   }
 
-  String _normalize(String value) {
+  String _normalizeText(String value) {
     return value.trim().toLowerCase();
   }
 }

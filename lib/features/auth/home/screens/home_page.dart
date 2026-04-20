@@ -1,16 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../animals/data/services/animal_sync_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../../../core/services/managed_client_service.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/app_strings.dart';
+import '../../../../geolocation/presentation/providers/geolocation_provider.dart';
+import '../../../animals/domain/constants/animal_constants.dart';
+import '../../../animals/domain/entities/animal_entity.dart';
 import '../../../animals/presentation/pages/add_animal_page.dart';
 import '../../../animals/presentation/pages/animals_page.dart';
+import '../../../animals/presentation/providers/animal_reference_catalog_provider.dart';
+import '../../../animals/presentation/providers/animal_provider.dart';
 import '../../../diagnosis/screens/scanner_screen.dart';
-import '../../../profile/presentation/providers/profile_provider.dart';
-import '../../../profile/presentation/pages/profile_page.dart';
+import '../../../medical/domain/entities/medical_record_entity.dart';
+import '../../../medical/presentation/providers/medical_provider.dart';
+import '../../../notifications/data/datasources/notification_remote_datasource.dart';
 import '../../../notifications/presentation/pages/notifications_page.dart';
+import '../../../profile/presentation/pages/profile_page.dart';
+import '../../../profile/presentation/providers/managed_client_provider.dart';
+import '../../../profile/presentation/providers/profile_provider.dart';
 import '../../screens/login_page.dart';
-import '../../../../core/utils/app_strings.dart';
+import '../models/home_dashboard_summary.dart';
+import '../widgets/home_dashboard_section.dart';
+import '../widgets/veterinarian_client_panel.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -21,48 +35,61 @@ class HomePage extends ConsumerStatefulWidget {
 
 class _HomePageState extends ConsumerState<HomePage> {
   final SupabaseClient supabase = Supabase.instance.client;
-  AnimalSyncService? syncService;
+  final NotificationRemoteDataSource _notificationDataSource =
+      NotificationRemoteDataSource();
+
+  bool _hasPromptedInitialManagedClient = false;
 
   @override
   void initState() {
     super.initState();
-    syncService = AnimalSyncService(ref);
-    syncService?.start();
+    Future.microtask(
+      () async {
+        await ref
+            .read(currentGeolocationContextProvider.notifier)
+            .loadCurrentContext();
+        // Precarga el catalogo para dejar copia local disponible tras el primer acceso con internet.
+        await ref.read(animalBreedChoicesProvider.future);
+        await ref.read(animalAgeOptionsProvider.future);
+      },
+    );
   }
 
   @override
-  void dispose() {
-    syncService?.stop();
-    super.dispose();
-  }
+  void dispose() => super.dispose();
 
   Future<void> logout() async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20)),
-        title: Text(AppStrings.t("logout")),
-        content: Text(AppStrings.t("logout_confirm")),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(AppStrings.t('logout')),
+        content: Text(AppStrings.t('logout_confirm')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text(AppStrings.t("cancel")),
+            child: Text(AppStrings.t('cancel')),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red),
-            child: Text(AppStrings.t("exit")),
+              backgroundColor: context.appColors.danger,
+            ),
+            child: Text(AppStrings.t('exit')),
           ),
         ],
       ),
     );
 
-    if (confirm != true) return;
-    syncService?.stop();
+    if (confirm != true) {
+      return;
+    }
+
     await supabase.auth.signOut();
-    if (!mounted) return;
+
+    if (!mounted) {
+      return;
+    }
 
     Navigator.pushAndRemoveUntil(
       context,
@@ -71,92 +98,496 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
+  Future<void> _handleAppBarAction(_HomeAppBarAction action) async {
+    switch (action) {
+      case _HomeAppBarAction.profile:
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ProfilePage()),
+        );
+        break;
+      case _HomeAppBarAction.logout:
+        await logout();
+        break;
+    }
+  }
+
+  Future<void> _openManagedClientDialog({bool isInitialSetup = false}) async {
+    final geolocationContext =
+        ref.read(currentGeolocationContextProvider).valueOrNull;
+    final defaultLocation = geolocationContext?.regionLabel ?? '';
+    final messenger = ScaffoldMessenger.of(context);
+    var clientName = '';
+
+    final newClientDraft = await showDialog<_ManagedClientDraft>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(
+            AppStrings.t(
+              isInitialSetup
+                  ? 'veterinarian_first_client_dialog_title'
+                  : 'veterinarian_add_client',
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (isInitialSetup) ...[
+                Text(AppStrings.t('veterinarian_first_client_dialog_message')),
+                const SizedBox(height: 16),
+              ],
+              TextField(
+                autofocus: true,
+                onChanged: (value) => clientName = value.trim(),
+                onSubmitted: (value) {
+                  final normalizedName = value.trim();
+                  if (normalizedName.isEmpty) {
+                    return;
+                  }
+
+                  FocusScope.of(dialogContext).unfocus();
+                  Navigator.pop(
+                    dialogContext,
+                    _ManagedClientDraft(
+                      name: normalizedName,
+                      location: defaultLocation,
+                    ),
+                  );
+                },
+                decoration: InputDecoration(
+                  labelText: AppStrings.t('veterinarian_client_name'),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  defaultLocation.isEmpty
+                      ? AppStrings.t('registration_location_missing')
+                      : '${AppStrings.t('veterinarian_client_location')}: $defaultLocation',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(AppStrings.t('cancel')),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (clientName.isEmpty) {
+                  return;
+                }
+
+                FocusScope.of(dialogContext).unfocus();
+                Navigator.pop(
+                  dialogContext,
+                  _ManagedClientDraft(
+                    name: clientName,
+                    location: defaultLocation,
+                  ),
+                );
+              },
+              child: Text(AppStrings.t('veterinarian_save_client')),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (newClientDraft == null || !mounted) {
+      return;
+    }
+
+    try {
+      await ref.read(managedClientProvider.notifier).createClient(
+            name: newClientDraft.name,
+            location: newClientDraft.location,
+          );
+
+      if (!mounted) {
+        return;
+      }
+
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(AppStrings.t('veterinarian_client_saved')),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('${AppStrings.t('unexpected_error')}: $error'),
+        ),
+      );
+    }
+  }
+
+  void _promptInitialManagedClientIfNeeded(ManagedClientState managedClientState) {
+    if (_hasPromptedInitialManagedClient ||
+        !ref.read(profileProvider).isVeterinarian ||
+        managedClientState.clients.isNotEmpty) {
+      return;
+    }
+
+    _hasPromptedInitialManagedClient = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+
+      _openManagedClientDialog(isInitialSetup: true);
+    });
+  }
+
   void _onMenuTap(String key) {
+    final profile = ref.read(profileProvider);
+    final managedClientState = ref.read(managedClientProvider).valueOrNull;
+    final requiresActiveClient = {
+      'register_animal',
+      'history',
+      'notifications',
+      'diagnosis',
+    };
+
+    if (profile.isVeterinarian &&
+        requiresActiveClient.contains(key) &&
+        (managedClientState == null || !managedClientState.hasActiveClient)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppStrings.t('veterinarian_workspace_hint')),
+        ),
+      );
+      return;
+    }
+
     switch (key) {
-      case "register_animal":
+      case 'register_animal':
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const AddAnimalPage()),
         );
         break;
-
-      case "history":
+      case 'history':
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const AnimalsPage()),
         );
         break;
-
-      case "notifications":
+      case 'notifications':
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const NotificationsPage()),
         );
         break;
-
-      case "diagnosis":
-        // Conflictos resueltos: Navegación al Scanner habilitada
+      case 'diagnosis':
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const ScannerScreen()),
         );
         break;
-
-      case "vaccines":
+      case 'vaccines':
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(AppStrings.t("coming_soon_vaccines"))),
+          SnackBar(content: Text(AppStrings.t('coming_soon_vaccines'))),
         );
         break;
+    }
+  }
+
+  Future<HomeDashboardSummary> _loadDashboardSummary() async {
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month, 1);
+    final profile = ref.read(profileProvider);
+    final managedClientState = ref.read(managedClientProvider).valueOrNull;
+    final medicalRepository = ref.read(medicalRepositoryProvider);
+    final geolocationContext =
+        ref.read(currentGeolocationContextProvider).valueOrNull;
+
+    final allAnimals = profile.isVeterinarian
+        ? await ref.read(rawAnimalsListProvider.future)
+        : await ref.read(animalsListProvider.future);
+
+    if (allAnimals.isEmpty) {
+      return HomeDashboardSummary.empty();
+    }
+
+    final animalIds = allAnimals.map((animal) => animal.id).toSet();
+    final notifications = await _notificationDataSource.getNotifications();
+    final monthlyNotifications = notifications.where((notification) {
+      return animalIds.contains(notification.animalId) &&
+          !notification.createdAt.isBefore(monthStart);
+    }).toList();
+
+    final monthlyRecords = <MedicalRecordEntity>[];
+    for (final animal in allAnimals) {
+      final records = await medicalRepository.getRecords(animal.id);
+      monthlyRecords.addAll(
+        records.where((record) => !record.createdAt.isBefore(monthStart)),
+      );
+    }
+
+    final weekdayCounter = <String, int>{};
+    for (final animal in allAnimals.where((animal) => !animal.createdAt.isBefore(monthStart))) {
+      _increaseCounter(weekdayCounter, _weekdayLabel(animal.createdAt.weekday));
+    }
+    for (final notification in monthlyNotifications) {
+      _increaseCounter(
+        weekdayCounter,
+        _weekdayLabel(notification.createdAt.weekday),
+      );
+    }
+    for (final record in monthlyRecords) {
+      _increaseCounter(weekdayCounter, _weekdayLabel(record.createdAt.weekday));
+    }
+
+    final diseaseCounter = <String, int>{};
+    for (final record in monthlyRecords) {
+      final diseaseLabel = _normalizeDiseaseLabel(
+        record.diagnosis ?? record.aiResult,
+      );
+      _increaseCounter(
+        diseaseCounter,
+        diseaseLabel.isEmpty
+            ? AppStrings.t('dashboard_unknown_disease')
+            : diseaseLabel,
+      );
+    }
+
+    final locationCounter = <String, int>{};
+    if (profile.isVeterinarian && managedClientState != null) {
+      for (final record in monthlyRecords) {
+        AnimalEntity? animal;
+        for (final item in allAnimals) {
+          if (item.id == record.animalId) {
+            animal = item;
+            break;
+          }
+        }
+        if (animal == null) {
+          continue;
+        }
+
+        final clientId = managedClientState.animalAssignments[animal.id];
+        ManagedClientProfile? client;
+        for (final item in managedClientState.clients) {
+          if (item.id == clientId) {
+            client = item;
+            break;
+          }
+        }
+        final locationLabel = client?.location.trim().isNotEmpty == true
+            ? client!.location
+            : AppStrings.t('dashboard_unknown_location');
+        _increaseCounter(locationCounter, locationLabel);
+      }
+    } else {
+      final regionLabel = geolocationContext?.regionLabel.isNotEmpty == true
+          ? geolocationContext!.regionLabel
+          : AppStrings.t('dashboard_current_region_fallback');
+      if (monthlyRecords.isNotEmpty) {
+        locationCounter[regionLabel] = monthlyRecords.length;
+      }
+    }
+
+    return HomeDashboardSummary(
+      busiestWeekdays: _topItems(weekdayCounter),
+      topLocations: _topItems(locationCounter),
+      topDiseases: _topItems(diseaseCounter),
+    );
+  }
+
+  void _increaseCounter(Map<String, int> counter, String key) {
+    counter.update(key, (value) => value + 1, ifAbsent: () => 1);
+  }
+
+  List<DashboardMetricItem> _topItems(Map<String, int> counter, {int limit = 4}) {
+    final entries = counter.entries.toList()
+      ..sort((left, right) => right.value.compareTo(left.value));
+
+    return entries.take(limit).map((entry) {
+      return DashboardMetricItem(label: entry.key, value: entry.value);
+    }).toList();
+  }
+
+  String _normalizeDiseaseLabel(String? rawValue) {
+    if (rawValue == null) {
+      return '';
+    }
+
+    final normalized = rawValue
+        .replaceAll('\n', ' ')
+        .replaceAll(':', '.')
+        .trim();
+
+    if (normalized.isEmpty) {
+      return '';
+    }
+
+    final firstSentence = normalized
+        .split('.')
+        .map((item) => item.trim())
+        .firstWhere((item) => item.isNotEmpty, orElse: () => normalized);
+
+    return _titleCase(firstSentence);
+  }
+
+  String _titleCase(String value) {
+    return value
+        .split(' ')
+        .where((item) => item.isNotEmpty)
+        .map((item) {
+          final lower = item.toLowerCase();
+          return '${lower[0].toUpperCase()}${lower.substring(1)}';
+        })
+        .join(' ');
+  }
+
+  String _weekdayLabel(int weekday) {
+    switch (weekday) {
+      case DateTime.monday:
+        return AppStrings.t('weekday_mon');
+      case DateTime.tuesday:
+        return AppStrings.t('weekday_tue');
+      case DateTime.wednesday:
+        return AppStrings.t('weekday_wed');
+      case DateTime.thursday:
+        return AppStrings.t('weekday_thu');
+      case DateTime.friday:
+        return AppStrings.t('weekday_fri');
+      case DateTime.saturday:
+        return AppStrings.t('weekday_sat');
+      default:
+        return AppStrings.t('weekday_sun');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final profile = ref.watch(profileProvider);
+    final managedClientAsync = ref.watch(managedClientProvider);
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final appColors = context.appColors;
     final isDark = theme.brightness == Brightness.dark;
+    final roleLabel = profile.isVeterinarian
+        ? AppStrings.t('role_veterinarian')
+        : AppStrings.t('role_farmer');
 
     final menuItems = [
-      {
-        "image": "lib/images/Taureau.webp",
-        "key": "register_animal",
-        "color": const Color(0xFF43A047),
-        "bg": const Color(0xFFE8F5E9),
-      },
-      {
-        "icon": Icons.health_and_safety,
-        "key": "diagnosis",
-        "color": const Color(0xFF1E88E5),
-        "bg": const Color(0xFFE3F2FD),
-      },
-      {
-        "icon": Icons.pets,
-        "key": "history",
-        "color": const Color(0xFF8E24AA),
-        "bg": const Color(0xFFF3E5F5),
-      },
-      {
-        "icon": Icons.vaccines,
-        "key": "vaccines",
-        "color": const Color(0xFFE53935),
-        "bg": const Color(0xFFFFEBEE),
-      },
-      {
-        "icon": Icons.alarm,
-        "key": "notifications",
-        "color": const Color(0xFFF57C00),
-        "bg": const Color(0xFFFFF3E0),
-      },
+      _HomeMenuItem(
+        keyName: 'register_animal',
+        imagePath: 'lib/images/Taureau.webp',
+        foregroundColor: appColors.success,
+        backgroundColor:
+            Color.lerp(appColors.selectionBackground, appColors.success, 0.18)!,
+        cardColor:
+            Color.lerp(colorScheme.surface, appColors.selectionBackground, 0.82)!,
+      ),
+      _HomeMenuItem(
+        keyName: 'diagnosis',
+        icon: Icons.health_and_safety,
+        foregroundColor: colorScheme.secondary,
+        backgroundColor:
+            Color.lerp(colorScheme.secondaryContainer, colorScheme.secondary, 0.18)!,
+        cardColor:
+            Color.lerp(colorScheme.surface, colorScheme.secondaryContainer, 0.78)!,
+      ),
+      _HomeMenuItem(
+        keyName: 'history',
+        imagePath: AnimalConstants.livestockAssetPath,
+        foregroundColor: colorScheme.tertiary,
+        backgroundColor:
+            Color.lerp(colorScheme.tertiaryContainer, colorScheme.tertiary, 0.2)!,
+        cardColor:
+            Color.lerp(colorScheme.surface, colorScheme.tertiaryContainer, 0.78)!,
+      ),
+      _HomeMenuItem(
+        keyName: 'vaccines',
+        icon: Icons.vaccines,
+        foregroundColor: appColors.danger,
+        backgroundColor:
+            Color.lerp(colorScheme.errorContainer, appColors.danger, 0.14)!,
+        cardColor:
+            Color.lerp(colorScheme.surface, colorScheme.errorContainer, 0.76)!,
+      ),
+      _HomeMenuItem(
+        keyName: 'notifications',
+        icon: Icons.alarm,
+        foregroundColor: appColors.warning,
+        backgroundColor:
+            Color.lerp(colorScheme.surfaceContainerHighest, appColors.warning, 0.22)!,
+        cardColor: Color.lerp(
+          colorScheme.surface,
+          colorScheme.surfaceContainerHighest,
+          0.64,
+        )!,
+      ),
     ];
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(AppStrings.t("app_name")),
+        title: Text(AppStrings.t('app_name')),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: logout,
+          ),
+          PopupMenuButton<_HomeAppBarAction>(
+            icon: const Icon(Icons.more_vert),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            elevation: 6,
+            color: isDark ? appColors.cardDark : colorScheme.surface,
+            offset: const Offset(0, 56),
+            onSelected: _handleAppBarAction,
+            itemBuilder: (context) => [
+              PopupMenuItem<_HomeAppBarAction>(
+                value: _HomeAppBarAction.profile,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.person_outline,
+                      color: appColors.chipForeground,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      AppStrings.t('my_profile'),
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              PopupMenuItem<_HomeAppBarAction>(
+                value: _HomeAppBarAction.logout,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.logout,
+                      color: appColors.danger,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      AppStrings.t('logout'),
+                      style: TextStyle(
+                        color: appColors.danger,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -166,16 +597,22 @@ class _HomePageState extends ConsumerState<HomePage> {
           children: [
             Container(
               width: double.infinity,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF1B5E20), Color(0xFF43A047)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.only(
+              decoration: BoxDecoration(
+                color: isDark ? appColors.cardDark : colorScheme.surface,
+                borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(32),
                   bottomRight: Radius.circular(32),
                 ),
+                border: Border.all(
+                  color: appColors.chipForeground.withValues(alpha: 0.18),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: appColors.lightShadow,
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
               ),
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
               child: Row(
@@ -183,8 +620,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   GestureDetector(
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(
-                          builder: (_) => const ProfilePage()),
+                      MaterialPageRoute(builder: (_) => const ProfilePage()),
                     ),
                     child: Stack(
                       children: [
@@ -192,27 +628,31 @@ class _HomePageState extends ConsumerState<HomePage> {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(
-                                color: Colors.white, width: 2),
+                              color: appColors.chipForeground,
+                              width: 2,
+                            ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.2),
+                                color: appColors.darkShadow.withValues(alpha: 0.12),
                                 blurRadius: 8,
                                 offset: const Offset(0, 4),
-                              )
+                              ),
                             ],
                           ),
                           child: CircleAvatar(
                             radius: 36,
-                            backgroundColor: Colors.white24,
-                            backgroundImage:
-                                profile.avatarUrl != null &&
-                                        profile.avatarUrl!.isNotEmpty
-                                    ? NetworkImage(profile.avatarUrl!)
-                                    : null,
+                            backgroundColor: appColors.whiteOverlay,
+                            backgroundImage: profile.avatarUrl != null &&
+                                    profile.avatarUrl!.isNotEmpty
+                                ? NetworkImage(profile.avatarUrl!)
+                                : null,
                             child: profile.avatarUrl == null ||
                                     profile.avatarUrl!.isEmpty
-                                ? const Icon(Icons.person,
-                                    size: 36, color: Colors.white)
+                                ? Icon(
+                                    Icons.person,
+                                    size: 36,
+                                    color: appColors.chipForeground,
+                                  )
                                 : null,
                           ),
                         ),
@@ -221,12 +661,18 @@ class _HomePageState extends ConsumerState<HomePage> {
                           right: 0,
                           child: Container(
                             padding: const EdgeInsets.all(3),
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
+                            decoration: BoxDecoration(
+                              color: isDark ? appColors.cardDark : colorScheme.surface,
                               shape: BoxShape.circle,
+                              border: Border.all(
+                                color: appColors.chipForeground.withValues(alpha: 0.3),
+                              ),
                             ),
-                            child: const Icon(Icons.edit,
-                                size: 12, color: Color(0xFF2E7D32)),
+                            child: Icon(
+                              Icons.edit,
+                              size: 12,
+                              color: appColors.chipForeground,
+                            ),
                           ),
                         ),
                       ],
@@ -238,18 +684,40 @@ class _HomePageState extends ConsumerState<HomePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          AppStrings.t("hello"),
-                          style: const TextStyle(
-                              color: Colors.white70, fontSize: 14),
+                          AppStrings.t('hello'),
+                          style: TextStyle(
+                            color: appColors.mutedForeground,
+                            fontSize: 14,
+                          ),
                         ),
                         Text(
                           profile.name,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: colorScheme.onSurface,
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                           ),
                           overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: appColors.chipForeground.withValues(alpha: 0.35),
+                            ),
+                          ),
+                          child: Text(
+                            roleLabel,
+                            style: TextStyle(
+                              color: appColors.chipForeground,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -257,12 +725,32 @@ class _HomePageState extends ConsumerState<HomePage> {
                 ],
               ),
             ).animate().fadeIn(duration: 500.ms).slideY(begin: -0.1),
+            if (profile.isVeterinarian)
+              managedClientAsync.when(
+                loading: () => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
+                data: (managedClientState) {
+                  _promptInitialManagedClientIfNeeded(managedClientState);
+                  return VeterinarianClientPanel(
+                    clients: managedClientState.clients,
+                    activeClientId: managedClientState.activeClientId,
+                    onClientChanged: (clientId) {
+                      if (clientId == null) {
+                        return;
+                      }
+                      ref.read(managedClientProvider.notifier).setActiveClient(clientId);
+                    },
+                    onAddClient: _openManagedClientDialog,
+                  );
+                },
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
               child: Text(
-                AppStrings.t("main_panel"),
-                style: theme.textTheme.titleLarge
-                    ?.copyWith(fontWeight: FontWeight.bold),
+                AppStrings.t('main_panel'),
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ).animate().fadeIn(delay: 200.ms),
             Padding(
@@ -274,21 +762,16 @@ class _HomePageState extends ConsumerState<HomePage> {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 children: menuItems.asMap().entries.map((entry) {
-                  final i = entry.key;
+                  final index = entry.key;
                   final item = entry.value;
-                  return _buildMenuCard(
-                    icon: item["icon"] as IconData?,
-                    imagePath: item["image"] as String?,
-                    itemKey: item["key"] as String,
-                    color: item["color"] as Color,
-                    bg: item["bg"] as Color,
+
+                  return _MenuCard(
+                    item: item,
                     isDark: isDark,
+                    onTap: () => _onMenuTap(item.keyName),
                   )
                       .animate()
-                      .fadeIn(
-                        delay: (200 + i * 80).ms,
-                        duration: 400.ms,
-                      )
+                      .fadeIn(delay: (200 + index * 80).ms, duration: 400.ms)
                       .scale(
                         begin: const Offset(0.85, 0.85),
                         end: const Offset(1, 1),
@@ -296,33 +779,107 @@ class _HomePageState extends ConsumerState<HomePage> {
                 }).toList(),
               ),
             ),
+            FutureBuilder<HomeDashboardSummary>(
+              future: _loadDashboardSummary(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const SizedBox.shrink();
+                }
+
+                return HomeDashboardSection(summary: snapshot.data!);
+              },
+            ),
             const SizedBox(height: 24),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildMenuCard({
-    IconData? icon,
-    String? imagePath,
-    required String itemKey,
-    required Color color,
-    required Color bg,
-    required bool isDark,
-  }) {
+enum _HomeAppBarAction {
+  profile,
+  logout,
+}
+
+class _ManagedClientDraft {
+  final String name;
+  final String location;
+
+  const _ManagedClientDraft({
+    required this.name,
+    required this.location,
+  });
+}
+
+class _HomeMenuItem {
+  final String keyName;
+  final IconData? icon;
+  final String? imagePath;
+  final Color foregroundColor;
+  final Color backgroundColor;
+  final Color cardColor;
+
+  const _HomeMenuItem({
+    required this.keyName,
+    required this.foregroundColor,
+    required this.backgroundColor,
+    required this.cardColor,
+    this.icon,
+    this.imagePath,
+  });
+}
+
+class _MenuCard extends StatelessWidget {
+  final _HomeMenuItem item;
+  final bool isDark;
+  final VoidCallback onTap;
+
+  const _MenuCard({
+    required this.item,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final appColors = context.appColors;
+    final theme = Theme.of(context);
+    final cardSurfaceColor = isDark ? appColors.cardDark : item.cardColor;
+    final cardBorderColor = item.foregroundColor.withValues(
+      alpha: isDark ? 0.18 : 0.14,
+    );
+    final cardShadowColor = item.foregroundColor.withValues(
+      alpha: isDark ? 0.18 : 0.22,
+    );
+    final cardHighlightColor = isDark
+        ? cardSurfaceColor
+        : Color.lerp(item.cardColor, theme.colorScheme.surface, 0.42)!;
+
     return GestureDetector(
-      onTap: () => _onMenuTap(itemKey),
+      onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          color: isDark ? cardSurfaceColor : null,
+          gradient: isDark
+              ? null
+              : LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    cardHighlightColor,
+                    cardSurfaceColor,
+                  ],
+                ),
           borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: cardBorderColor),
           boxShadow: [
             BoxShadow(
-              color: color.withValues(alpha: 0.18),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
+              color: cardShadowColor,
+              blurRadius: 20,
+              spreadRadius: 1,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
@@ -332,28 +889,30 @@ class _HomePageState extends ConsumerState<HomePage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isDark ? color.withValues(alpha: 0.15) : bg,
+                color: isDark
+                    ? item.foregroundColor.withValues(alpha: 0.15)
+                    : item.backgroundColor,
                 shape: BoxShape.circle,
               ),
-              child: imagePath != null
+              child: item.imagePath != null
                   ? ClipOval(
                       child: Image.asset(
-                        imagePath,
+                        item.imagePath!,
                         width: 40,
                         height: 40,
                         fit: BoxFit.cover,
                       ),
                     )
-                  : Icon(icon, size: 32, color: color),
+                  : Icon(item.icon, size: 32, color: item.foregroundColor),
             ),
             const SizedBox(height: 12),
             Text(
-              AppStrings.t(itemKey),
+              AppStrings.t(item.keyName),
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 13,
-                color: isDark ? Colors.white : Colors.grey[800],
+                color: isDark ? appColors.onSolid : appColors.subduedForeground,
               ),
             ),
           ],

@@ -1,15 +1,9 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // Importa Riverpod
-
-// 1. Define el Provider aquí para que sea accesible globalmente
-final networkInfoProvider = Provider<NetworkInfo>((ref) {
-  return NetworkInfo(Connectivity());
-});
 
 class NetworkInfo {
   final Connectivity connectivity;
 
-  NetworkInfo(this.connectivity);
+  const NetworkInfo(this.connectivity);
 
   Stream<bool> get onConnectivityChanged {
     return connectivity.onConnectivityChanged.map(

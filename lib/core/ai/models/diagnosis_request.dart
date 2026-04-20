@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-/// Representa toda la evidencia clínica disponible para que el motor
-/// pueda emitir un diagnóstico sin depender de la fuente de entrada.
+import '../../../geolocation/domain/entities/geolocation_context_entity.dart';
+
 class DiagnosisRequest {
   final String animalId;
   final String userId;
@@ -18,13 +18,14 @@ class DiagnosisRequest {
   final Uint8List? imageBytes;
   final String? imageUrl;
   final List<String> visualFindings;
+  final GeolocationContextEntity? geolocationContext;
   final DateTime observedAt;
 
   DiagnosisRequest({
     required this.animalId,
     required this.userId,
     required this.animalName,
-    this.species = 'bovino',
+    this.species = 'bovine',
     this.breed,
     this.ageInYears,
     this.clinicalQuestion = '',
@@ -35,6 +36,7 @@ class DiagnosisRequest {
     this.imageBytes,
     this.imageUrl,
     this.visualFindings = const [],
+    this.geolocationContext,
     DateTime? observedAt,
   }) : observedAt = observedAt ?? DateTime.now();
 
@@ -63,6 +65,7 @@ class DiagnosisRequest {
     Uint8List? imageBytes,
     String? imageUrl,
     List<String>? visualFindings,
+    GeolocationContextEntity? geolocationContext,
     DateTime? observedAt,
   }) {
     return DiagnosisRequest(
@@ -80,11 +83,11 @@ class DiagnosisRequest {
       imageBytes: imageBytes ?? this.imageBytes,
       imageUrl: imageUrl ?? this.imageUrl,
       visualFindings: visualFindings ?? this.visualFindings,
+      geolocationContext: geolocationContext ?? this.geolocationContext,
       observedAt: observedAt ?? this.observedAt,
     );
   }
 
-  /// Serializa la evidencia para enviarla a Supabase Edge Functions.
   Map<String, dynamic> toJson() {
     return {
       'animal_id': animalId,
@@ -101,6 +104,19 @@ class DiagnosisRequest {
       'image_base64': imageBytes == null ? null : base64Encode(imageBytes!),
       'image_url': imageUrl,
       'visual_findings': visualFindings,
+      'geolocation_context': geolocationContext == null
+          ? null
+          : {
+              'latitude': geolocationContext!.latitude,
+              'longitude': geolocationContext!.longitude,
+              'country': geolocationContext!.country,
+              'country_code': geolocationContext!.countryCode,
+              'administrative_area': geolocationContext!.administrativeArea,
+              'locality': geolocationContext!.locality,
+              'climate_zone': geolocationContext!.climateZone,
+              'epidemiology_summary': geolocationContext!.epidemiologySummary,
+              'common_disease_keys': geolocationContext!.commonDiseaseKeys,
+            },
       'observed_at': observedAt.toIso8601String(),
     };
   }

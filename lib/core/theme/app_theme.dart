@@ -1,149 +1,54 @@
 import 'package:flutter/material.dart';
 
+import 'app_theme_colors.dart';
+import 'app_theme_factory.dart';
+
+export 'app_theme_colors.dart';
+
 class AppTheme {
   static const primaryColor = Color(0xFF2E7D32);
   static const accentColor = Color(0xFF66BB6A);
+  static const onSolidColor = Colors.white;
 
-  static ThemeData lightTheme = ThemeData(
-    brightness: Brightness.light,
-    primaryColor: primaryColor,
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: primaryColor,
-      brightness: Brightness.light,
-    ),
-    scaffoldBackgroundColor: const Color(0xFFF5F6FA),
-    appBarTheme: const AppBarTheme(
-      elevation: 0,
-      backgroundColor: primaryColor,
-      foregroundColor: Colors.white,
-      centerTitle: true,
-      titleTextStyle: TextStyle(
-        color: Colors.white,
-        fontSize: 20,
-        fontWeight: FontWeight.bold,
-        letterSpacing: 0.5,
-      ),
-    ),
-    cardTheme: CardThemeData(
-      elevation: 4,
-      shadowColor: Colors.black12,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
-    ),
-    inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide.none,
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFFDEE2E6)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: primaryColor, width: 2),
-      ),
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-    ),
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
-        elevation: 3,
-        shadowColor: primaryColor.withValues(alpha: 0.4),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        textStyle: const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 15,
-          letterSpacing: 0.5,
-        ),
-      ),
-    ),
-    floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      backgroundColor: primaryColor,
-      foregroundColor: Colors.white,
-      elevation: 6,
-    ),
-    listTileTheme: const ListTileThemeData(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.all(Radius.circular(12)),
-      ),
-    ),
+  static const themeColors = AppThemeColors(
+    accent: accentColor,
+    onSolid: onSolidColor,
+    appBarDark: Color(0xFF1B5E20),
+    cardDark: Color(0xFF1E1E1E),
+    scaffoldBackgroundLight: Color(0xFFF5F6FA),
+    inputBorderLight: Color(0xFFDEE2E6),
+    inputBorderDark: Color(0xFF3A3A3A),
+    authBackgroundLight: Color(0xFFF1F8F5),
+    authBackgroundDark: Color(0xFF121212),
+    inputFillDark: Color(0xFF2A2A2A),
+    selectionBackground: Color(0xFFE8F5E9),
+    chipForeground: primaryColor,
+    mutedForeground: Color(0xFF757575),
+    subduedForeground: Color(0xFF616161),
+    whiteOverlay: Color(0x3DFFFFFF),
+    danger: Color(0xFFE53935),
+    warning: Color(0xFFF57C00),
+    success: Color(0xFF43A047),
+    heroGradientStart: Color(0xFF1B5E20),
+    heroGradientEnd: Color(0xFF43A047),
+    scannerAccent: primaryColor,
+    scannerBackground: Color(0xFFF4FAF5),
+    scannerTarget: Color(0xFF34C759),
+    cameraOverlay: Color(0x8C000000),
+    medicalHeaderStart: primaryColor,
+    medicalHeaderEnd: accentColor,
+    lightShadow: Color(0x1F000000),
+    darkShadow: Color(0x61000000),
   );
 
-  static ThemeData darkTheme = ThemeData(
-    brightness: Brightness.dark,
+  static final AppThemeFactory _factory = AppThemeFactory(themeColors);
+
+  static ThemeData lightTheme = _factory.buildLightTheme(
     primaryColor: primaryColor,
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: primaryColor,
-      brightness: Brightness.dark,
-    ),
-    scaffoldBackgroundColor: const Color(0xFF121212),
-    appBarTheme: const AppBarTheme(
-      elevation: 0,
-      backgroundColor: Color(0xFF1B5E20),
-      foregroundColor: Colors.white,
-      centerTitle: true,
-      titleTextStyle: TextStyle(
-        color: Colors.white,
-        fontSize: 20,
-        fontWeight: FontWeight.bold,
-        letterSpacing: 0.5,
-      ),
-    ),
-    cardTheme: CardThemeData(
-      elevation: 4,
-      color: const Color(0xFF1E1E1E),
-      shadowColor: Colors.black38,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
-    ),
-    inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      fillColor: const Color(0xFF2A2A2A),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide.none,
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFF3A3A3A)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: accentColor, width: 2),
-      ),
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-    ),
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
-        elevation: 3,
-        shadowColor: primaryColor.withValues(alpha: 0.4),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        textStyle: const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 15,
-          letterSpacing: 0.5,
-        ),
-      ),
-    ),
-    floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      backgroundColor: primaryColor,
-      foregroundColor: Colors.white,
-      elevation: 6,
-    ),
+  );
+
+  static ThemeData darkTheme = _factory.buildDarkTheme(
+    primaryColor: primaryColor,
+    accentColor: accentColor,
   );
 }

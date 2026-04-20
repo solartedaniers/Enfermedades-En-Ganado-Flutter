@@ -134,13 +134,13 @@ class LocalDiagnosisApi {
           _t('diagnosis_action_separate_milk'),
         ]);
         break;
-      case 'fiebre aftosa':
+      case 'foot_and_mouth_disease':
         actions.addAll([
           _t('diagnosis_action_isolate_animal'),
           _t('diagnosis_action_avoid_movement'),
         ]);
         break;
-      case 'neumonia bovina':
+      case 'bovine_pneumonia':
         actions.addAll([
           _t('diagnosis_action_reduce_stress'),
           _t('diagnosis_action_watch_breathing'),
@@ -167,12 +167,12 @@ class LocalDiagnosisApi {
           _t('diagnosis_treatment_mastitis_2'),
           _t('diagnosis_treatment_mastitis_3'),
         ];
-      case 'fiebre aftosa':
+      case 'foot_and_mouth_disease':
         return [
           _t('diagnosis_treatment_foot_mouth_1'),
           _t('diagnosis_treatment_foot_mouth_2'),
         ];
-      case 'neumonia bovina':
+      case 'bovine_pneumonia':
         return [
           _t('diagnosis_treatment_pneumonia_1'),
           _t('diagnosis_treatment_pneumonia_2'),
@@ -189,7 +189,7 @@ class LocalDiagnosisApi {
 
   List<String> _buildIsolationMeasures(String? diseaseKey) {
     switch (diseaseKey) {
-      case 'fiebre aftosa':
+      case 'foot_and_mouth_disease':
         return [
           _t('diagnosis_isolation_1'),
           _t('diagnosis_isolation_2'),
@@ -214,7 +214,7 @@ class LocalDiagnosisApi {
       plan.add(_t('diagnosis_monitor_mastitis'));
     }
 
-    if (diseaseKey == 'neumonia bovina') {
+    if (diseaseKey == 'bovine_pneumonia') {
       plan.add(_t('diagnosis_monitor_pneumonia'));
     }
 
@@ -231,7 +231,7 @@ class LocalDiagnosisApi {
     if ((temperature ?? 0) >= 40.0) {
       base += 12;
     }
-    if (diseaseKey == 'fiebre aftosa') {
+    if (diseaseKey == 'foot_and_mouth_disease') {
       base += 15;
     }
     return base.clamp(20, 95);
@@ -242,23 +242,24 @@ class LocalDiagnosisApi {
     if ((temperature ?? 0) >= 39.8) {
       base += 10;
     }
-    if (diseaseKey == 'fiebre aftosa' || diseaseKey == 'neumonia bovina') {
+    if (diseaseKey == 'foot_and_mouth_disease' ||
+        diseaseKey == 'bovine_pneumonia') {
       base += 15;
     }
     return base.clamp(25, 98);
   }
 
   bool _isContagious(String? diseaseKey) {
-    return diseaseKey == 'fiebre aftosa';
+    return diseaseKey == 'foot_and_mouth_disease';
   }
 
   String _formatDiseaseName(String diseaseKey) {
     switch (diseaseKey) {
       case 'mastitis':
         return _t('diagnosis_name_mastitis');
-      case 'fiebre aftosa':
+      case 'foot_and_mouth_disease':
         return _t('diagnosis_name_foot_mouth');
-      case 'neumonia bovina':
+      case 'bovine_pneumonia':
         return _t('diagnosis_name_pneumonia');
       case 'dermatofitosis':
         return _t('diagnosis_name_dermatophytosis');

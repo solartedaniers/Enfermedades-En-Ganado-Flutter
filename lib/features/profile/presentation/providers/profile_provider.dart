@@ -1,35 +1,52 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../core/utils/app_strings.dart';
+
+import '../../../../core/constants/app_json_keys.dart';
+import '../../../../core/constants/app_user_type.dart';
+import '../../../../core/services/local_preferences_service.dart';
 import '../../../../core/services/offline_auth_service.dart';
+import '../../../../core/utils/app_strings.dart';
 
 class ProfileState {
+  final String? userId;
   final String name;
+  final String email;
   final String language;
+  final AppUserType userType;
   final ThemeMode themeMode;
   final String? avatarUrl;
   final bool isLoaded;
 
-  ProfileState({
+  const ProfileState({
+    required this.userId,
     required this.name,
+    required this.email,
     required this.language,
+    required this.userType,
     required this.themeMode,
     this.avatarUrl,
     this.isLoaded = false,
   });
 
   ProfileState copyWith({
+    String? userId,
+    bool clearUserId = false,
     String? name,
+    String? email,
     String? language,
+    AppUserType? userType,
     ThemeMode? themeMode,
     String? avatarUrl,
     bool? isLoaded,
     bool clearAvatar = false,
   }) {
     return ProfileState(
+      userId: clearUserId ? null : userId ?? this.userId,
       name: name ?? this.name,
+      email: email ?? this.email,
       language: language ?? this.language,
+      userType: userType ?? this.userType,
       themeMode: themeMode ?? this.themeMode,
       avatarUrl: clearAvatar ? null : avatarUrl ?? this.avatarUrl,
       isLoaded: isLoaded ?? this.isLoaded,
@@ -37,20 +54,39 @@ class ProfileState {
   }
 
   factory ProfileState.empty() => ProfileState(
-        name: "Usuario",
-        language: "es",
+        userId: null,
+        name: AppStrings.t('default_username'),
+        email: '',
+        language: 'es',
+        userType: AppUserType.farmer,
         themeMode: ThemeMode.system,
         avatarUrl: null,
         isLoaded: false,
       );
+
+  bool get isVeterinarian => userType.isVeterinarian;
 }
 
 class ProfileNotifier extends StateNotifier<ProfileState> {
-  ProfileNotifier() : super(ProfileState.empty()) {
+  ProfileNotifier({
+    required LocalPreferencesSnapshot initialPreferences,
+  }) : super(
+         ProfileState.empty().copyWith(
+           language: initialPreferences.language,
+           themeMode: initialPreferences.themeMode,
+         ),
+       ) {
     _listenToAuthChanges();
   }
 
   final _supabase = Supabase.instance.client;
+
+  String? get _preferenceScope {
+    return LocalPreferencesService.scopeFromIdentity(
+      email: state.email,
+      userId: state.userId,
+    );
+  }
 
   void _listenToAuthChanges() {
     _supabase.auth.onAuthStateChange.listen((data) async {
@@ -58,9 +94,14 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       if (event == AuthChangeEvent.signedIn) {
         await _loadFromSupabase();
       } else if (event == AuthChangeEvent.signedOut) {
-        await AppStrings.load('es');
-        await OfflineAuthService.clearSession();
-        state = ProfileState.empty();
+        final currentLanguage = state.language;
+        final currentThemeMode = state.themeMode;
+        await AppStrings.load(currentLanguage);
+        state = ProfileState.empty().copyWith(
+          language: currentLanguage,
+          themeMode: currentThemeMode,
+          isLoaded: true,
+        );
       }
     });
 
@@ -71,60 +112,88 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
 
   Future<void> _loadFromSupabase() async {
     try {
-      final user = _supabase.auth.currentUser;
-      if (user == null) {
-        await AppStrings.load('es');
-        state = ProfileState.empty();
+      final currentUser = _supabase.auth.currentUser;
+      final scopedPreferences = await LocalPreferencesService.load(
+        scope: LocalPreferencesService.scopeFromIdentity(
+          email: currentUser?.email,
+          userId: currentUser?.id,
+        ),
+      );
+      final currentLanguage = scopedPreferences.language;
+      final currentThemeMode = scopedPreferences.themeMode;
+
+      if (currentUser == null) {
+        await AppStrings.load(currentLanguage);
+        state = ProfileState.empty().copyWith(
+          language: currentLanguage,
+          themeMode: currentThemeMode,
+          isLoaded: true,
+        );
         return;
       }
 
       final data = await _supabase
           .from('profiles')
-          .select('username, avatar_url, language, theme')
-          .eq('id', user.id)
+          .select('${AppJsonKeys.username}, avatar_url, ${AppJsonKeys.userType}')
+          .eq('id', currentUser.id)
           .maybeSingle();
 
+      await AppStrings.load(currentLanguage);
+
       if (data == null) {
-        final meta = user.userMetadata;
+        final meta = currentUser.userMetadata;
         final name =
-            (meta?['username'] as String?) ?? 'Usuario';
-        await AppStrings.load('es');
+            (meta?[AppJsonKeys.username] as String?) ??
+                AppStrings.t('default_username');
+        final userType = AppUserTypeCodec.fromValue(
+          meta?[AppJsonKeys.userType] as String?,
+        );
+
         state = ProfileState(
+          userId: currentUser.id,
           name: name,
-          language: 'es',
-          themeMode: ThemeMode.system,
+          email: currentUser.email ?? '',
+          language: currentLanguage,
+          userType: userType,
+          themeMode: currentThemeMode,
           avatarUrl: null,
           isLoaded: true,
         );
         return;
       }
 
-      final lang = (data['language'] as String?) ?? 'es';
-      final theme = (data['theme'] as String?) ?? 'system';
-      final name = (data['username'] as String?) ?? 'Usuario';
+      final userType = AppUserTypeCodec.fromValue(
+        data[AppJsonKeys.userType] as String?,
+      );
+      final name =
+          (data[AppJsonKeys.username] as String?) ??
+              AppStrings.t('default_username');
       final avatar = data['avatar_url'] as String?;
 
-      await AppStrings.load(lang);
-
-      // Guarda sesión offline
       await OfflineAuthService.saveSession(
-        userId: user.id,
+        userId: currentUser.id,
         userName: name,
+        userType: userType.storageValue,
         avatarUrl: avatar,
-        language: lang,
-        theme: theme,
       );
 
       state = ProfileState(
+        userId: currentUser.id,
         name: name,
+        email: currentUser.email ?? '',
         avatarUrl: avatar,
-        language: lang,
-        themeMode: _themeFromString(theme),
+        language: currentLanguage,
+        userType: userType,
+        themeMode: currentThemeMode,
         isLoaded: true,
       );
-    } catch (e) {
-      await AppStrings.load('es');
-      state = ProfileState.empty().copyWith(isLoaded: true);
+    } catch (_) {
+      await AppStrings.load(state.language);
+      state = ProfileState.empty().copyWith(
+        language: state.language,
+        themeMode: state.themeMode,
+        isLoaded: true,
+      );
     }
   }
 
@@ -132,9 +201,12 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
 
   Future<void> _saveToSupabase(Map<String, dynamic> data) async {
     try {
-      final user = _supabase.auth.currentUser;
-      if (user == null) return;
-      await _supabase.from('profiles').update(data).eq('id', user.id);
+      final currentUser = _supabase.auth.currentUser;
+      if (currentUser == null) {
+        return;
+      }
+
+      await _supabase.from('profiles').update(data).eq('id', currentUser.id);
     } catch (_) {}
   }
 
@@ -143,15 +215,21 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
     await _saveToSupabase({'username': name});
   }
 
-  Future<void> changeLanguage(String lang) async {
-    await AppStrings.load(lang);
-    state = state.copyWith(language: lang);
-    await _saveToSupabase({'language': lang});
+  Future<void> changeLanguage(String language) async {
+    await AppStrings.load(language);
+    state = state.copyWith(language: language);
+    await LocalPreferencesService.saveLanguage(
+      language,
+      scope: _preferenceScope,
+    );
   }
 
   Future<void> changeTheme(ThemeMode mode) async {
     state = state.copyWith(themeMode: mode);
-    await _saveToSupabase({'theme': _themeToString(mode)});
+    await LocalPreferencesService.saveThemeMode(
+      mode,
+      scope: _preferenceScope,
+    );
   }
 
   Future<void> changeAvatar(String url) async {
@@ -159,30 +237,67 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
     await _saveToSupabase({'avatar_url': url});
   }
 
-  ThemeMode _themeFromString(String value) {
-    switch (value) {
-      case 'light':
-        return ThemeMode.light;
-      case 'dark':
-        return ThemeMode.dark;
-      default:
-        return ThemeMode.system;
+  Future<void> cacheOfflineAccess({
+    required String email,
+    required String password,
+  }) async {
+    final currentUser = _supabase.auth.currentUser;
+    if (currentUser == null) {
+      return;
     }
+
+    await OfflineAuthService.saveOfflineAccess(
+      userId: currentUser.id,
+      userName: state.name,
+      userType: state.userType.storageValue,
+      email: email,
+      password: password,
+      avatarUrl: state.avatarUrl,
+    );
   }
 
-  String _themeToString(ThemeMode mode) {
-    switch (mode) {
-      case ThemeMode.light:
-        return 'light';
-      case ThemeMode.dark:
-        return 'dark';
-      default:
-        return 'system';
+  Future<bool> activateOfflineSession({
+    required String email,
+    required String password,
+  }) async {
+    final offlineSnapshot = await OfflineAuthService.authenticateOffline(
+      email: email,
+      password: password,
+    );
+
+    if (offlineSnapshot == null || offlineSnapshot['userId'] == null) {
+      return false;
     }
+
+    final scopedPreferences = await LocalPreferencesService.load(
+      scope: LocalPreferencesService.scopeFromIdentity(email: email),
+    );
+    await AppStrings.load(scopedPreferences.language);
+
+    state = state.copyWith(
+      userId: offlineSnapshot['userId'],
+      name: offlineSnapshot['userName'] ?? AppStrings.t('default_username'),
+      email: offlineSnapshot['email'] ?? email.trim(),
+      language: scopedPreferences.language,
+      themeMode: scopedPreferences.themeMode,
+      userType: AppUserTypeCodec.fromValue(offlineSnapshot['userType']),
+      avatarUrl: offlineSnapshot['avatarUrl'],
+      isLoaded: true,
+    );
+
+    return true;
   }
 }
 
-final profileProvider =
-    StateNotifierProvider<ProfileNotifier, ProfileState>(
-  (ref) => ProfileNotifier(),
+final profilePreferencesProvider = Provider<LocalPreferencesSnapshot>(
+  (ref) => const LocalPreferencesSnapshot(
+    language: LocalPreferencesService.defaultLanguage,
+    themeMode: LocalPreferencesService.defaultThemeMode,
+  ),
+);
+
+final profileProvider = StateNotifierProvider<ProfileNotifier, ProfileState>(
+  (ref) => ProfileNotifier(
+    initialPreferences: ref.watch(profilePreferencesProvider),
+  ),
 );

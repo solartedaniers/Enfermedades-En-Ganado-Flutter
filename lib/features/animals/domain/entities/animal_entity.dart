@@ -3,7 +3,7 @@ class AnimalEntity {
   final String userId;
   final String name;
   final String breed;
-  final int age; // Meses
+  final int age;
   final String ageLabel;
   final double? weight;
   final double? temperature;
@@ -28,14 +28,44 @@ class AnimalEntity {
     this.imageUrl,
     this.profileImageUrl,
   })  : symptoms = symptoms ?? '',
-        ageLabel = ageLabel ?? defaultAgeLabel(age);
+        ageLabel = ageLabel ?? '';
 
-  static String defaultAgeLabel(int months) {
-    if (months < 1) return 'Recién nacido';
-    if (months < 12) {
-      return months == 1 ? '1 mes' : '$months meses';
-    }
-    final years = months ~/ 12;
-    return years == 1 ? '1 año' : '$years años';
+  AnimalEntity copyWith({
+    String? id,
+    String? userId,
+    String? name,
+    String? breed,
+    int? age,
+    String? ageLabel,
+    double? weight,
+    bool clearWeight = false,
+    double? temperature,
+    bool clearTemperature = false,
+    String? symptoms,
+    String? imageUrl,
+    bool clearImageUrl = false,
+    String? profileImageUrl,
+    bool clearProfileImageUrl = false,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return AnimalEntity(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      name: name ?? this.name,
+      breed: breed ?? this.breed,
+      age: age ?? this.age,
+      ageLabel: ageLabel ?? this.ageLabel,
+      symptoms: symptoms ?? this.symptoms,
+      weight: clearWeight ? null : (weight ?? this.weight),
+      temperature:
+          clearTemperature ? null : (temperature ?? this.temperature),
+      imageUrl: clearImageUrl ? null : (imageUrl ?? this.imageUrl),
+      profileImageUrl: clearProfileImageUrl
+          ? null
+          : (profileImageUrl ?? this.profileImageUrl),
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
   }
 }
