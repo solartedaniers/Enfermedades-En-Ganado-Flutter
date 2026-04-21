@@ -393,15 +393,15 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       );
 
       try {
+        final diagnosisSummary = report.primaryDiagnosis.trim().isNotEmpty
+            ? report.primaryDiagnosis.trim()
+            : report.diagnosticStatement.trim();
+
         await Supabase.instance.client.from('animal_diagnostics').insert({
           'id': const Uuid().v4(),
           'animal_id': animal.id,
-          'user_id': currentUser.id,
-          'animal_name': animal.name,
-          'primary_diagnosis': report.primaryDiagnosis,
-          'diagnostic_statement': report.diagnosticStatement,
+          'diagnosis_summary': diagnosisSummary,
           'report_url': reportUrl,
-          'image_url': animal.imageUrl,
           'created_at': report.generatedAt.toIso8601String(),
         });
       } on PostgrestException catch (error) {
