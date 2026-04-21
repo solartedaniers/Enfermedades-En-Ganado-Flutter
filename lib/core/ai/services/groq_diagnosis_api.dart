@@ -108,14 +108,17 @@ class GroqDiagnosisApi {
       "findings": [{"label": "síntoma", "source": "visual", "confidence": 0.9, "interpretation": "significado"}],
       "differential_diagnoses": ["enf1", "enf2"],
       "immediate_actions": ["accion1"],
-      "treatment_protocol": ["paso1"],
+      "treatment_protocol": ["medicamento o principio activo, dosis, via, frecuencia y duracion"],
       "isolation_measures": ["medida1"],
       "monitoring_plan": ["plan1"]
-    }''';
+    }
+    En treatment_protocol incluye medicamento o principio activo, dosis, via, frecuencia y duracion cuando sea seguro sugerirlos.
+    Si no es seguro indicar una dosis exacta, dilo claramente y recomienda validarla con un veterinario.''';
   }
 
   String _buildCasePrompt(DiagnosisRequest request) {
     return '''Analiza el siguiente caso clínico:
+    - Nombre del animal: ${request.animalName}
     - Especie: ${request.species}
     - Síntomas reportados: ${request.reportedSymptoms.join(", ")}
     - Hallazgos visuales: ${request.visualFindings.join(", ")}

@@ -163,7 +163,9 @@ function buildGeminiPayload(body: Record<string, unknown>) {
           text:
             'Eres AgroVet AI, un asistente clinico veterinario para ganado bovino. ' +
             'Debes razonar sintomas y, si existe, imagen. Responde solo un JSON valido. ' +
-            'Si la evidencia es insuficiente, entrega un resultado prudente y orientativo.',
+            'Si la evidencia es insuficiente, entrega un resultado prudente y orientativo. ' +
+            'En treatment_protocol incluye, cuando sea posible, medicamento o principio activo, dosis, via, frecuencia y duracion. ' +
+            'Si no es seguro sugerir una dosis exacta, indicalo claramente y recomienda validarla con un veterinario.',
         },
       ],
     },
@@ -221,6 +223,8 @@ Reglas:
 - No inventes enfermedades ni tratamientos cerrados como si fueran confirmados.
 - Las acciones deben ser orientativas y prudentes para una app estudiantil veterinaria.
 - Usa el contexto geografico solo como apoyo epidemiologico y no como evidencia unica.
+- En treatment_protocol incluye medicamento o principio activo, dosis, via, frecuencia y duracion cuando sea posible.
+- Si una dosis exacta no es segura, indicalo y sugiere confirmarla con un veterinario.
 `.trim();
 }
 
