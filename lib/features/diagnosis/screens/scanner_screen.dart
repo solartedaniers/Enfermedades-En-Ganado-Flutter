@@ -18,6 +18,7 @@ import '../../../core/utils/app_strings.dart';
 import '../../../geolocation/presentation/providers/geolocation_provider.dart';
 import '../../animals/domain/constants/animal_constants.dart';
 import '../../animals/domain/entities/animal_entity.dart';
+import '../../animals/presentation/pages/add_animal_page.dart';
 import '../../animals/presentation/providers/animal_provider.dart';
 import '../../medical/data/models/medical_record_model.dart';
 import '../../medical/presentation/pages/medical_history_page.dart';
@@ -111,6 +112,27 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       _prefillFromAnimal(_selectedAnimal!);
     }
     return animals;
+  }
+
+  Future<void> _openAddAnimalFlow() async {
+    final createdAnimal = await Navigator.of(context).push<AnimalEntity>(
+      MaterialPageRoute(builder: (_) => const AddAnimalPage()),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    ref.invalidate(animalsListProvider);
+    ref.invalidate(rawAnimalsListProvider);
+
+    setState(() {
+      _animalsFuture = _loadAnimals();
+      if (createdAnimal != null) {
+        _selectedAnimal = createdAnimal;
+        _prefillFromAnimal(createdAnimal);
+      }
+    });
   }
 
   void _prefillFromAnimal(AnimalEntity animal) {
@@ -383,6 +405,11 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
           'source': 'scanner',
           'animal_id': animal.id,
           'animal_name': animal.name,
+          'animal_snapshot': {
+            'name': animal.name,
+            'breed': animal.breed,
+            'age_in_months': animal.age,
+          },
           'user_id': currentUser.id,
           'has_captured_image': _capturedImageBytes != null,
           'image_url': _capturedImageBytes != null ? animal.imageUrl : null,
@@ -537,6 +564,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
             connectivityState: ref.watch(networkStatusProvider),
             geolocationState: ref.watch(currentGeolocationContextProvider),
             onAnimalSelected: _selectAnimal,
+            onAddAnimalRequested: _openAddAnimalFlow,
             onOpenCamera: _openCamera,
             onDiagnoseWithoutImage: _diagnoseWithoutImage,
           ),

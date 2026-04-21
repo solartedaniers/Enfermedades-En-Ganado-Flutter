@@ -10,8 +10,6 @@ import '../../../core/utils/app_strings.dart';
 import '../../../geolocation/presentation/providers/geolocation_provider.dart';
 import '../../animals/domain/constants/animal_breed_catalog.dart';
 import '../../animals/domain/entities/animal_entity.dart';
-import '../../animals/presentation/pages/add_animal_page.dart';
-
 class ScannerIntakeView extends StatelessWidget {
   final Future<List<AnimalEntity>> animalsFuture;
   final AnimalEntity? selectedAnimal;
@@ -24,6 +22,7 @@ class ScannerIntakeView extends StatelessWidget {
   final AsyncValue<bool> connectivityState;
   final AsyncValue<dynamic> geolocationState;
   final ValueChanged<AnimalEntity> onAnimalSelected;
+  final Future<void> Function() onAddAnimalRequested;
   final VoidCallback onOpenCamera;
   final VoidCallback onDiagnoseWithoutImage;
 
@@ -40,6 +39,7 @@ class ScannerIntakeView extends StatelessWidget {
     required this.connectivityState,
     required this.geolocationState,
     required this.onAnimalSelected,
+    required this.onAddAnimalRequested,
     required this.onOpenCamera,
     required this.onDiagnoseWithoutImage,
   });
@@ -115,13 +115,7 @@ class ScannerIntakeView extends StatelessWidget {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const AddAnimalPage(),
-                              ),
-                            );
-                          },
+                          onPressed: onAddAnimalRequested,
                           style: ElevatedButton.styleFrom(
                             minimumSize: const Size(
                               double.infinity,

@@ -208,7 +208,7 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
       }
 
       _showSnack(AppStrings.t('saved_ok'));
-      Navigator.pop(context);
+      Navigator.pop(context, animal);
     } catch (error) {
       if (!mounted) {
         return;
