@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/constants/app_account_status.dart';
 import '../../../../core/constants/app_json_keys.dart';
 import '../../../../core/constants/app_user_type.dart';
 import '../../../../core/services/local_preferences_service.dart';
@@ -14,6 +15,8 @@ class ProfileState {
   final String email;
   final String language;
   final AppUserType userType;
+  final AppAccountStatus accountStatus;
+  final String? adminStatusMessage;
   final ThemeMode themeMode;
   final String? avatarUrl;
   final bool isLoaded;
@@ -24,6 +27,8 @@ class ProfileState {
     required this.email,
     required this.language,
     required this.userType,
+    required this.accountStatus,
+    this.adminStatusMessage,
     required this.themeMode,
     this.avatarUrl,
     this.isLoaded = false,
@@ -36,10 +41,13 @@ class ProfileState {
     String? email,
     String? language,
     AppUserType? userType,
+    AppAccountStatus? accountStatus,
+    String? adminStatusMessage,
     ThemeMode? themeMode,
     String? avatarUrl,
     bool? isLoaded,
     bool clearAvatar = false,
+    bool clearAdminStatusMessage = false,
   }) {
     return ProfileState(
       userId: clearUserId ? null : userId ?? this.userId,
@@ -47,6 +55,10 @@ class ProfileState {
       email: email ?? this.email,
       language: language ?? this.language,
       userType: userType ?? this.userType,
+      accountStatus: accountStatus ?? this.accountStatus,
+      adminStatusMessage: clearAdminStatusMessage
+          ? null
+          : adminStatusMessage ?? this.adminStatusMessage,
       themeMode: themeMode ?? this.themeMode,
       avatarUrl: clearAvatar ? null : avatarUrl ?? this.avatarUrl,
       isLoaded: isLoaded ?? this.isLoaded,
@@ -59,12 +71,15 @@ class ProfileState {
         email: '',
         language: 'es',
         userType: AppUserType.farmer,
+        accountStatus: AppAccountStatus.active,
+        adminStatusMessage: null,
         themeMode: ThemeMode.system,
         avatarUrl: null,
         isLoaded: false,
       );
 
   bool get isVeterinarian => userType.isVeterinarian;
+  bool get isAdmin => userType.isAdmin;
 }
 
 class ProfileNotifier extends StateNotifier<ProfileState> {
@@ -100,6 +115,8 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
         state = ProfileState.empty().copyWith(
           language: currentLanguage,
           themeMode: currentThemeMode,
+          accountStatus: AppAccountStatus.active,
+          clearAdminStatusMessage: true,
           isLoaded: true,
         );
       }
@@ -127,6 +144,8 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
         state = ProfileState.empty().copyWith(
           language: currentLanguage,
           themeMode: currentThemeMode,
+          accountStatus: AppAccountStatus.active,
+          clearAdminStatusMessage: true,
           isLoaded: true,
         );
         return;
@@ -134,7 +153,9 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
 
       final data = await _supabase
           .from('profiles')
-          .select('${AppJsonKeys.username}, avatar_url, ${AppJsonKeys.userType}')
+          .select(
+            '${AppJsonKeys.username}, ${AppJsonKeys.email}, avatar_url, ${AppJsonKeys.userType}, ${AppJsonKeys.accountStatus}, ${AppJsonKeys.adminStatusMessage}',
+          )
           .eq('id', currentUser.id)
           .maybeSingle();
 
@@ -155,6 +176,8 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
           email: currentUser.email ?? '',
           language: currentLanguage,
           userType: userType,
+          accountStatus: AppAccountStatus.active,
+          adminStatusMessage: null,
           themeMode: currentThemeMode,
           avatarUrl: null,
           isLoaded: true,
@@ -165,25 +188,36 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       final userType = AppUserTypeCodec.fromValue(
         data[AppJsonKeys.userType] as String?,
       );
+      final accountStatus = AppAccountStatusCodec.fromValue(
+        data[AppJsonKeys.accountStatus] as String?,
+      );
       final name =
           (data[AppJsonKeys.username] as String?) ??
               AppStrings.t('default_username');
+      final email =
+          (data[AppJsonKeys.email] as String?)?.trim() ?? currentUser.email ?? '';
       final avatar = data['avatar_url'] as String?;
+      final adminStatusMessage =
+          (data[AppJsonKeys.adminStatusMessage] as String?)?.trim();
 
       await OfflineAuthService.saveSession(
         userId: currentUser.id,
         userName: name,
         userType: userType.storageValue,
+        accountStatus: accountStatus.storageValue,
+        adminStatusMessage: adminStatusMessage,
         avatarUrl: avatar,
       );
 
       state = ProfileState(
         userId: currentUser.id,
         name: name,
-        email: currentUser.email ?? '',
+        email: email,
         avatarUrl: avatar,
         language: currentLanguage,
         userType: userType,
+        accountStatus: accountStatus,
+        adminStatusMessage: adminStatusMessage,
         themeMode: currentThemeMode,
         isLoaded: true,
       );
@@ -192,6 +226,8 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       state = ProfileState.empty().copyWith(
         language: state.language,
         themeMode: state.themeMode,
+        accountStatus: AppAccountStatus.active,
+        clearAdminStatusMessage: true,
         isLoaded: true,
       );
     }
@@ -250,6 +286,8 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       userId: currentUser.id,
       userName: state.name,
       userType: state.userType.storageValue,
+      accountStatus: state.accountStatus.storageValue,
+      adminStatusMessage: state.adminStatusMessage,
       email: email,
       password: password,
       avatarUrl: state.avatarUrl,
@@ -281,6 +319,10 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       language: scopedPreferences.language,
       themeMode: scopedPreferences.themeMode,
       userType: AppUserTypeCodec.fromValue(offlineSnapshot['userType']),
+      accountStatus: AppAccountStatusCodec.fromValue(
+        offlineSnapshot['accountStatus'],
+      ),
+      adminStatusMessage: offlineSnapshot['adminStatusMessage'],
       avatarUrl: offlineSnapshot['avatarUrl'],
       isLoaded: true,
     );

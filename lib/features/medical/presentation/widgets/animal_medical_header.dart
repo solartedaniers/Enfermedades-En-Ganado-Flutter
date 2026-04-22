@@ -7,6 +7,7 @@ import '../../../../../core/utils/app_strings.dart';
 import '../../../../../core/widgets/livestock_icon.dart';
 import '../../../animals/domain/constants/animal_breed_catalog.dart';
 import '../../../animals/domain/entities/animal_entity.dart';
+import '../../../animals/presentation/widgets/animal_profile_image.dart';
 import '../../../animals/shared/age_label_formatter.dart';
 
 class AnimalMedicalHeader extends StatelessWidget {
@@ -43,17 +44,22 @@ class AnimalMedicalHeader extends StatelessWidget {
                 CircleAvatar(
                   radius: AppSizes.medicalAvatarRadius,
                   backgroundColor: appColors.whiteOverlay,
-                  backgroundImage: animal.profileImageUrl != null &&
-                          animal.profileImageUrl!.isNotEmpty
-                      ? NetworkImage(animal.profileImageUrl!)
-                      : null,
-                  child: animal.profileImageUrl == null ||
-                          animal.profileImageUrl!.isEmpty
-                      ? const LivestockIcon(
-                          size: AppIconSizes.xLarge,
-                          padding: EdgeInsets.all(18),
-                        )
-                      : null,
+                  child: ClipOval(
+                    child: SizedBox.expand(
+                      child: ((animal.profileImageUrl != null &&
+                                  animal.profileImageUrl!.isNotEmpty) ||
+                              (animal.localProfileImagePath != null &&
+                                  animal.localProfileImagePath!.isNotEmpty))
+                          ? AnimalProfileImage(
+                              localImagePath: animal.localProfileImagePath,
+                              networkImageUrl: animal.profileImageUrl,
+                            )
+                          : const LivestockIcon(
+                              size: AppIconSizes.xLarge,
+                              padding: EdgeInsets.all(18),
+                            ),
+                    ),
+                  ),
                 ),
                 Positioned(
                   bottom: 0,

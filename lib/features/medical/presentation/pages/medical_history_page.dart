@@ -83,7 +83,7 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
       setState(() {
         _animal = refreshedAnimal;
       });
-      ref.invalidate(animalsListProvider);
+      refreshAnimals(ref);
       _showSnack(AppStrings.t('medical_photo_updated'));
     } catch (error) {
       if (!mounted) {
@@ -254,6 +254,12 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
 
   @override
   Widget build(BuildContext context) {
+    final animalAsync = ref.watch(animalByIdProvider(_animal.id));
+    final latestAnimal = animalAsync.valueOrNull;
+    if (latestAnimal != null && latestAnimal != _animal) {
+      _animal = latestAnimal;
+    }
+
     final repository = ref.watch(medicalRepositoryProvider);
     final appColors = context.appColors;
 

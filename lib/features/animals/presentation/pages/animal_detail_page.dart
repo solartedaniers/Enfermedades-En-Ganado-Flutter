@@ -47,6 +47,7 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
   File? _newImage;
   bool _isEditing = false;
   bool _isSaving = false;
+  bool _isUpdatingPhoto = false;
 
   @override
   void initState() {
@@ -97,7 +98,57 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
       return;
     }
 
-    setState(() => _newImage = File(pickedImage.path));
+    final pickedFile = File(pickedImage.path);
+
+    if (_isEditing) {
+      setState(() => _newImage = pickedFile);
+      return;
+    }
+
+    await _savePhotoUpdate(pickedFile);
+  }
+
+  Future<void> _savePhotoUpdate(File imageFile) async {
+    if (_isUpdatingPhoto) {
+      return;
+    }
+
+    setState(() {
+      _isUpdatingPhoto = true;
+      _newImage = imageFile;
+    });
+
+    try {
+      final updatedAnimal = _currentAnimal.copyWith(updatedAt: DateTime.now());
+      await ref.read(animalRepositoryProvider).updateAnimal(
+            updatedAnimal,
+            localImagePath: imageFile.path,
+          );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _currentAnimal = updatedAnimal.copyWith(
+          localProfileImagePath: imageFile.path,
+        );
+        _newImage = null;
+        _isUpdatingPhoto = false;
+      });
+      refreshAnimals(ref);
+      _showSnack(AppStrings.t('medical_photo_updated'));
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _newImage = null;
+        _isUpdatingPhoto = false;
+      });
+      _showSnack('${AppStrings.t('save_error')}: $error');
+    }
   }
 
   void _showImageSourceDialog() {
@@ -228,11 +279,15 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
       }
 
       setState(() {
-        _currentAnimal = updatedAnimal;
+        _currentAnimal = updatedAnimal.copyWith(
+          localProfileImagePath:
+              _newImage?.path ?? _currentAnimal.localProfileImagePath,
+        );
+        _newImage = null;
         _isEditing = false;
         _isSaving = false;
       });
-      ref.invalidate(animalsListProvider);
+      refreshAnimals(ref);
       _showSnack(AppStrings.t('saved_ok'));
     } catch (error) {
       if (!mounted) {
@@ -280,7 +335,7 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
 
     try {
       await ref.read(animalRepositoryProvider).deleteAnimal(_currentAnimal.id);
-      ref.invalidate(animalsListProvider);
+      refreshAnimals(ref);
 
       if (!mounted) {
         return;
@@ -303,6 +358,23 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    final animalAsync = ref.watch(animalByIdProvider(_currentAnimal.id));
+    final latestAnimal = animalAsync.valueOrNull;
+    if (!_isEditing && latestAnimal != null && latestAnimal != _currentAnimal) {
+      _currentAnimal = latestAnimal;
+    }
+
+    final hasAnimalPhoto =
+        _newImage != null ||
+        (_currentAnimal.localProfileImagePath?.isNotEmpty ?? false) ||
+        (_currentAnimal.profileImageUrl?.isNotEmpty ?? false);
+    final imageActionLabel = hasAnimalPhoto
+        ? AppStrings.t('change_photo')
+        : AppStrings.t('add_photo');
+    final imageActionIcon = hasAnimalPhoto
+        ? Icons.add_a_photo_outlined
+        : Icons.camera_alt_outlined;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -343,8 +415,8 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
       ),
       floatingActionButton: _isEditing
           ? FloatingActionButton.extended(
-              onPressed: _isSaving ? null : _saveEdit,
-              icon: _isSaving
+              onPressed: (_isSaving || _isUpdatingPhoto) ? null : _saveEdit,
+              icon: (_isSaving || _isUpdatingPhoto)
                   ? SizedBox(
                       width: AppIconSizes.medium,
                       height: AppIconSizes.medium,
@@ -369,15 +441,36 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
           children: [
             AnimalImageCard(
               selectedImage: _newImage,
+              localImagePath: _currentAnimal.localProfileImagePath,
               networkImageUrl: _currentAnimal.profileImageUrl,
               height: AppSizes.animalDetailImageHeight,
               borderRadius: BorderRadius.circular(AppSizes.large),
-              onTap: _showImageSourceDialog,
+              onTap:
+                  hasAnimalPhoto && !_isEditing ? () {} : _showImageSourceDialog,
               overlayLabel: _isEditing
                   ? AppStrings.t('change_photo')
                   : AppStrings.t('add_photo'),
               overlayIcon:
                   _isEditing ? Icons.camera_alt : Icons.add_a_photo_outlined,
+              showOverlay: _isEditing || !hasAnimalPhoto,
+            ),
+            const SizedBox(height: AppSizes.medium),
+            Align(
+              alignment: Alignment.center,
+              child: OutlinedButton.icon(
+                onPressed: _isUpdatingPhoto ? null : _showImageSourceDialog,
+                icon: _isUpdatingPhoto
+                    ? SizedBox(
+                        width: AppIconSizes.medium,
+                        height: AppIconSizes.medium,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      )
+                    : Icon(imageActionIcon),
+                label: Text(imageActionLabel),
+              ),
             ),
             const SizedBox(height: AppSizes.xLarge),
             if (_isEditing) _buildEditForm() else _buildViewMode(),

@@ -36,7 +36,6 @@ class AnimalsPage extends ConsumerWidget {
             context,
             MaterialPageRoute(builder: (_) => const AddAnimalPage()),
           );
-          ref.invalidate(animalsListProvider);
         },
         child: const Icon(Icons.add),
       ),
@@ -114,7 +113,6 @@ class AnimalsPage extends ConsumerWidget {
                       builder: (_) => AnimalDetailPage(animal: currentAnimal),
                     ),
                   );
-                  ref.invalidate(animalsListProvider);
                 },
               );
             },

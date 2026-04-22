@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/constants/app_account_status.dart';
 import '../../../core/constants/app_json_keys.dart';
 import '../../../core/constants/app_user_type.dart';
 import '../../../core/services/pending_user_registration_service.dart';
@@ -145,6 +146,7 @@ class AuthService {
         email: email,
         password: password,
       );
+      await validateCurrentSessionAccess();
     } on AuthException catch (e) {
       if (e.message.contains('Invalid login credentials')) {
         throw Exception(AppStrings.t('invalid_login'));
@@ -154,6 +156,48 @@ class AuthService {
       }
       throw Exception(e.message);
     }
+  }
+
+  Future<void> validateCurrentSessionAccess() async {
+    final currentUser = _client.auth.currentUser;
+    if (currentUser == null) {
+      return;
+    }
+
+    final profile = await _client
+        .from('profiles')
+        .select(
+          '${AppJsonKeys.accountStatus}, ${AppJsonKeys.adminStatusMessage}',
+        )
+        .eq('id', currentUser.id)
+        .maybeSingle();
+
+    if (profile == null) {
+      return;
+    }
+
+    final accountStatus = AppAccountStatusCodec.fromValue(
+      profile[AppJsonKeys.accountStatus] as String?,
+    );
+
+    if (accountStatus.isActive) {
+      return;
+    }
+
+    final adminStatusMessage =
+        (profile[AppJsonKeys.adminStatusMessage] as String?)?.trim();
+
+    await _client.auth.signOut();
+
+    if (adminStatusMessage != null && adminStatusMessage.isNotEmpty) {
+      throw Exception(adminStatusMessage);
+    }
+
+    final fallbackMessageKey = accountStatus == AppAccountStatus.deleted
+        ? 'account_deleted_default_message'
+        : 'account_suspended_default_message';
+
+    throw Exception(AppStrings.t(fallbackMessageKey));
   }
 
   Future<void> resetPassword(String email) async {

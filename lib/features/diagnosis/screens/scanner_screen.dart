@@ -469,8 +469,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
         _selectedAnimal = updatedAnimal;
         _hasSavedCurrentResult = true;
       });
-      ref.invalidate(animalsListProvider);
-      ref.invalidate(rawAnimalsListProvider);
+      refreshAnimals(ref);
 
       _showMessage(
         saveWarningMessage ?? AppStrings.t('diagnosis_saved_message'),

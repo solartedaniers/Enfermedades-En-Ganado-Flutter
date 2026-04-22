@@ -36,6 +36,7 @@ class AnimalRepositoryImpl implements AnimalRepository {
 
       final syncedModel = localModel.copyWith(
         profileImageUrl: uploadedImageUrl ?? animal.profileImageUrl,
+        localProfileImagePath: localImagePath ?? animal.localProfileImagePath,
         isSynced: true,
         pendingImagePath: null,
       );
@@ -95,7 +96,8 @@ class AnimalRepositoryImpl implements AnimalRepository {
       );
 
       final syncedModel = localModel.copyWith(
-        profileImageUrl: uploadedImageUrl,
+        profileImageUrl: uploadedImageUrl ?? animal.profileImageUrl,
+        localProfileImagePath: localImagePath ?? animal.localProfileImagePath,
         isSynced: true,
         pendingImagePath: null,
       );
@@ -138,6 +140,9 @@ class AnimalRepositoryImpl implements AnimalRepository {
 
         final syncedModel = pendingAnimal.copyWith(
           profileImageUrl: profileImageUrl,
+          localProfileImagePath:
+              pendingAnimal.pendingImagePath ??
+              pendingAnimal.localProfileImagePath,
           isSynced: true,
           pendingImagePath: null,
         );

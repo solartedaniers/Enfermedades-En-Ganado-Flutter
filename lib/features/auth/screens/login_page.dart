@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/constants/app_account_status.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../../profile/presentation/providers/profile_provider.dart';
 import '../widgets/auth_preferences_button.dart';
@@ -74,6 +75,19 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
         if (!authenticated) {
           throw Exception(AppStrings.t('offline_login_first_time'));
+        }
+
+        final offlineProfile = ref.read(profileProvider);
+        if (!offlineProfile.accountStatus.isActive) {
+          throw Exception(
+            offlineProfile.adminStatusMessage?.trim().isNotEmpty == true
+                ? offlineProfile.adminStatusMessage!
+                : AppStrings.t(
+                    offlineProfile.accountStatus == AppAccountStatus.deleted
+                        ? 'account_deleted_default_message'
+                        : 'account_suspended_default_message',
+                  ),
+          );
         }
       }
 

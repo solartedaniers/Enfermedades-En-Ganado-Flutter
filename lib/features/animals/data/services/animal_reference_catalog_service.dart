@@ -117,7 +117,18 @@ class AnimalReferenceCatalogService {
         ? data[_labelEsColumn] as String?
         : data[_labelEnColumn] as String?;
 
-    return (preferredLabel ?? fallbackLabel ?? '').trim();
+    final resolvedLabel = (preferredLabel ?? fallbackLabel ?? '').trim();
+    return _normalizeCatalogLabel(resolvedLabel);
+  }
+
+  String _normalizeCatalogLabel(String label) {
+    if (label.isEmpty || AppStrings.currentLanguage != 'es') {
+      return label;
+    }
+
+    return label
+        .replaceAllMapped(RegExp(r'\banos\b', caseSensitive: false), (_) => 'años')
+        .replaceAllMapped(RegExp(r'\bano\b', caseSensitive: false), (_) => 'año');
   }
 
   Future<void> _cacheBreedChoices(List<AnimalBreedChoice> choices) async {

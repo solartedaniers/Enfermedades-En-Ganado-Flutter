@@ -207,6 +207,7 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
         return;
       }
 
+      refreshAnimals(ref);
       _showSnack(AppStrings.t('saved_ok'));
       Navigator.pop(context, animal);
     } catch (error) {
@@ -245,6 +246,7 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
             children: [
               AnimalImageCard(
                 selectedImage: _selectedImage,
+                localImagePath: null,
                 networkImageUrl: null,
                 height: AppSizes.animalFormImageHeight,
                 borderRadius: BorderRadius.circular(AppSizes.cardRadius),
