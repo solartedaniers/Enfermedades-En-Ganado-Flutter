@@ -86,7 +86,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     final profile = ref.watch(profileProvider);
     final roleLabel = profile.isVeterinarian
         ? AppStrings.t('role_veterinarian')
-        : AppStrings.t('role_farmer');
+        : profile.isAdmin
+            ? AppStrings.t('role_admin')
+            : AppStrings.t('role_farmer');
 
     return Scaffold(
       appBar: AppBar(title: Text(AppStrings.t("my_profile"))),

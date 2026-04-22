@@ -11,6 +11,8 @@ class AppStorageKeys {
   static const String offlineUserName = 'offline_user_name';
   static const String offlineAvatarUrl = 'offline_avatar_url';
   static const String offlineUserType = 'offline_user_type';
+  static const String offlineAccountStatus = 'offline_account_status';
+  static const String offlineAdminStatusMessage = 'offline_admin_status_message';
   static const String offlineAuthEmail = 'offline_auth_email';
   static const String offlineAuthSecret = 'offline_auth_secret';
   static const String offlineAuthAccounts = 'offline_auth_accounts';

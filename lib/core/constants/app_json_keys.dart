@@ -13,9 +13,14 @@ class AppJsonKeys {
   static const String fullName = 'full_name';
   static const String name = 'name';
   static const String username = 'username';
+  static const String email = 'email';
   static const String phone = 'phone';
   static const String location = 'location';
   static const String userType = 'user_type';
+  static const String accountStatus = 'account_status';
+  static const String adminStatusMessage = 'admin_status_message';
+  static const String adminStatusChangedAt = 'admin_status_changed_at';
+  static const String adminStatusChangedBy = 'admin_status_changed_by';
   static const String veterinarianId = 'veterinarian_id';
   static const String clientId = 'client_id';
   static const String id = 'id';

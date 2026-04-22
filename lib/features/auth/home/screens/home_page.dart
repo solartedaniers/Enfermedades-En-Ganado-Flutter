@@ -18,6 +18,7 @@ import '../../../medical/domain/entities/medical_record_entity.dart';
 import '../../../medical/presentation/providers/medical_provider.dart';
 import '../../../notifications/data/datasources/notification_remote_datasource.dart';
 import '../../../notifications/presentation/pages/notifications_page.dart';
+import '../../../admin/presentation/pages/admin_users_page.dart';
 import '../../../profile/presentation/pages/profile_page.dart';
 import '../../../profile/presentation/providers/managed_client_provider.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
@@ -104,6 +105,12 @@ class _HomePageState extends ConsumerState<HomePage> {
         await Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const ProfilePage()),
+        );
+        break;
+      case _HomeAppBarAction.adminUsers:
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AdminUsersPage()),
         );
         break;
       case _HomeAppBarAction.logout:
@@ -293,6 +300,12 @@ class _HomePageState extends ConsumerState<HomePage> {
           MaterialPageRoute(builder: (_) => const ScannerScreen()),
         );
         break;
+      case 'admin_panel':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AdminUsersPage()),
+        );
+        break;
       case 'vaccines':
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(AppStrings.t('coming_soon_vaccines'))),
@@ -478,9 +491,27 @@ class _HomePageState extends ConsumerState<HomePage> {
     final isDark = theme.brightness == Brightness.dark;
     final roleLabel = profile.isVeterinarian
         ? AppStrings.t('role_veterinarian')
-        : AppStrings.t('role_farmer');
+        : profile.isAdmin
+            ? AppStrings.t('role_admin')
+            : AppStrings.t('role_farmer');
 
     final menuItems = [
+      if (profile.isAdmin)
+        _HomeMenuItem(
+          keyName: 'admin_panel',
+          icon: Icons.admin_panel_settings_outlined,
+          foregroundColor: colorScheme.primary,
+          backgroundColor: Color.lerp(
+            colorScheme.primaryContainer,
+            colorScheme.primary,
+            0.18,
+          )!,
+          cardColor: Color.lerp(
+            colorScheme.surface,
+            colorScheme.primaryContainer,
+            0.76,
+          )!,
+        ),
       _HomeMenuItem(
         keyName: 'register_animal',
         imagePath: 'lib/images/Taureau.webp',
@@ -566,6 +597,24 @@ class _HomePageState extends ConsumerState<HomePage> {
                   ],
                 ),
               ),
+              if (profile.isAdmin)
+                PopupMenuItem<_HomeAppBarAction>(
+                  value: _HomeAppBarAction.adminUsers,
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.admin_panel_settings_outlined,
+                        color: appColors.chipForeground,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        AppStrings.t('admin_panel'),
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                ),
               const PopupMenuDivider(),
               PopupMenuItem<_HomeAppBarAction>(
                 value: _HomeAppBarAction.logout,
@@ -799,6 +848,7 @@ class _HomePageState extends ConsumerState<HomePage> {
 
 enum _HomeAppBarAction {
   profile,
+  adminUsers,
   logout,
 }
 

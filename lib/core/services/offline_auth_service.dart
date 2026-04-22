@@ -10,6 +10,8 @@ class OfflineAuthService {
   static const _keyUserName = AppStorageKeys.offlineUserName;
   static const _keyAvatarUrl = AppStorageKeys.offlineAvatarUrl;
   static const _keyUserType = AppStorageKeys.offlineUserType;
+  static const _keyAccountStatus = AppStorageKeys.offlineAccountStatus;
+  static const _keyAdminStatusMessage = AppStorageKeys.offlineAdminStatusMessage;
   static const _keyEmail = AppStorageKeys.offlineAuthEmail;
   static const _keySecret = AppStorageKeys.offlineAuthSecret;
   static const _keyAccounts = AppStorageKeys.offlineAuthAccounts;
@@ -19,17 +21,26 @@ class OfflineAuthService {
     required String userId,
     required String userName,
     required String userType,
+    String? accountStatus,
+    String? adminStatusMessage,
     String? avatarUrl,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyUserId, userId);
     await prefs.setString(_keyUserName, userName);
     await prefs.setString(_keyUserType, userType);
+    await prefs.setString(_keyAccountStatus, accountStatus ?? 'active');
 
     if (avatarUrl != null) {
       await prefs.setString(_keyAvatarUrl, avatarUrl);
     } else {
       await prefs.remove(_keyAvatarUrl);
+    }
+
+    if (adminStatusMessage != null && adminStatusMessage.trim().isNotEmpty) {
+      await prefs.setString(_keyAdminStatusMessage, adminStatusMessage.trim());
+    } else {
+      await prefs.remove(_keyAdminStatusMessage);
     }
   }
 
@@ -39,6 +50,8 @@ class OfflineAuthService {
     required String userType,
     required String email,
     required String password,
+    String? accountStatus,
+    String? adminStatusMessage,
     String? avatarUrl,
   }) async {
     final prefs = await SharedPreferences.getInstance();
@@ -49,6 +62,8 @@ class OfflineAuthService {
       'userId': userId,
       'userName': userName,
       'userType': userType,
+      'accountStatus': accountStatus ?? 'active',
+      'adminStatusMessage': adminStatusMessage,
       'avatarUrl': avatarUrl,
       'email': normalizedEmail,
       'secret': _encodeSecret(email: normalizedEmail, password: password),
@@ -62,6 +77,8 @@ class OfflineAuthService {
       userId: userId,
       userName: userName,
       userType: userType,
+      accountStatus: accountStatus,
+      adminStatusMessage: adminStatusMessage,
       avatarUrl: avatarUrl,
     );
     await prefs.setString(_keyEmail, normalizedEmail);
@@ -95,6 +112,8 @@ class OfflineAuthService {
       userId: account['userId'] ?? '',
       userName: account['userName'] ?? '',
       userType: account['userType'] ?? '',
+      accountStatus: account['accountStatus'],
+      adminStatusMessage: account['adminStatusMessage'],
       avatarUrl: account['avatarUrl'],
     );
     await prefs.setString(_keyEmail, normalizedEmail);
@@ -103,6 +122,8 @@ class OfflineAuthService {
       'userName': account['userName'],
       'avatarUrl': account['avatarUrl'],
       'userType': account['userType'],
+      'accountStatus': account['accountStatus'],
+      'adminStatusMessage': account['adminStatusMessage'],
       'email': account['email'],
     };
   }
@@ -147,6 +168,8 @@ class OfflineAuthService {
       'userName': prefs.getString(_keyUserName),
       'avatarUrl': prefs.getString(_keyAvatarUrl),
       'userType': prefs.getString(_keyUserType),
+      'accountStatus': prefs.getString(_keyAccountStatus),
+      'adminStatusMessage': prefs.getString(_keyAdminStatusMessage),
       'email': prefs.getString(_keyEmail),
     };
   }
@@ -162,6 +185,8 @@ class OfflineAuthService {
     await prefs.remove(_keyUserName);
     await prefs.remove(_keyAvatarUrl);
     await prefs.remove(_keyUserType);
+    await prefs.remove(_keyAccountStatus);
+    await prefs.remove(_keyAdminStatusMessage);
     await prefs.remove(_keyEmail);
     await prefs.remove(_keySecret);
     await prefs.remove(_keyActiveEmail);
@@ -211,6 +236,8 @@ class OfflineAuthService {
         'userId': legacyUserId,
         'userName': legacyUserName,
         'userType': legacyUserType,
+        'accountStatus': prefs.getString(_keyAccountStatus) ?? 'active',
+        'adminStatusMessage': prefs.getString(_keyAdminStatusMessage),
         'avatarUrl': prefs.getString(_keyAvatarUrl),
         'email': legacyEmail,
         'secret': legacySecret,
