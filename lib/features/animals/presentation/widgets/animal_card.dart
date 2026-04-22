@@ -11,6 +11,7 @@ import '../../data/services/animal_reference_catalog_service.dart';
 import '../../domain/entities/animal_entity.dart';
 import '../../shared/age_label_formatter.dart';
 import '../providers/animal_reference_catalog_provider.dart';
+import 'animal_profile_image.dart';
 
 class AnimalCard extends ConsumerWidget {
   final AnimalEntity animalData;
@@ -56,17 +57,12 @@ class AnimalCard extends ConsumerWidget {
                   const BorderRadius.horizontal(
                     left: Radius.circular(AppSizes.cardRadius),
                   ),
-              child: animalData.profileImageUrl != null &&
-                      animalData.profileImageUrl!.isNotEmpty
-                  ? Image.network(
-                      animalData.profileImageUrl!,
-                      width: AppSizes.animalCardImageSize,
-                      height: AppSizes.animalCardImageSize,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          _buildPlaceholder(),
-                    )
-                  : _buildPlaceholder(),
+              child: AnimalProfileImage(
+                localImagePath: animalData.localProfileImagePath,
+                networkImageUrl: animalData.profileImageUrl,
+                width: AppSizes.animalCardImageSize,
+                height: AppSizes.animalCardImageSize,
+              ),
             ),
             Expanded(
               child: Padding(
@@ -166,15 +162,6 @@ class AnimalCard extends ConsumerWidget {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildPlaceholder() {
-    return Image.asset(
-      AppStrings.t('animal_default_image'),
-      width: AppSizes.animalCardImageSize,
-      height: AppSizes.animalCardImageSize,
-      fit: BoxFit.cover,
     );
   }
 }

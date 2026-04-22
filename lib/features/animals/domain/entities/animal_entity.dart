@@ -10,6 +10,7 @@ class AnimalEntity {
   final String symptoms;
   final String? imageUrl;
   final String? profileImageUrl;
+  final String? localProfileImagePath;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -27,6 +28,7 @@ class AnimalEntity {
     this.temperature,
     this.imageUrl,
     this.profileImageUrl,
+    this.localProfileImagePath,
   })  : symptoms = symptoms ?? '',
         ageLabel = ageLabel ?? '';
 
@@ -46,6 +48,8 @@ class AnimalEntity {
     bool clearImageUrl = false,
     String? profileImageUrl,
     bool clearProfileImageUrl = false,
+    String? localProfileImagePath,
+    bool clearLocalProfileImagePath = false,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -64,6 +68,9 @@ class AnimalEntity {
       profileImageUrl: clearProfileImageUrl
           ? null
           : (profileImageUrl ?? this.profileImageUrl),
+      localProfileImagePath: clearLocalProfileImagePath
+          ? null
+          : (localProfileImagePath ?? this.localProfileImagePath),
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

@@ -6,6 +6,7 @@ import '../../../../../core/theme/app_text_styles.dart';
 import '../../../../../core/utils/app_date_formatter.dart';
 import '../../../../../core/utils/app_strings.dart';
 import '../../domain/entities/medical_record_entity.dart';
+import '../../../animals/presentation/widgets/animal_profile_image.dart';
 
 class MedicalRecordCard extends StatelessWidget {
   final MedicalRecordEntity record;
@@ -66,11 +67,10 @@ class MedicalRecordCard extends StatelessWidget {
               const SizedBox(height: AppSizes.small),
               ClipRRect(
                 borderRadius: BorderRadius.circular(AppSizes.small),
-                child: Image.network(
-                  record.imageUrl!,
+                child: AnimalProfileImage(
+                  networkImageUrl: record.imageUrl,
                   height: AppSizes.medicalRecordImageHeight,
                   width: double.infinity,
-                  fit: BoxFit.cover,
                 ),
               ),
             ],

@@ -52,5 +52,6 @@ class AnimalHiveFields {
   static const int pendingImagePath = 13;
   static const int ageLabel = 14;
   static const int isDeleted = 15;
-  static const int totalFields = 16;
+  static const int localProfileImagePath = 16;
+  static const int totalFields = 17;
 }

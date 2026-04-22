@@ -56,6 +56,9 @@ class AnimalModel {
   @HiveField(AnimalHiveFields.isDeleted)
   final bool isDeleted;
 
+  @HiveField(AnimalHiveFields.localProfileImagePath)
+  final String? localProfileImagePath;
+
   const AnimalModel({
     required this.id,
     required this.userId,
@@ -71,6 +74,7 @@ class AnimalModel {
     this.imageUrl,
     this.profileImageUrl,
     this.pendingImagePath,
+    this.localProfileImagePath,
     this.isSynced = false,
     this.isDeleted = false,
   });
@@ -97,6 +101,7 @@ class AnimalModel {
       imageUrl: entity.imageUrl,
       profileImageUrl: entity.profileImageUrl,
       pendingImagePath: pendingImagePath,
+      localProfileImagePath: pendingImagePath ?? entity.localProfileImagePath,
       isSynced: isSynced,
       isDeleted: false,
     );
@@ -117,6 +122,7 @@ class AnimalModel {
       temperature: temperature,
       imageUrl: imageUrl,
       profileImageUrl: profileImageUrl,
+      localProfileImagePath: localProfileImagePath,
     );
   }
 
@@ -137,6 +143,7 @@ class AnimalModel {
     Object? imageUrl = _sentinel,
     Object? profileImageUrl = _sentinel,
     Object? pendingImagePath = _sentinel,
+    Object? localProfileImagePath = _sentinel,
     bool? isSynced,
     bool? isDeleted,
   }) {
@@ -159,6 +166,9 @@ class AnimalModel {
       pendingImagePath: pendingImagePath == _sentinel
           ? this.pendingImagePath
           : pendingImagePath as String?,
+      localProfileImagePath: localProfileImagePath == _sentinel
+          ? this.localProfileImagePath
+          : localProfileImagePath as String?,
       isSynced: isSynced ?? this.isSynced,
       isDeleted: isDeleted ?? this.isDeleted,
     );
@@ -200,6 +210,8 @@ class AnimalModelAdapter extends TypeAdapter<AnimalModel> {
       ageLabel: (fields[AnimalHiveFields.ageLabel] as String?) ??
           AgeLabelFormatter.format(age),
       isDeleted: (fields[AnimalHiveFields.isDeleted] as bool?) ?? false,
+      localProfileImagePath:
+          fields[AnimalHiveFields.localProfileImagePath] as String?,
     );
   }
 
@@ -238,7 +250,9 @@ class AnimalModelAdapter extends TypeAdapter<AnimalModel> {
       ..writeByte(AnimalHiveFields.ageLabel)
       ..write(obj.ageLabel)
       ..writeByte(AnimalHiveFields.isDeleted)
-      ..write(obj.isDeleted);
+      ..write(obj.isDeleted)
+      ..writeByte(AnimalHiveFields.localProfileImagePath)
+      ..write(obj.localProfileImagePath);
   }
 
   @override

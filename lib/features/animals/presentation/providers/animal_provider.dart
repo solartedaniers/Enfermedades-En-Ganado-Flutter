@@ -11,6 +11,8 @@ import '../../domain/entities/animal_entity.dart';
 import '../../domain/usecases/add_animal.dart';
 import '../../domain/usecases/get_animals.dart';
 
+final animalsRefreshSignalProvider = StateProvider<int>((ref) => 0);
+
 final supabaseClientProvider = Provider<SupabaseClient>((ref) {
   return Supabase.instance.client;
 });
@@ -54,6 +56,7 @@ final getAnimalsProvider = Provider<GetAnimals>((ref) {
 
 final rawAnimalsListProvider =
     FutureProvider.autoDispose<List<AnimalEntity>>((ref) async {
+  ref.watch(animalsRefreshSignalProvider);
   final getAnimals = ref.watch(getAnimalsProvider);
   final currentUserId = ref.watch(currentUserIdProvider);
   final animals = await getAnimals();
@@ -67,6 +70,7 @@ final rawAnimalsListProvider =
 
 final animalsListProvider =
     FutureProvider.autoDispose<List<AnimalEntity>>((ref) async {
+  ref.watch(animalsRefreshSignalProvider);
   final animals = await ref.watch(rawAnimalsListProvider.future);
   final currentUserId = ref.watch(currentUserIdProvider);
   final scopedAnimals = currentUserId == null
@@ -89,3 +93,23 @@ final animalsListProvider =
     return managedClientState.animalAssignments[animal.id] == activeClientId;
   }).toList();
 });
+
+final animalByIdProvider =
+    Provider.autoDispose.family<AsyncValue<AnimalEntity?>, String>((ref, id) {
+  final animalsAsync = ref.watch(rawAnimalsListProvider);
+  return animalsAsync.whenData(
+    (animals) {
+      for (final animal in animals) {
+        if (animal.id == id) {
+          return animal;
+        }
+      }
+
+      return null;
+    },
+  );
+});
+
+void refreshAnimals(WidgetRef ref) {
+  ref.read(animalsRefreshSignalProvider.notifier).state++;
+}

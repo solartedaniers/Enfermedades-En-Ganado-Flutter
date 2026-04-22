@@ -60,6 +60,10 @@ Future<void> main() async {
   await AppStrings.load(localPreferences.language);
   await NotificationService.init();
 
+  if (Supabase.instance.client.auth.currentSession != null) {
+    await Supabase.instance.client.auth.signOut();
+  }
+
   runApp(
     ProviderScope(
       overrides: [
@@ -135,7 +139,6 @@ class _AgrovetAIState extends ConsumerState<AgrovetAI> {
   @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(profileProvider).themeMode;
-    final session = _supabase.auth.currentSession;
 
     return MaterialApp(
       navigatorKey: navigatorKey,
@@ -148,7 +151,7 @@ class _AgrovetAIState extends ConsumerState<AgrovetAI> {
         AppRoutePaths.home: (_) => const HomePage(),
         AppRoutePaths.resetPassword: (_) => const ResetPasswordPage(),
       },
-      home: session == null ? const LoginPage() : const HomePage(),
+      home: const LoginPage(),
     );
   }
 }

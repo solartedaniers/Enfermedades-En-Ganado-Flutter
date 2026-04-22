@@ -15,10 +15,23 @@ class AnimalLocalDataSource {
 
   Future<void> syncFromRemote(List<AnimalModel> remoteAnimals) async {
     final box = await _openBox();
+    final existingAnimals = {
+      for (final animal in box.values) animal.id: animal,
+    };
     await box.clear();
 
     for (final remoteAnimal in remoteAnimals) {
-      await box.put(remoteAnimal.id, remoteAnimal);
+      final preservedAnimal = existingAnimals[remoteAnimal.id];
+      await box.put(
+        remoteAnimal.id,
+        remoteAnimal.copyWith(
+          localProfileImagePath:
+              preservedAnimal?.localProfileImagePath ??
+              remoteAnimal.localProfileImagePath,
+          pendingImagePath:
+              preservedAnimal?.pendingImagePath ?? remoteAnimal.pendingImagePath,
+        ),
+      );
     }
   }
 

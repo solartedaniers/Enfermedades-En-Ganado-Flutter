@@ -5,10 +5,11 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/app_sizes.dart';
 import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/utils/app_strings.dart';
+import 'animal_profile_image.dart';
 
 class AnimalImageCard extends StatelessWidget {
   final File? selectedImage;
+  final String? localImagePath;
   final String? networkImageUrl;
   final double height;
   final BorderRadius borderRadius;
@@ -21,6 +22,7 @@ class AnimalImageCard extends StatelessWidget {
   const AnimalImageCard({
     super.key,
     required this.selectedImage,
+    this.localImagePath,
     required this.networkImageUrl,
     required this.height,
     required this.borderRadius,
@@ -62,24 +64,10 @@ class AnimalImageCard extends StatelessWidget {
   }
 
   Widget _buildImageContent() {
-    if (selectedImage != null) {
-      return Image.file(selectedImage!, fit: BoxFit.cover);
-    }
-
-    if (networkImageUrl != null && networkImageUrl!.isNotEmpty) {
-      return Image.network(
-        networkImageUrl!,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => _buildFallbackImage(),
-      );
-    }
-
-    return _buildFallbackImage();
-  }
-
-  Widget _buildFallbackImage() {
-    return Image.asset(
-      AppStrings.t('animal_default_image'),
+    return AnimalProfileImage(
+      selectedImage: selectedImage,
+      localImagePath: localImagePath,
+      networkImageUrl: networkImageUrl,
       fit: BoxFit.cover,
     );
   }
