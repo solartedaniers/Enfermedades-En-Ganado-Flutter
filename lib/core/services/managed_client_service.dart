@@ -214,6 +214,100 @@ class ManagedClientService {
     await prefs.setString(_activeClientKey(veterinarianId), clientId);
   }
 
+  Future<ManagedClientProfile> updateClient({
+    required String veterinarianId,
+    required String clientId,
+    required String name,
+    required String location,
+    SupabaseClient? supabaseClient,
+  }) async {
+    final snapshot = await loadSnapshot(veterinarianId);
+    final existingClient = _findClient(snapshot.clients, clientId);
+
+    if (existingClient == null) {
+      throw StateError('Managed client not found');
+    }
+
+    final updatedClient = existingClient.copyWith(
+      name: name.trim(),
+      location: location.trim(),
+      updatedAt: DateTime.now(),
+      isSynced: false,
+    );
+
+    try {
+      if (supabaseClient == null) {
+        throw StateError('Supabase client unavailable');
+      }
+
+      await supabaseClient
+          .from(AppStorageKeys.managedClientsTable)
+          .update({
+            AppJsonKeys.name: updatedClient.name,
+            AppJsonKeys.location: updatedClient.location,
+            AppJsonKeys.updatedAt: updatedClient.updatedAt.toIso8601String(),
+          })
+          .eq(AppJsonKeys.id, clientId)
+          .eq(AppJsonKeys.veterinarianId, veterinarianId);
+
+      final syncedClient = updatedClient.copyWith(isSynced: true);
+      final updatedClients = _upsertLocalClient(snapshot.clients, syncedClient);
+      await _saveClients(veterinarianId, updatedClients);
+
+      return syncedClient;
+    } catch (_) {
+      final updatedClients = _upsertLocalClient(snapshot.clients, updatedClient);
+      await _saveClients(veterinarianId, updatedClients);
+
+      return updatedClient;
+    }
+  }
+
+  Future<String?> deleteClient({
+    required String veterinarianId,
+    required String clientId,
+    SupabaseClient? supabaseClient,
+  }) async {
+    final snapshot = await loadSnapshot(veterinarianId);
+    final remainingClients = snapshot.clients
+        .where((client) => client.id != clientId)
+        .toList();
+    final cleanedAssignments = Map<String, String>.from(snapshot.animalAssignments)
+      ..removeWhere((_, assignedClientId) => assignedClientId == clientId);
+    final nextActiveClientId = _resolveActiveClientId(
+      clients: remainingClients,
+      activeClientId: snapshot.activeClientId == clientId
+          ? null
+          : snapshot.activeClientId,
+    );
+
+    await _saveClients(veterinarianId, remainingClients);
+    await _saveAnimalAssignments(veterinarianId, cleanedAssignments);
+    await setActiveClient(veterinarianId, nextActiveClientId);
+
+    if (supabaseClient == null) {
+      return nextActiveClientId;
+    }
+
+    try {
+      await supabaseClient
+          .from(AppStorageKeys.managedClientAnimalsTable)
+          .delete()
+          .eq(AppJsonKeys.veterinarianId, veterinarianId)
+          .eq(AppJsonKeys.clientId, clientId);
+
+      await supabaseClient
+          .from(AppStorageKeys.managedClientsTable)
+          .delete()
+          .eq(AppJsonKeys.id, clientId)
+          .eq(AppJsonKeys.veterinarianId, veterinarianId);
+    } catch (_) {
+      // Si falla la eliminacion remota mantenemos la copia local actualizada.
+    }
+
+    return nextActiveClientId;
+  }
+
   Future<void> assignAnimalToClient({
     required String veterinarianId,
     required String animalId,
@@ -404,6 +498,19 @@ class ManagedClientService {
 
     updatedClients.sort((left, right) => left.createdAt.compareTo(right.createdAt));
     return updatedClients;
+  }
+
+  ManagedClientProfile? _findClient(
+    List<ManagedClientProfile> clients,
+    String clientId,
+  ) {
+    for (final client in clients) {
+      if (client.id == clientId) {
+        return client;
+      }
+    }
+
+    return null;
   }
 
   Future<void> _saveAnimalAssignments(

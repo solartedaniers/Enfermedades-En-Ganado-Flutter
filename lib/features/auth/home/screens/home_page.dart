@@ -237,6 +237,325 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
+  Future<void> _openEditManagedClientDialog(
+    ManagedClientProfile client,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final updatedClient = await _showManagedClientEditorSheet(
+      title: AppStrings.t('veterinarian_edit_client'),
+      actionLabel: AppStrings.t('save_changes'),
+      initialName: client.name,
+      initialLocation: client.location,
+    );
+
+    if (updatedClient == null || !mounted) {
+      return;
+    }
+
+    try {
+      await ref.read(managedClientProvider.notifier).updateClient(
+            clientId: client.id,
+            name: updatedClient.name,
+            location: updatedClient.location,
+          );
+
+      if (!mounted) {
+        return;
+      }
+
+      messenger.showSnackBar(
+        SnackBar(content: Text(AppStrings.t('veterinarian_client_updated'))),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('${AppStrings.t('unexpected_error')}: $error'),
+        ),
+      );
+    }
+  }
+
+  Future<_ManagedClientDraft?> _showManagedClientEditorSheet({
+    required String title,
+    required String actionLabel,
+    required String initialName,
+    required String initialLocation,
+  }) async {
+    final theme = Theme.of(context);
+    final appColors = context.appColors;
+    final isDark = theme.brightness == Brightness.dark;
+    var draftName = initialName;
+    var draftLocation = initialLocation;
+
+    return showModalBottomSheet<_ManagedClientDraft>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            final bottomInset = MediaQuery.of(sheetContext).viewInsets.bottom;
+            final canSubmit = draftName.trim().isNotEmpty;
+
+            return Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, bottomInset + 16),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: isDark ? appColors.cardDark : theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: [
+                    BoxShadow(
+                      color: appColors.darkShadow.withValues(alpha: 0.12),
+                      blurRadius: 24,
+                      offset: const Offset(0, 12),
+                    ),
+                  ],
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 44,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: appColors.mutedForeground.withValues(
+                                alpha: 0.28,
+                              ),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Text(
+                          title,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          AppStrings.t('veterinarian_clients_subtitle'),
+                          style: TextStyle(color: appColors.mutedForeground),
+                        ),
+                        const SizedBox(height: 20),
+                        TextFormField(
+                          initialValue: initialName,
+                          autofocus: true,
+                          onChanged: (value) {
+                            setSheetState(() => draftName = value);
+                          },
+                          decoration: InputDecoration(
+                            labelText: AppStrings.t('veterinarian_client_name'),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          initialValue: initialLocation,
+                          onChanged: (value) {
+                            setSheetState(() => draftLocation = value);
+                          },
+                          decoration: InputDecoration(
+                            labelText: AppStrings.t(
+                              'veterinarian_client_location',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 22),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () => Navigator.pop(sheetContext),
+                                child: Text(AppStrings.t('cancel')),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: FilledButton(
+                                onPressed: canSubmit
+                                    ? () {
+                                        FocusScope.of(sheetContext).unfocus();
+                                        Navigator.pop(
+                                          sheetContext,
+                                          _ManagedClientDraft(
+                                            name: draftName.trim(),
+                                            location: draftLocation.trim(),
+                                          ),
+                                        );
+                                      }
+                                    : null,
+                                child: Text(actionLabel),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _confirmDeleteManagedClient(ManagedClientProfile client) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final theme = Theme.of(context);
+    final appColors = context.appColors;
+    final isDark = theme.brightness == Brightness.dark;
+    final confirmDelete = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: isDark ? appColors.cardDark : theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: appColors.darkShadow.withValues(alpha: 0.12),
+                  blurRadius: 24,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 44,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: appColors.mutedForeground.withValues(
+                            alpha: 0.28,
+                          ),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.errorContainer,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Icon(
+                            Icons.delete_outline_rounded,
+                            color: appColors.danger,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Text(
+                            AppStrings.t('veterinarian_delete_client'),
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      client.name,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (client.location.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        '${AppStrings.t('veterinarian_client_location')}: ${client.location}',
+                        style: TextStyle(color: appColors.mutedForeground),
+                      ),
+                    ],
+                    const SizedBox(height: 14),
+                    Text(
+                      AppStrings.t('veterinarian_delete_client_confirm'),
+                      style: TextStyle(color: appColors.mutedForeground),
+                    ),
+                    const SizedBox(height: 22),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(sheetContext, false),
+                            child: Text(AppStrings.t('cancel')),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: FilledButton(
+                            onPressed: () => Navigator.pop(sheetContext, true),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: appColors.danger,
+                            ),
+                            child: Text(AppStrings.t('delete')),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    if (confirmDelete != true || !mounted) {
+      return;
+    }
+
+    try {
+      await ref.read(managedClientProvider.notifier).deleteClient(client.id);
+
+      if (!mounted) {
+        return;
+      }
+
+      messenger.showSnackBar(
+        SnackBar(content: Text(AppStrings.t('veterinarian_client_deleted'))),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('${AppStrings.t('unexpected_error')}: $error'),
+        ),
+      );
+    }
+  }
+
   void _promptInitialManagedClientIfNeeded(ManagedClientState managedClientState) {
     if (_hasPromptedInitialManagedClient ||
         !ref.read(profileProvider).isVeterinarian ||
@@ -790,6 +1109,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                       ref.read(managedClientProvider.notifier).setActiveClient(clientId);
                     },
                     onAddClient: _openManagedClientDialog,
+                    onEditClient: _openEditManagedClientDialog,
+                    onDeleteClient: _confirmDeleteManagedClient,
                   );
                 },
               ),

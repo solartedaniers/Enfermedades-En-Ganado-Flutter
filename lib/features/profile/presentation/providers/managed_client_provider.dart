@@ -117,6 +117,69 @@ class ManagedClientNotifier extends AsyncNotifier<ManagedClientState> {
     );
   }
 
+  Future<void> updateClient({
+    required String clientId,
+    required String name,
+    required String location,
+  }) async {
+    final currentUserId = _currentUserId;
+    final currentState = state.valueOrNull ?? ManagedClientState.empty();
+
+    if (currentUserId == null) {
+      return;
+    }
+
+    final updatedClient = await _service.updateClient(
+      veterinarianId: currentUserId,
+      clientId: clientId,
+      name: name,
+      location: location,
+      supabaseClient: _supabase,
+    );
+
+    final updatedClients = currentState.clients
+        .map((client) => client.id == clientId ? updatedClient : client)
+        .toList();
+
+    state = AsyncData(
+      ManagedClientState(
+        clients: updatedClients,
+        activeClientId: currentState.activeClientId,
+        animalAssignments: currentState.animalAssignments,
+      ),
+    );
+  }
+
+  Future<void> deleteClient(String clientId) async {
+    final currentUserId = _currentUserId;
+    final currentState = state.valueOrNull ?? ManagedClientState.empty();
+
+    if (currentUserId == null) {
+      return;
+    }
+
+    final nextActiveClientId = await _service.deleteClient(
+      veterinarianId: currentUserId,
+      clientId: clientId,
+      supabaseClient: _supabase,
+    );
+
+    final updatedClients = currentState.clients
+        .where((client) => client.id != clientId)
+        .toList();
+    final updatedAssignments = Map<String, String>.from(
+      currentState.animalAssignments,
+    )..removeWhere((_, assignedClientId) => assignedClientId == clientId);
+
+    state = AsyncData(
+      ManagedClientState(
+        clients: updatedClients,
+        activeClientId: nextActiveClientId,
+        animalAssignments: updatedAssignments,
+      ),
+    );
+  }
+
   Future<void> assignAnimalToActiveClient(String animalId) async {
     final currentUserId = _currentUserId;
     final currentState = state.valueOrNull;
