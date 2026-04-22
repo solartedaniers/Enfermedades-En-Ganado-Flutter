@@ -18,7 +18,7 @@
   "weight": "Peso (kg)",
   "temperature": "Temperatura (°C)",
   "save": "Guardar Animal",
-  "save_changes": "Guardar cambios",
+  "save_changes": "Guardar",
   "required_field": "Campo requerido",
   "invalid_number": "Ingresa un número válido",
   "only_letters_numbers": "Solo se permiten letras y números",

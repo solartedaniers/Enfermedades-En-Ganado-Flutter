@@ -68,14 +68,6 @@ class VeterinarianClientPanel extends StatelessWidget {
                           fontSize: 18,
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        AppStrings.t('veterinarian_clients_subtitle'),
-                        style: TextStyle(
-                          color: appColors.mutedForeground,
-                          fontSize: 13,
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -129,6 +121,38 @@ class VeterinarianClientPanel extends StatelessWidget {
                 decoration: InputDecoration(
                   labelText: AppStrings.t('veterinarian_active_client'),
                 ),
+                icon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (activeClient != null) ...[
+                      _ClientActionButton(
+                        tooltip: AppStrings.t('veterinarian_edit_client'),
+                        icon: Icons.edit_outlined,
+                        foregroundColor: appColors.chipForeground,
+                        backgroundColor: Color.lerp(
+                          appColors.selectionBackground,
+                          appColors.chipForeground,
+                          0.08,
+                        )!,
+                        onPressed: () => onEditClient(activeClient!),
+                      ),
+                      const SizedBox(width: 8),
+                      _ClientActionButton(
+                        tooltip: AppStrings.t('veterinarian_delete_client'),
+                        icon: Icons.delete_outline_rounded,
+                        foregroundColor: appColors.danger,
+                        backgroundColor: Color.lerp(
+                          theme.colorScheme.errorContainer,
+                          appColors.danger,
+                          0.05,
+                        )!,
+                        onPressed: () => onDeleteClient(activeClient!),
+                      ),
+                      const SizedBox(width: 12),
+                    ],
+                    const Icon(Icons.arrow_drop_down),
+                  ],
+                ),
                 items: clients
                     .map(
                       (client) => DropdownMenuItem<String>(
@@ -139,119 +163,6 @@ class VeterinarianClientPanel extends StatelessWidget {
                     .toList(),
                 onChanged: onClientChanged,
               ),
-              if (activeClient != null) ...[
-                Builder(
-                  builder: (context) {
-                    final selectedClient = activeClient!;
-                    return Column(
-                      children: [
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20),
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                theme.colorScheme.surface,
-                                appColors.selectionBackground,
-                              ],
-                            ),
-                            border: Border.all(
-                              color: appColors.chipForeground.withValues(
-                                alpha: 0.12,
-                              ),
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      selectedClient.name,
-                                      style: theme.textTheme.titleMedium
-                                          ?.copyWith(
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: appColors.whiteOverlay,
-                                      borderRadius: BorderRadius.circular(999),
-                                    ),
-                                    child: Text(
-                                      AppStrings.t(
-                                        'veterinarian_active_client_badge',
-                                      ),
-                                      style: TextStyle(
-                                        color: appColors.chipForeground,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              if (selectedClient.location.isNotEmpty) ...[
-                                const SizedBox(height: 8),
-                                Text(
-                                  '${AppStrings.t('veterinarian_client_location')}: ${selectedClient.location}',
-                                  style: TextStyle(
-                                    color: appColors.mutedForeground,
-                                  ),
-                                ),
-                              ],
-                              const SizedBox(height: 14),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  _ClientActionButton(
-                                    tooltip: AppStrings.t(
-                                      'veterinarian_edit_client',
-                                    ),
-                                    icon: Icons.edit_outlined,
-                                    foregroundColor: appColors.chipForeground,
-                                    backgroundColor: Color.lerp(
-                                      appColors.selectionBackground,
-                                      appColors.chipForeground,
-                                      0.08,
-                                    )!,
-                                    onPressed: () =>
-                                        onEditClient(selectedClient),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  _ClientActionButton(
-                                    tooltip: AppStrings.t(
-                                      'veterinarian_delete_client',
-                                    ),
-                                    icon: Icons.delete_outline_rounded,
-                                    foregroundColor: appColors.danger,
-                                    backgroundColor: Color.lerp(
-                                      theme.colorScheme.errorContainer,
-                                      appColors.danger,
-                                      0.05,
-                                    )!,
-                                    onPressed: () =>
-                                        onDeleteClient(selectedClient),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ],
             ],
           ],
         ),
@@ -286,10 +197,10 @@ class _ClientActionButton extends StatelessWidget {
           onTap: onPressed,
           borderRadius: BorderRadius.circular(14),
           child: Container(
-            width: 44,
-            height: 44,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(
                 color: foregroundColor.withValues(alpha: 0.14),
               ),
@@ -302,7 +213,7 @@ class _ClientActionButton extends StatelessWidget {
               ],
             ),
             alignment: Alignment.center,
-            child: Icon(icon, size: 20, color: foregroundColor),
+            child: Icon(icon, size: 18, color: foregroundColor),
           ),
         ),
       ),
