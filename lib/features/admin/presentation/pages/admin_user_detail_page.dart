@@ -265,19 +265,16 @@ class _ActionPanel extends ConsumerWidget {
             icon: const Icon(Icons.edit_outlined),
             label: Text(AppStrings.t('admin_edit_user')),
           ),
-          OutlinedButton.icon(
-            onPressed: user.accountStatus == AppAccountStatus.active
-                ? () => _showStatusDialog(
-                    context,
-                    ref,
-                    user,
-                    AppAccountStatus.suspended,
-                  )
-                : null,
-            icon: const Icon(Icons.pause_circle_outline),
-            label: Text(AppStrings.t('admin_suspend_user')),
+          FilledButton.icon(
+            onPressed: () => _showRoleSheet(context, ref, user),
+            style: FilledButton.styleFrom(
+              backgroundColor: appColors.chipForeground,
+              foregroundColor: appColors.onSolid,
+            ),
+            icon: const Icon(Icons.manage_accounts_outlined),
+            label: Text(AppStrings.t('admin_change_role')),
           ),
-          OutlinedButton.icon(
+          FilledButton.icon(
             onPressed: user.accountStatus == AppAccountStatus.deleted
                 ? null
                 : () => _showStatusDialog(
@@ -286,10 +283,13 @@ class _ActionPanel extends ConsumerWidget {
                     user,
                     AppAccountStatus.deleted,
                   ),
-            icon: Icon(Icons.delete_outline, color: appColors.danger),
+            style: FilledButton.styleFrom(
+              backgroundColor: appColors.chipForeground,
+              foregroundColor: appColors.onSolid,
+            ),
+            icon: const Icon(Icons.delete_outline),
             label: Text(
               AppStrings.t('admin_delete_user'),
-              style: TextStyle(color: appColors.danger),
             ),
           ),
           if (!user.accountStatus.isActive)
@@ -313,7 +313,6 @@ class _ActionPanel extends ConsumerWidget {
     final lastNameController = TextEditingController(text: user.lastName);
     final phoneController = TextEditingController(text: user.phone);
     final locationController = TextEditingController(text: user.location);
-    var selectedRole = user.userType;
 
     final result = await showModalBottomSheet<bool>(
       context: context,
@@ -373,26 +372,6 @@ class _ActionPanel extends ConsumerWidget {
                       labelText: AppStrings.t('location'),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<AppUserType>(
-                    initialValue: selectedRole,
-                    decoration: InputDecoration(
-                      labelText: AppStrings.t('role_title'),
-                    ),
-                    items: AppUserType.values.map((role) {
-                      return DropdownMenuItem<AppUserType>(
-                        value: role,
-                        child: Text(AppStrings.t(role.labelKey)),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      if (value == null) {
-                        return;
-                      }
-
-                      setModalState(() => selectedRole = value);
-                    },
-                  ),
                   const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
@@ -421,7 +400,6 @@ class _ActionPanel extends ConsumerWidget {
             lastName: lastNameController.text,
             phone: phoneController.text,
             location: locationController.text,
-            userType: selectedRole,
           );
 
       if (!context.mounted) {
@@ -431,6 +409,101 @@ class _ActionPanel extends ConsumerWidget {
       refreshAdminUsers(ref);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(AppStrings.t('admin_user_updated'))),
+      );
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$error')),
+      );
+    }
+  }
+
+  Future<void> _showRoleSheet(
+    BuildContext context,
+    WidgetRef ref,
+    AdminManagedUser user,
+  ) async {
+    var selectedRole = user.userType;
+
+    final result = await showModalBottomSheet<AppUserType>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            20,
+            16,
+            MediaQuery.of(context).viewInsets.bottom + 24,
+          ),
+          child: StatefulBuilder(
+            builder: (context, setModalState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    AppStrings.t('admin_change_role'),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<AppUserType>(
+                    initialValue: selectedRole,
+                    decoration: InputDecoration(
+                      labelText: AppStrings.t('role_title'),
+                    ),
+                    items: AppUserType.values.map((role) {
+                      return DropdownMenuItem<AppUserType>(
+                        value: role,
+                        child: Text(AppStrings.t(role.labelKey)),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value == null) {
+                        return;
+                      }
+
+                      setModalState(() => selectedRole = value);
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () => Navigator.pop(context, selectedRole),
+                      child: Text(AppStrings.t('save_changes')),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
+
+    if (result == null) {
+      return;
+    }
+
+    try {
+      await ref.read(adminUserManagementServiceProvider).updateUserRole(
+            userId: user.id,
+            userType: result,
+          );
+
+      if (!context.mounted) {
+        return;
+      }
+
+      refreshAdminUsers(ref);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppStrings.t('admin_role_updated'))),
       );
     } catch (error) {
       if (!context.mounted) {
@@ -461,7 +534,7 @@ class _ActionPanel extends ConsumerWidget {
             AppStrings.t(
               targetStatus == AppAccountStatus.deleted
                   ? 'admin_delete_user'
-                  : 'admin_suspend_user',
+                  : 'admin_status_message',
             ),
           ),
           content: Column(

@@ -466,7 +466,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                           ),
                           child: Icon(
                             Icons.delete_outline_rounded,
-                            color: appColors.danger,
+                            color: appColors.onSolid,
                           ),
                         ),
                         const SizedBox(width: 14),

@@ -398,10 +398,11 @@
   "admin_no_notifications": "Este usuario no tiene notificaciones.",
   "admin_actions": "Acciones",
   "admin_edit_user": "Editar usuario",
-  "admin_suspend_user": "Suspender usuario",
+  "admin_change_role": "Cambiar rol",
   "admin_delete_user": "Eliminar usuario",
   "admin_reactivate_user": "Reactivar usuario",
   "admin_user_updated": "Usuario actualizado correctamente.",
+  "admin_role_updated": "Rol del usuario actualizado correctamente.",
   "admin_status_updated": "El estado de la cuenta se actualizo correctamente.",
   "admin_status_dialog_description": "Escribe el mensaje que vera el usuario cuando intente iniciar sesion."
 }

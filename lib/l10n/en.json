@@ -398,10 +398,11 @@
   "admin_no_notifications": "This user has no notifications.",
   "admin_actions": "Actions",
   "admin_edit_user": "Edit user",
-  "admin_suspend_user": "Suspend user",
+  "admin_change_role": "Change role",
   "admin_delete_user": "Delete user",
   "admin_reactivate_user": "Reactivate user",
   "admin_user_updated": "User updated successfully.",
+  "admin_role_updated": "User role updated successfully.",
   "admin_status_updated": "Account status updated successfully.",
   "admin_status_dialog_description": "Write the message the user will see when trying to sign in."
 }

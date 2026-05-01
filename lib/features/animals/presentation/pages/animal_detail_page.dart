@@ -393,7 +393,7 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
               onPressed: () => setState(() => _isEditing = true),
             ),
             IconButton(
-              icon: Icon(Icons.delete_outline, color: context.appColors.danger),
+              icon: const Icon(Icons.delete_outline),
               tooltip: AppStrings.t('delete_animal'),
               onPressed: _confirmDelete,
             ),

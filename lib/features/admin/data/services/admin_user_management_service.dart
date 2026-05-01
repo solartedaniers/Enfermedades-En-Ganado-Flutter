@@ -76,7 +76,6 @@ class AdminUserManagementService {
     required String lastName,
     required String phone,
     required String location,
-    required AppUserType userType,
   }) async {
     final normalizedFirstName = firstName.trim();
     final normalizedLastName = lastName.trim();
@@ -89,6 +88,14 @@ class AdminUserManagementService {
       AppJsonKeys.name: normalizedFirstName,
       AppJsonKeys.phone: phone.trim(),
       AppJsonKeys.location: location.trim(),
+    }).eq(AppJsonKeys.id, userId);
+  }
+
+  Future<void> updateUserRole({
+    required String userId,
+    required AppUserType userType,
+  }) async {
+    await _client.from('profiles').update({
       AppJsonKeys.userType: userType.storageValue,
     }).eq(AppJsonKeys.id, userId);
   }

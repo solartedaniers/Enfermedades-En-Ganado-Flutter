@@ -140,11 +140,11 @@ class VeterinarianClientPanel extends StatelessWidget {
                       _ClientActionButton(
                         tooltip: AppStrings.t('veterinarian_delete_client'),
                         icon: Icons.delete_outline_rounded,
-                        foregroundColor: appColors.danger,
+                        foregroundColor: appColors.chipForeground,
                         backgroundColor: Color.lerp(
-                          theme.colorScheme.errorContainer,
-                          appColors.danger,
-                          0.05,
+                          appColors.selectionBackground,
+                          appColors.chipForeground,
+                          0.08,
                         )!,
                         onPressed: () => onDeleteClient(activeClient!),
                       ),

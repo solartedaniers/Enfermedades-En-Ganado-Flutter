@@ -20,6 +20,10 @@ class AdminUsersPage extends ConsumerStatefulWidget {
 class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
   final TextEditingController _searchController = TextEditingController();
   AppAccountStatus? _selectedStatus;
+  static const List<AppAccountStatus> _visibleStatusFilters = [
+    AppAccountStatus.active,
+    AppAccountStatus.deleted,
+  ];
 
   @override
   void dispose() {
@@ -76,7 +80,7 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                   onTap: () => setState(() => _selectedStatus = null),
                 ),
                 const SizedBox(width: 8),
-                for (final status in AppAccountStatus.values) ...[
+                for (final status in _visibleStatusFilters) ...[
                   _StatusFilterChip(
                     label: AppStrings.t(status.labelKey),
                     selected: _selectedStatus == status,
