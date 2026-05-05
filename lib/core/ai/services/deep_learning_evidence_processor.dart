@@ -85,7 +85,22 @@ class LivestockEvidenceProcessor implements DeepLearningEvidenceProcessor {
       request.clinicalQuestion,
       ...request.reportedSymptoms,
       ...request.visualFindings,
+      if (request.livestockDetection != null)
+        'validated ${request.livestockDetection!.species} livestock',
     ].map(_normalizeText).where((item) => item.isNotEmpty).toList();
+    final detection = request.livestockDetection;
+
+    if (detection != null) {
+      findings.add(
+        DiagnosisFinding(
+          label: detection.species,
+          source: 'yolov8_local',
+          confidence: detection.confidence,
+          interpretation:
+              'Local edge vision validated livestock before remote diagnosis.',
+        ),
+      );
+    }
 
     for (final entry in _diseaseKeywords.entries) {
       var score = 0.0;

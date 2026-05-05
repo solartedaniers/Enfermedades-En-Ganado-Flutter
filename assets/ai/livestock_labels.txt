@@ -1,0 +1,5 @@
+bovine
+porcine
+equine
+ovine
+caprine

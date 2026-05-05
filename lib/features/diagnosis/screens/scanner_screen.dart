@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/ai/models/diagnosis_request.dart';
 import '../../../core/ai/models/diagnosis_response.dart';
+import '../../../core/ai/models/livestock_detection.dart';
 import '../../../core/ai/providers/ai_diagnosis_provider.dart';
 import '../../../core/network/network_provider.dart';
 import '../../../core/services/connectivity_message_presenter.dart';
@@ -55,6 +56,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   AnimalEntity? _selectedAnimal;
   DiagnosisReport? _report;
   Uint8List? _capturedImageBytes;
+  LivestockDetection? _livestockDetection;
   _ScannerStep _currentStep = _ScannerStep.intake;
   bool _isInitializingCamera = false;
   bool _isSubmitting = false;
@@ -241,7 +243,42 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     try {
       final picture = await controller.takePicture();
       final bytes = await File(picture.path).readAsBytes();
-      await _runDiagnosis(imageBytes: bytes);
+      final detector = ref.read(yoloLivestockDetectorProvider);
+      final detection = await detector.detect(bytes);
+
+      if (detection == null || !detection.isValid) {
+        if (!mounted) {
+          return;
+        }
+
+        setState(() {
+          _livestockDetection = null;
+          _errorMessage = AppStrings.t('diagnosis_livestock_required_message');
+        });
+        return;
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _livestockDetection = detection;
+      });
+      _showMessage(
+        AppStrings.t('diagnosis_livestock_detected')
+            .replaceAll('{species}', detection.species)
+            .replaceAll(
+              '{confidence}',
+              (detection.confidence * 100).toStringAsFixed(1),
+            ),
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 450));
+      await _runDiagnosis(
+        imageBytes: detection.croppedImageBytes ?? bytes,
+        livestockDetection: detection,
+      );
     } on CameraException catch (error) {
       if (!mounted) {
         return;
@@ -292,9 +329,15 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     }
   }
 
-  Future<void> _runDiagnosis({Uint8List? imageBytes}) async {
+  Future<void> _runDiagnosis({
+    Uint8List? imageBytes,
+    LivestockDetection? livestockDetection,
+  }) async {
     final service = ref.read(livestockDiagnosisServiceProvider);
-    final request = _buildRequest(imageBytes: imageBytes);
+    final request = _buildRequest(
+      imageBytes: imageBytes,
+      livestockDetection: livestockDetection ?? _livestockDetection,
+    );
     final response = await service.analyze(request);
 
     if (!mounted) {
@@ -319,6 +362,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       case DiagnosisStatus.completed:
         setState(() {
           _capturedImageBytes = imageBytes;
+          _livestockDetection = livestockDetection ?? _livestockDetection;
           _report = response.report;
           _currentStep = _ScannerStep.result;
           _hasSavedCurrentResult = false;
@@ -327,7 +371,10 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     }
   }
 
-  DiagnosisRequest _buildRequest({Uint8List? imageBytes}) {
+  DiagnosisRequest _buildRequest({
+    Uint8List? imageBytes,
+    LivestockDetection? livestockDetection,
+  }) {
     final animal = _selectedAnimal;
     final currentUser = Supabase.instance.client.auth.currentUser;
     final geolocationContext =
@@ -361,7 +408,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       animalId: animal.id,
       userId: currentUser?.id ?? animal.userId,
       animalName: animal.name,
-      species: AnimalConstants.cattleSpecies,
+      species: livestockDetection?.species ?? AnimalConstants.cattleSpecies,
       breed: animal.breed,
       ageInYears: animal.age,
       clinicalQuestion: _mainReasonController.text.trim(),
@@ -376,7 +423,12 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       imageUrl: animal.imageUrl,
       visualFindings: imageBytes == null
           ? const []
-          : const ['Captured symptom photo attached for visual analysis.'],
+          : [
+              'YOLOv8 local validation: ${livestockDetection?.species ?? 'livestock'} '
+                  'with ${((livestockDetection?.confidence ?? 0) * 100).toStringAsFixed(1)}% confidence.',
+              'Cropped ROI attached for visual analysis.',
+            ],
+      livestockDetection: livestockDetection,
       geolocationContext: geolocationContext,
     );
   }
@@ -498,6 +550,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   void _resetFlow() {
     setState(() {
       _capturedImageBytes = null;
+      _livestockDetection = null;
       _report = null;
       _errorMessage = null;
       _currentStep = _ScannerStep.intake;
@@ -572,6 +625,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
             isInitializingCamera: _isInitializingCamera,
             isSubmitting: _isSubmitting,
             errorMessage: _errorMessage,
+            livestockDetection: _livestockDetection,
             targetSize: _targetSize,
             onBack: _backToIntake,
             onRetry: _initializeCamera,

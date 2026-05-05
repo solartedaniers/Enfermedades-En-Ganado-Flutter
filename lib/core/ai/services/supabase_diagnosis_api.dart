@@ -13,6 +13,12 @@ class SupabaseDiagnosisApi {
   const SupabaseDiagnosisApi();
 
   Future<DiagnosisReport> createDiagnosisReport(DiagnosisRequest request) async {
+    if (request.livestockDetection == null) {
+      throw Exception(
+        'El diagnostico remoto requiere una deteccion local de ganado validada.',
+      );
+    }
+
     try {
       final response = await Supabase.instance.client.functions.invoke(
         _functionName,

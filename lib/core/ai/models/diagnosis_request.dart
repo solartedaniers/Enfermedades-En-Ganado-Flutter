@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import '../../../geolocation/domain/entities/geolocation_context_entity.dart';
+import 'livestock_detection.dart';
 
 class DiagnosisRequest {
   final String animalId;
@@ -18,6 +19,7 @@ class DiagnosisRequest {
   final Uint8List? imageBytes;
   final String? imageUrl;
   final List<String> visualFindings;
+  final LivestockDetection? livestockDetection;
   final GeolocationContextEntity? geolocationContext;
   final DateTime observedAt;
 
@@ -36,6 +38,7 @@ class DiagnosisRequest {
     this.imageBytes,
     this.imageUrl,
     this.visualFindings = const [],
+    this.livestockDetection,
     this.geolocationContext,
     DateTime? observedAt,
   }) : observedAt = observedAt ?? DateTime.now();
@@ -65,6 +68,7 @@ class DiagnosisRequest {
     Uint8List? imageBytes,
     String? imageUrl,
     List<String>? visualFindings,
+    LivestockDetection? livestockDetection,
     GeolocationContextEntity? geolocationContext,
     DateTime? observedAt,
   }) {
@@ -83,6 +87,7 @@ class DiagnosisRequest {
       imageBytes: imageBytes ?? this.imageBytes,
       imageUrl: imageUrl ?? this.imageUrl,
       visualFindings: visualFindings ?? this.visualFindings,
+      livestockDetection: livestockDetection ?? this.livestockDetection,
       geolocationContext: geolocationContext ?? this.geolocationContext,
       observedAt: observedAt ?? this.observedAt,
     );
@@ -104,6 +109,8 @@ class DiagnosisRequest {
       'image_base64': imageBytes == null ? null : base64Encode(imageBytes!),
       'image_url': imageUrl,
       'visual_findings': visualFindings,
+      'livestock_detection': livestockDetection?.toJson(),
+      'validated_species': livestockDetection?.species ?? species,
       'geolocation_context': geolocationContext == null
           ? null
           : {

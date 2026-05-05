@@ -1,6 +1,7 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/ai/models/livestock_detection.dart';
 import '../../../core/theme/app_sizes.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -11,6 +12,7 @@ class ScannerCameraView extends StatelessWidget {
   final bool isInitializingCamera;
   final bool isSubmitting;
   final String? errorMessage;
+  final LivestockDetection? livestockDetection;
   final double targetSize;
   final VoidCallback onBack;
   final VoidCallback onRetry;
@@ -21,6 +23,7 @@ class ScannerCameraView extends StatelessWidget {
     required this.isInitializingCamera,
     required this.isSubmitting,
     required this.errorMessage,
+    required this.livestockDetection,
     required this.targetSize,
     required this.onBack,
     required this.onRetry,
@@ -33,6 +36,8 @@ class ScannerCameraView extends StatelessWidget {
       children: [
         _buildCameraLayer(context),
         _ScannerCameraOverlay(targetSize: targetSize),
+        if (livestockDetection != null)
+          _LivestockDetectionOverlay(detection: livestockDetection!),
         Positioned(
           left: AppSizes.large,
           right: AppSizes.large,
@@ -115,6 +120,68 @@ class ScannerCameraView extends StatelessWidget {
   }
 }
 
+class _LivestockDetectionOverlay extends StatelessWidget {
+  final LivestockDetection detection;
+
+  const _LivestockDetectionOverlay({required this.detection});
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final box = detection.boundingBox;
+          final left = box.left * constraints.maxWidth;
+          final top = box.top * constraints.maxHeight;
+          final width = box.width * constraints.maxWidth;
+          final height = box.height * constraints.maxHeight;
+
+          return Stack(
+            children: [
+              Positioned(
+                left: left,
+                top: top,
+                width: width,
+                height: height,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(AppSizes.medium),
+                    border: Border.all(
+                      color: context.appColors.success,
+                      width: AppSizes.thickStroke,
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: left,
+                top: (top - 36).clamp(12.0, constraints.maxHeight - 48),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSizes.medium,
+                    vertical: AppSizes.small,
+                  ),
+                  decoration: BoxDecoration(
+                    color: context.appColors.success,
+                    borderRadius: BorderRadius.circular(AppSizes.fieldRadius),
+                  ),
+                  child: Text(
+                    '${detection.species} ${(detection.confidence * 100).toStringAsFixed(1)}%',
+                    style: AppTextStyles.bodyStrong(
+                      Theme.of(context),
+                      context.appColors.onSolid,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
 class _ScannerCameraOverlay extends StatelessWidget {
   final double targetSize;
 
@@ -149,7 +216,7 @@ class _ScannerCameraOverlay extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSizes.xxLarge),
               child: Text(
-                AppStrings.t('diagnosis_camera_optional'),
+                AppStrings.t('diagnosis_camera_required'),
                 textAlign: TextAlign.center,
                 style: AppTextStyles.sectionTitle(Theme.of(context)).copyWith(
                   color: context.appColors.onSolid,

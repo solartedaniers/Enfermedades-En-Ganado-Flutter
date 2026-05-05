@@ -18,6 +18,12 @@ class GroqDiagnosisApi {
   bool get isConfigured => _apiKey.trim().isNotEmpty;
 
   Future<DiagnosisReport> createDiagnosisReport(DiagnosisRequest request) async {
+    if (request.livestockDetection == null) {
+      throw Exception(
+        'El diagnostico remoto requiere una deteccion local de ganado validada.',
+      );
+    }
+
     if (!isConfigured) {
       throw Exception('Falta configurar la GROQ_API_KEY en el archivo .env');
     }
@@ -119,7 +125,9 @@ class GroqDiagnosisApi {
   String _buildCasePrompt(DiagnosisRequest request) {
     return '''Analiza el siguiente caso clínico:
     - Nombre del animal: ${request.animalName}
-    - Especie: ${request.species}
+    - Especie registrada: ${request.species}
+    - Especie validada por YOLO local: ${request.livestockDetection?.species ?? request.species}
+    - Confianza YOLO: ${((request.livestockDetection?.confidence ?? 0) * 100).toStringAsFixed(1)}%
     - Síntomas reportados: ${request.reportedSymptoms.join(", ")}
     - Hallazgos visuales: ${request.visualFindings.join(", ")}
     - Pregunta del usuario: ${request.clinicalQuestion}''';

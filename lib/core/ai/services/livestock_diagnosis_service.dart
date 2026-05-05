@@ -4,6 +4,7 @@ import '../../network/network_info.dart';
 import '../../utils/app_strings.dart';
 import '../models/diagnosis_request.dart';
 import '../models/diagnosis_response.dart';
+import '../models/livestock_detection.dart';
 import 'groq_diagnosis_api.dart';
 import 'supabase_diagnosis_api.dart';
 
@@ -19,6 +20,20 @@ class LivestockDiagnosisService {
   });
 
   Future<DiagnosisResponse> prepare(DiagnosisRequest request) async {
+    if (request.livestockDetection == null ||
+        request.livestockDetection!.confidence <
+            LivestockDetectionPolicy.minConfidence) {
+      return DiagnosisResponse(
+        status: DiagnosisStatus.needsVisualEvidence,
+        nextStep: DiagnosisNextStep(
+          status: DiagnosisStatus.needsVisualEvidence,
+          title: AppStrings.t('diagnosis_livestock_required_title'),
+          message: AppStrings.t('diagnosis_livestock_required_message'),
+          canContinueOffline: true,
+        ),
+      );
+    }
+
     final isConnected = await networkInfo.isConnected;
 
     if (!isConnected) {
