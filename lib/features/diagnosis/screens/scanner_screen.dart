@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -223,6 +224,82 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     await _initializeCamera();
   }
 
+  Future<void> _pickImageFromGallery() async {
+    setState(() {
+      _isSubmitting = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final pickedImage = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+      );
+
+      if (pickedImage == null) {
+        return;
+      }
+
+      final bytes = await File(pickedImage.path).readAsBytes();
+      await _processImageBytes(bytes);
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _errorMessage = AppStrings.t('diagnosis_invalid_visual_input');
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _processImageBytes(Uint8List bytes) async {
+    final detector = ref.read(yoloLivestockDetectorProvider);
+    final detection = await detector.detect(bytes);
+
+    if (detection == null || !detection.isValid) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _livestockDetection = null;
+        _errorMessage = AppStrings.t('diagnosis_livestock_required_message');
+      });
+      return;
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _livestockDetection = detection;
+      _errorMessage = null;
+    });
+
+    _showMessage(
+      AppStrings.t('diagnosis_livestock_detected')
+          .replaceAll('{species}', detection.species)
+          .replaceAll(
+            '{confidence}',
+            (detection.confidence * 100).toStringAsFixed(1),
+          ),
+    );
+
+    await Future<void>.delayed(const Duration(milliseconds: 450));
+    await _runDiagnosis(
+      imageBytes: detection.croppedImageBytes ?? bytes,
+      livestockDetection: detection,
+    );
+  }
+
   void _backToIntake() {
     setState(() {
       _currentStep = _ScannerStep.intake;
@@ -333,6 +410,14 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     Uint8List? imageBytes,
     LivestockDetection? livestockDetection,
   }) async {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _errorMessage = null;
+    });
+
     final service = ref.read(livestockDiagnosisServiceProvider);
     final request = _buildRequest(
       imageBytes: imageBytes,
@@ -559,12 +644,14 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
   }
 
   String _mapCameraError(CameraException error) {
@@ -618,6 +705,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
             onAnimalSelected: _selectAnimal,
             onAddAnimalRequested: _openAddAnimalFlow,
             onOpenCamera: _openCamera,
+            onOpenGallery: _pickImageFromGallery,
             onDiagnoseWithoutImage: _diagnoseWithoutImage,
           ),
         _ScannerStep.camera => ScannerCameraView(

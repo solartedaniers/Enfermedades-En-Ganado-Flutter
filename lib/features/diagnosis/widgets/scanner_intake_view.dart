@@ -24,6 +24,7 @@ class ScannerIntakeView extends StatelessWidget {
   final ValueChanged<AnimalEntity> onAnimalSelected;
   final Future<void> Function() onAddAnimalRequested;
   final VoidCallback onOpenCamera;
+  final Future<void> Function() onOpenGallery;
   final VoidCallback onDiagnoseWithoutImage;
 
   const ScannerIntakeView({
@@ -41,6 +42,7 @@ class ScannerIntakeView extends StatelessWidget {
     required this.onAnimalSelected,
     required this.onAddAnimalRequested,
     required this.onOpenCamera,
+    required this.onOpenGallery,
     required this.onDiagnoseWithoutImage,
   });
 
@@ -247,8 +249,8 @@ class ScannerIntakeView extends StatelessWidget {
                       ),
                     ),
                   const SizedBox(height: AppSizes.large),
-                   Row(
-                     children: [
+                  Row(
+                    children: [
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: onOpenCamera,
@@ -265,40 +267,58 @@ class ScannerIntakeView extends StatelessWidget {
                           label: Text(
                             capturedImageBytes == null
                                 ? AppStrings.t('diagnosis_add_photo')
-                                : AppStrings.t('change_photo'),
+                                : AppStrings.t('diagnosis_change_photo'),
                           ),
                         ),
                       ),
                       const SizedBox(width: AppSizes.medium),
                       Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: isSubmitting || !isOnline
-                              ? null
-                              : onDiagnoseWithoutImage,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: context.appColors.scannerAccent,
-                            foregroundColor: context.appColors.onSolid,
+                        child: OutlinedButton.icon(
+                          onPressed: onOpenGallery,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: context.appColors.scannerAccent,
+                            side: BorderSide(
+                              color: context.appColors.scannerAccent,
+                            ),
                             padding: const EdgeInsets.symmetric(
                               vertical: AppSizes.sectionSpacing,
                             ),
                           ),
-                          icon: isSubmitting
-                              ? SizedBox(
-                                  width: AppIconSizes.medium,
-                                  height: AppIconSizes.medium,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor:
-                                        AlwaysStoppedAnimation<Color>(
-                                          context.appColors.onSolid,
-                                        ),
-                                  ),
-                                )
-                              : const Icon(Icons.psychology_alt_outlined),
-                          label: Text(AppStrings.t('diagnosis_analyze')),
+                          icon: const Icon(Icons.photo_library),
+                          label: Text(AppStrings.t('diagnosis_import_photo')),
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: AppSizes.medium),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: isSubmitting || !isOnline
+                          ? null
+                          : onDiagnoseWithoutImage,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: context.appColors.scannerAccent,
+                        foregroundColor: context.appColors.onSolid,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: AppSizes.sectionSpacing,
+                        ),
+                      ),
+                      icon: isSubmitting
+                          ? SizedBox(
+                              width: AppIconSizes.medium,
+                              height: AppIconSizes.medium,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(
+                                      context.appColors.onSolid,
+                                    ),
+                              ),
+                            )
+                          : const Icon(Icons.psychology_alt_outlined),
+                      label: Text(AppStrings.t('diagnosis_analyze')),
+                    ),
                   ),
                   const SizedBox(height: AppSizes.medium),
                   Text(

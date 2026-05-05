@@ -184,6 +184,8 @@
   "diagnosis_temperature_label": "Temperatura observada (opcional)",
   "diagnosis_temperature_hint": "Ej: 39.8",
   "diagnosis_add_photo": "Agregar foto",
+  "diagnosis_import_photo": "Elegir foto guardada",
+  "diagnosis_change_photo": "Cambiar foto",
   "diagnosis_analyze": "Analizar",
   "diagnosis_back": "Volver al diagnóstico",
   "diagnosis_not_available": "No hay diagnóstico disponible.",
