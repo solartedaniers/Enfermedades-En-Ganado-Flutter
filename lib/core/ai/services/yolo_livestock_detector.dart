@@ -1,8 +1,6 @@
 import 'dart:async';
-import 'dart:developer' as developer;
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as image_lib;
 import 'package:tflite_flutter/tflite_flutter.dart';
@@ -28,12 +26,8 @@ class YoloLivestockDetector {
   });
 
   Future<bool> get isReady async {
-    try {
-      await _ensureLoaded();
-      return _interpreter != null;
-    } catch (_) {
-      return false;
-    }
+    await _ensureLoaded();
+    return true;
   }
 
   Future<LivestockDetection?> detect(Uint8List imageBytes) async {
@@ -42,7 +36,9 @@ class YoloLivestockDetector {
     final interpreter = _interpreter;
     final labels = _labels;
     if (interpreter == null || labels == null || labels.isEmpty) {
-      return null;
+      throw StateError(
+        'The local livestock detector was not initialized correctly.',
+      );
     }
 
     final decodedImage = image_lib.decodeImage(imageBytes);
@@ -59,7 +55,13 @@ class YoloLivestockDetector {
       height: inputHeight,
     );
 
-    final input = _buildInput(resized, inputWidth, inputHeight);
+    final inputTensor = interpreter.getInputTensor(0);
+    final input = _buildInput(
+      resized,
+      inputWidth,
+      inputHeight,
+      inputTensor.type,
+    );
     final outputShape = interpreter.getOutputTensor(0).shape;
     final output = _buildOutput(outputShape);
 
@@ -101,14 +103,6 @@ class YoloLivestockDetector {
     try {
       _labels = await _loadLabels();
       _interpreter = await Interpreter.fromAsset(modelAsset);
-    } on FlutterError catch (error, stackTrace) {
-      developer.log(
-        'YOLOv8 model asset is not available',
-        name: 'YoloLivestockDetector',
-        error: error,
-        stackTrace: stackTrace,
-      );
-      _interpreter = null;
     } finally {
       _isLoading = false;
     }
@@ -123,7 +117,26 @@ class YoloLivestockDetector {
         .toList();
   }
 
-  Object _buildInput(image_lib.Image resized, int width, int height) {
+  Object _buildInput(
+    image_lib.Image resized,
+    int width,
+    int height,
+    TensorType inputType,
+  ) {
+    if (inputType == TensorType.uint8) {
+      final bytes = Uint8List(width * height * 3);
+      var offset = 0;
+      for (var y = 0; y < height; y++) {
+        for (var x = 0; x < width; x++) {
+          final pixel = resized.getPixel(x, y);
+          bytes[offset++] = pixel.r.toInt().clamp(0, 255);
+          bytes[offset++] = pixel.g.toInt().clamp(0, 255);
+          bytes[offset++] = pixel.b.toInt().clamp(0, 255);
+        }
+      }
+      return bytes;
+    }
+
     return List.generate(
       1,
       (_) => List.generate(
