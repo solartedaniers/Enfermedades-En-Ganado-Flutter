@@ -157,6 +157,7 @@ class LivestockDiagnosisService {
   ) {
     final detection = request.livestockDetection;
     final species = detection?.species ?? request.species;
+    final visualConfidence = detection?.confidence;
     final statement = report.diagnosticStatement.trim().isNotEmpty
         ? report.diagnosticStatement.trim()
         : 'Basado en la evidencia visual y los sintomas descritos, el cuadro clinico es compatible con ${report.primaryDiagnosis}.';
@@ -169,7 +170,7 @@ class LivestockDiagnosisService {
           ? report.symptomAnalysis
           : _buildLocalSymptomAnalysis(request),
       validatedSpecies: species,
-      visualDetectionConfidence: detection?.confidence,
+      visualDetectionConfidence: visualConfidence,
       disclaimer: AppStrings.t('diagnosis_professional_disclaimer'),
     );
   }

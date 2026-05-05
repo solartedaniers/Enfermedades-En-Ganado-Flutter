@@ -63,28 +63,77 @@ class ClinicalInputGuard {
     'superpoder',
   };
 
+  static const Set<String> _clinicalSignals = {
+    'fiebre',
+    'temperatura',
+    'tos',
+    'moco',
+    'secrecion',
+    'diarrea',
+    'vomito',
+    'cojera',
+    'dolor',
+    'inflamacion',
+    'herida',
+    'lesion',
+    'sangre',
+    'apetito',
+    'decaido',
+    'debil',
+    'respira',
+    'babeo',
+    'ubre',
+    'piel',
+    'pezu',
+    'leche',
+    'parasito',
+    'convulsion',
+    'temblor',
+    'nasal',
+    'ocular',
+    'come',
+    'agua',
+  };
+
   const ClinicalInputGuard();
 
   ClinicalInputValidationResult validate(DiagnosisRequest request) {
     final detection = request.livestockDetection;
-    if (detection == null ||
-        detection.confidence < LivestockDetectionPolicy.minConfidence) {
-      return ClinicalInputValidationResult.invalid(
-        AppStrings.t('diagnosis_livestock_required_message'),
-      );
-    }
-
-    final detectedSpecies = _normalizeSpecies(detection.species);
-    if (!_acceptedSpecies.contains(detectedSpecies)) {
-      return ClinicalInputValidationResult.invalid(
-        AppStrings.t('diagnosis_invalid_visual_input'),
-      );
-    }
-
     final clinicalText = _normalizeText([
       request.clinicalQuestion,
       ...request.reportedSymptoms,
     ].join(' '));
+    final hasImageEvidence = request.imageBytes != null;
+
+    if (hasImageEvidence) {
+      if (detection == null ||
+          detection.confidence < LivestockDetectionPolicy.minConfidence) {
+        return ClinicalInputValidationResult.invalid(
+          AppStrings.t('diagnosis_livestock_required_message'),
+        );
+      }
+
+      final detectedSpecies = _normalizeSpecies(detection.species);
+      if (!_acceptedSpecies.contains(detectedSpecies)) {
+        return ClinicalInputValidationResult.invalid(
+          AppStrings.t('diagnosis_invalid_visual_input'),
+        );
+      }
+
+      if (_hasSpeciesMismatch(detectedSpecies, clinicalText)) {
+        return ClinicalInputValidationResult.invalid(
+          AppStrings.t('diagnosis_species_symptom_mismatch'),
+        );
+      }
+    } else {
+      final registeredSpecies = _normalizeSpecies(request.species);
+      if (_acceptedSpecies.contains(registeredSpecies) &&
+          _hasSpeciesMismatch(registeredSpecies, clinicalText)) {
+        return ClinicalInputValidationResult.invalid(
+          AppStrings.t('diagnosis_species_symptom_mismatch'),
+        );
+      }
+    }
 
     if (_hasNonsenseContent(clinicalText)) {
       return ClinicalInputValidationResult.invalid(
@@ -92,9 +141,9 @@ class ClinicalInputGuard {
       );
     }
 
-    if (_hasSpeciesMismatch(detectedSpecies, clinicalText)) {
+    if (clinicalText.isNotEmpty && !_hasClinicalSignal(clinicalText)) {
       return ClinicalInputValidationResult.invalid(
-        AppStrings.t('diagnosis_species_symptom_mismatch'),
+        AppStrings.t('diagnosis_inconsistent_symptoms'),
       );
     }
 
@@ -118,6 +167,11 @@ class ClinicalInputGuard {
     }
 
     return _fantasySignals.any(value.contains);
+  }
+
+  bool _hasClinicalSignal(String value) {
+    return _clinicalSignals.any(value.contains) ||
+        RegExp(r'\b\d{2}([,.]\d)?\b').hasMatch(value);
   }
 
   bool _hasSpeciesMismatch(String detectedSpecies, String clinicalText) {

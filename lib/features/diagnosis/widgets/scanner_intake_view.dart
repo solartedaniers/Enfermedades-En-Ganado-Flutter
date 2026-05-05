@@ -272,7 +272,9 @@ class ScannerIntakeView extends StatelessWidget {
                       const SizedBox(width: AppSizes.medium),
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: null,
+                          onPressed: isSubmitting || !isOnline
+                              ? null
+                              : onDiagnoseWithoutImage,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: context.appColors.scannerAccent,
                             foregroundColor: context.appColors.onSolid,
@@ -300,7 +302,7 @@ class ScannerIntakeView extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSizes.medium),
                   Text(
-                    AppStrings.t('diagnosis_camera_required'),
+                    AppStrings.t('diagnosis_camera_optional'),
                     style: AppTextStyles.bodyMuted(
                       Theme.of(context),
                       context.appColors.subduedForeground,

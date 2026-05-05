@@ -18,7 +18,7 @@ class GroqDiagnosisApi {
   bool get isConfigured => _apiKey.trim().isNotEmpty;
 
   Future<DiagnosisReport> createDiagnosisReport(DiagnosisRequest request) async {
-    if (request.livestockDetection == null) {
+    if (request.imageBytes != null && request.livestockDetection == null) {
       throw Exception(
         'El diagnostico remoto requiere una deteccion local de ganado validada.',
       );
@@ -111,7 +111,8 @@ class GroqDiagnosisApi {
     return '''Eres AgroVet AI, un experto en medicina veterinaria para ganado bovino, porcino, equino, ovino y caprino.
     Tu tarea es generar un informe tecnico profesional en formato JSON.
     No afirmes diagnosticos absolutos: usa lenguaje presuntivo y clinico.
-    Si notas incoherencia especie-sintoma, responde en diagnostic_statement: "Existe una discrepancia entre la especie detectada y los sintomas descritos. Por favor verifique la informacion".
+    Si notas incoherencia especie-sintoma, responde en diagnostic_statement: "Existe una discrepancia entre la especie detectada o registrada y los sintomas descritos. Por favor verifique la informacion".
+    Si el texto contiene afirmaciones biologicamente absurdas, fantasiosas o no clinicas, responde en diagnostic_statement: "Se ha detectado una inconsistencia en la descripcion de los sintomas. Por favor, ingrese informacion tecnica y real sobre el estado del animal".
     Es OBLIGATORIO que el JSON contenga exactamente estas llaves:
     {
       "primary_diagnosis": "nombre",
@@ -142,8 +143,8 @@ class GroqDiagnosisApi {
     return '''Analiza el siguiente caso clínico:
     - Nombre del animal: ${request.animalName}
     - Especie registrada: ${request.species}
-    - Especie validada por YOLO local: ${request.livestockDetection?.species ?? request.species}
-    - Confianza YOLO: ${((request.livestockDetection?.confidence ?? 0) * 100).toStringAsFixed(1)}%
+    - Especie validada por YOLO local: ${request.livestockDetection?.species ?? 'sin foto validada; usar especie registrada'}
+    - Confianza YOLO: ${request.livestockDetection == null ? 'no aplica' : '${(request.livestockDetection!.confidence * 100).toStringAsFixed(1)}%'}
     - Síntomas reportados: ${request.reportedSymptoms.join(", ")}
     - Hallazgos visuales: ${request.visualFindings.join(", ")}
     - Pregunta del usuario: ${request.clinicalQuestion}''';

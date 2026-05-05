@@ -13,7 +13,7 @@ class SupabaseDiagnosisApi {
   const SupabaseDiagnosisApi();
 
   Future<DiagnosisReport> createDiagnosisReport(DiagnosisRequest request) async {
-    if (request.livestockDetection == null) {
+    if (request.imageBytes != null && request.livestockDetection == null) {
       throw Exception(
         'El diagnostico remoto requiere una deteccion local de ganado validada.',
       );
