@@ -4,7 +4,7 @@ import '../../network/network_info.dart';
 import '../../utils/app_strings.dart';
 import '../models/diagnosis_request.dart';
 import '../models/diagnosis_response.dart';
-import '../models/livestock_detection.dart';
+import 'clinical_input_guard.dart';
 import 'deep_learning_evidence_processor.dart';
 import 'groq_diagnosis_api.dart';
 import 'supabase_diagnosis_api.dart';
@@ -14,24 +14,26 @@ class LivestockDiagnosisService {
   final SupabaseDiagnosisApi remoteDiagnosisApi;
   final GroqDiagnosisApi groqApi;
   final DeepLearningEvidenceProcessor evidenceProcessor;
+  final ClinicalInputGuard clinicalInputGuard;
 
   const LivestockDiagnosisService({
     required this.networkInfo,
     this.remoteDiagnosisApi = const SupabaseDiagnosisApi(),
     this.groqApi = const GroqDiagnosisApi(),
     this.evidenceProcessor = const LivestockEvidenceProcessor(),
+    this.clinicalInputGuard = const ClinicalInputGuard(),
   });
 
   Future<DiagnosisResponse> prepare(DiagnosisRequest request) async {
-    if (request.livestockDetection == null ||
-        request.livestockDetection!.confidence <
-            LivestockDetectionPolicy.minConfidence) {
+    final clinicalValidation = clinicalInputGuard.validate(request);
+    if (!clinicalValidation.isValid) {
       return DiagnosisResponse(
         status: DiagnosisStatus.needsVisualEvidence,
         nextStep: DiagnosisNextStep(
           status: DiagnosisStatus.needsVisualEvidence,
           title: AppStrings.t('diagnosis_livestock_required_title'),
-          message: AppStrings.t('diagnosis_livestock_required_message'),
+          message: clinicalValidation.message ??
+              AppStrings.t('diagnosis_livestock_required_message'),
           canContinueOffline: true,
         ),
       );
@@ -105,7 +107,7 @@ class LivestockDiagnosisService {
           title: AppStrings.t('diagnosis_completed_title'),
           message: AppStrings.t('diagnosis_remote_completed_message'),
         ),
-        report: report,
+        report: _completeProfessionalReport(report, cloudRequest),
       );
     } catch (error, stackTrace) {
       developer.log(
@@ -124,7 +126,7 @@ class LivestockDiagnosisService {
         title: AppStrings.t('diagnosis_completed_title'),
         message: AppStrings.t('diagnosis_remote_completed_message'),
       ),
-      report: report,
+      report: _completeProfessionalReport(report, cloudRequest),
     );
   }
 
@@ -147,5 +149,46 @@ class LivestockDiagnosisService {
       species: request.livestockDetection?.species ?? request.species,
       visualFindings: visualFindings,
     );
+  }
+
+  DiagnosisReport _completeProfessionalReport(
+    DiagnosisReport report,
+    DiagnosisRequest request,
+  ) {
+    final detection = request.livestockDetection;
+    final species = detection?.species ?? request.species;
+    final statement = report.diagnosticStatement.trim().isNotEmpty
+        ? report.diagnosticStatement.trim()
+        : 'Basado en la evidencia visual y los sintomas descritos, el cuadro clinico es compatible con ${report.primaryDiagnosis}.';
+
+    return report.copyWith(
+      diagnosticStatement: statement.startsWith('Basado en la evidencia')
+          ? statement
+          : 'Basado en la evidencia visual y los sintomas descritos, $statement',
+      symptomAnalysis: report.symptomAnalysis.trim().isNotEmpty
+          ? report.symptomAnalysis
+          : _buildLocalSymptomAnalysis(request),
+      validatedSpecies: species,
+      visualDetectionConfidence: detection?.confidence,
+      disclaimer: AppStrings.t('diagnosis_professional_disclaimer'),
+    );
+  }
+
+  String _buildLocalSymptomAnalysis(DiagnosisRequest request) {
+    final symptoms = request.reportedSymptoms
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
+
+    if (symptoms.isEmpty && request.clinicalQuestion.trim().isEmpty) {
+      return 'No se registraron sintomas escritos adicionales; el analisis se apoya principalmente en la evidencia visual validada localmente.';
+    }
+
+    final sourceText = [
+      request.clinicalQuestion.trim(),
+      ...symptoms,
+    ].where((item) => item.isNotEmpty).join(', ');
+
+    return 'La descripcion ingresada por el usuario se interpreta como signos clinicos reportados para evaluacion veterinaria: $sourceText.';
   }
 }

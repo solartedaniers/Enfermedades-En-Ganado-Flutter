@@ -64,6 +64,15 @@ class GroqDiagnosisApi {
         isContagious: reportJson['is_contagious'] ?? false,
         requiresVeterinarian: reportJson['requires_veterinarian'] ?? true,
         reasoning: reportJson['reasoning'] ?? '',
+        symptomAnalysis: reportJson['symptom_analysis'] ?? '',
+        validatedSpecies:
+            reportJson['validated_species'] ?? request.livestockDetection?.species,
+        visualDetectionConfidence:
+            (reportJson['visual_detection_confidence'] as num?)?.toDouble() ??
+                request.livestockDetection?.confidence,
+        disclaimer:
+            reportJson['disclaimer'] ??
+                'Este informe es una asistencia basada en Inteligencia Artificial y no sustituye el juicio clinico de un Medico Veterinario. Se recomienda la inspeccion presencial de un profesional colegiado.',
         findings: _parseFindings(reportJson['findings']),
         differentialDiagnoses: List<String>.from(reportJson['differential_diagnoses'] ?? []),
         immediateActions: List<String>.from(reportJson['immediate_actions'] ?? []),
@@ -99,25 +108,32 @@ class GroqDiagnosisApi {
   }
 
   String _buildSystemInstructions() {
-    return '''Eres AgroVet AI, un experto en medicina veterinaria bovina y porcina. 
-    Tu tarea es generar un diagnóstico profesional en formato JSON. 
+    return '''Eres AgroVet AI, un experto en medicina veterinaria para ganado bovino, porcino, equino, ovino y caprino.
+    Tu tarea es generar un informe tecnico profesional en formato JSON.
+    No afirmes diagnosticos absolutos: usa lenguaje presuntivo y clinico.
+    Si notas incoherencia especie-sintoma, responde en diagnostic_statement: "Existe una discrepancia entre la especie detectada y los sintomas descritos. Por favor verifique la informacion".
     Es OBLIGATORIO que el JSON contenga exactamente estas llaves:
     {
       "primary_diagnosis": "nombre",
-      "diagnostic_statement": "resumen corto",
+      "diagnostic_statement": "Basado en la evidencia visual y los sintomas descritos, el cuadro clinico es compatible con...",
       "confidence": 0.95,
       "severity_index": 80,
       "urgency_index": 70,
       "is_contagious": true,
       "requires_veterinarian": true,
-      "reasoning": "explicación detallada",
-      "findings": [{"label": "síntoma", "source": "visual", "confidence": 0.9, "interpretation": "significado"}],
+      "reasoning": "explicacion detallada",
+      "symptom_analysis": "interpretacion tecnica veterinaria de los sintomas escritos por el usuario",
+      "validated_species": "especie validada por YOLO",
+      "visual_detection_confidence": 0.91,
+      "findings": [{"label": "sintoma", "source": "visual", "confidence": 0.9, "interpretation": "significado"}],
       "differential_diagnoses": ["enf1", "enf2"],
       "immediate_actions": ["accion1"],
       "treatment_protocol": ["medicamento o principio activo, dosis, via, frecuencia y duracion"],
       "isolation_measures": ["medida1"],
-      "monitoring_plan": ["plan1"]
+      "monitoring_plan": ["plan1"],
+      "disclaimer": "Este informe es una asistencia basada en Inteligencia Artificial y no sustituye el juicio clinico de un Medico Veterinario. Se recomienda la inspeccion presencial de un profesional colegiado."
     }
+    En symptom_analysis traduce lenguaje informal a terminologia veterinaria sin inventar signos no reportados.
     En treatment_protocol incluye medicamento o principio activo, dosis, via, frecuencia y duracion cuando sea seguro sugerirlos.
     Si no es seguro indicar una dosis exacta, dilo claramente y recomienda validarla con un veterinario.''';
   }

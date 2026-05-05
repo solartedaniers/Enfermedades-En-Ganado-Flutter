@@ -2,11 +2,12 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/ai/models/diagnosis_response.dart';
 import '../../../core/theme/app_sizes.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/app_date_formatter.dart';
 import '../../../core/utils/app_strings.dart';
-import '../../../core/ai/models/diagnosis_response.dart';
 import '../../animals/domain/entities/animal_entity.dart';
 
 class ScannerResultView extends StatelessWidget {
@@ -64,9 +65,19 @@ class ScannerResultView extends StatelessWidget {
                   style: AppTextStyles.sectionTitle(Theme.of(context)),
                 ),
                 const SizedBox(height: AppSizes.medium),
-                Text(
-                  currentReport.diagnosticStatement,
-                  style: AppTextStyles.title(Theme.of(context)),
+                _TechnicalHeader(report: currentReport),
+                const SizedBox(height: AppSizes.large),
+                _ScannerSection(
+                  title: AppStrings.t('diagnosis_symptom_analysis'),
+                  items: [
+                    currentReport.symptomAnalysis.trim().isEmpty
+                        ? currentReport.reasoning
+                        : currentReport.symptomAnalysis,
+                  ],
+                ),
+                _ScannerSection(
+                  title: AppStrings.t('diagnosis_presumptive_diagnosis'),
+                  items: [currentReport.diagnosticStatement],
                 ),
                 const SizedBox(height: AppSizes.large),
                 Wrap(
@@ -103,10 +114,6 @@ class ScannerResultView extends StatelessWidget {
                 ],
                 const SizedBox(height: AppSizes.xLarge),
                 _ScannerSection(
-                  title: AppStrings.t('diagnosis_reasoning'),
-                  items: [currentReport.reasoning],
-                ),
-                _ScannerSection(
                   title: AppStrings.t('diagnosis_immediate_actions'),
                   items: currentReport.immediateActions,
                 ),
@@ -123,6 +130,7 @@ class ScannerResultView extends StatelessWidget {
                   title: AppStrings.t('diagnosis_monitoring'),
                   items: currentReport.monitoringPlan,
                 ),
+                _ScannerDisclaimer(text: currentReport.disclaimer),
                 const SizedBox(height: AppSizes.xLarge),
                 Row(
                   children: [
@@ -168,6 +176,47 @@ class ScannerResultView extends StatelessWidget {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TechnicalHeader extends StatelessWidget {
+  final DiagnosisReport report;
+
+  const _TechnicalHeader({required this.report});
+
+  @override
+  Widget build(BuildContext context) {
+    final dateLabel = AppDateFormatter.shortDateTime(report.generatedAt);
+    final confidence = report.visualDetectionConfidence == null
+        ? AppStrings.t('diagnosis_not_available')
+        : '${(report.visualDetectionConfidence! * 100).toStringAsFixed(1)}%';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSizes.large),
+      decoration: BoxDecoration(
+        color: context.appColors.selectionBackground,
+        borderRadius: BorderRadius.circular(AppSizes.fieldRadius),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            AppStrings.t('diagnosis_technical_header'),
+            style: AppTextStyles.bodyStrong(
+              Theme.of(context),
+              Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: AppSizes.small),
+          Text(
+            '${AppStrings.t('diagnosis_validated_species')}: ${report.validatedSpecies ?? AppStrings.t('diagnosis_not_available')}',
+          ),
+          Text('${AppStrings.t('diagnosis_yolo_confidence')}: $confidence'),
+          Text('${AppStrings.t('diagnosis_generated_at')}: $dateLabel'),
         ],
       ),
     );
@@ -240,6 +289,35 @@ class _ScannerSection extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ScannerDisclaimer extends StatelessWidget {
+  final String text;
+
+  const _ScannerDisclaimer({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: AppSizes.medium),
+      padding: const EdgeInsets.all(AppSizes.large),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppSizes.fieldRadius),
+        border: Border.all(
+          color: context.appColors.warning.withValues(alpha: 0.55),
+        ),
+        color: context.appColors.warning.withValues(alpha: 0.10),
+      ),
+      child: Text(
+        text,
+        style: AppTextStyles.bodyMuted(
+          Theme.of(context),
+          Theme.of(context).colorScheme.onSurface,
+        ),
       ),
     );
   }

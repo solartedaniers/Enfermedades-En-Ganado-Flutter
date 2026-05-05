@@ -80,6 +80,10 @@ class DiagnosisReport {
   final bool isContagious;
   final bool requiresVeterinarian;
   final String reasoning;
+  final String symptomAnalysis;
+  final String? validatedSpecies;
+  final double? visualDetectionConfidence;
+  final String disclaimer;
   final List<DiagnosisFinding> findings;
   final List<String> differentialDiagnoses;
   final List<String> immediateActions;
@@ -97,6 +101,11 @@ class DiagnosisReport {
     required this.isContagious,
     required this.requiresVeterinarian,
     required this.reasoning,
+    this.symptomAnalysis = '',
+    this.validatedSpecies,
+    this.visualDetectionConfidence,
+    this.disclaimer =
+        'Este informe es una asistencia basada en Inteligencia Artificial y no sustituye el juicio clinico de un Medico Veterinario. Se recomienda la inspeccion presencial de un profesional colegiado.',
     required this.findings,
     required this.differentialDiagnoses,
     required this.immediateActions,
@@ -116,6 +125,10 @@ class DiagnosisReport {
       'is_contagious': isContagious,
       'requires_veterinarian': requiresVeterinarian,
       'reasoning': reasoning,
+      'symptom_analysis': symptomAnalysis,
+      'validated_species': validatedSpecies,
+      'visual_detection_confidence': visualDetectionConfidence,
+      'disclaimer': disclaimer,
       'findings': findings.map((item) => item.toJson()).toList(),
       'differential_diagnoses': differentialDiagnoses,
       'immediate_actions': immediateActions,
@@ -143,6 +156,13 @@ class DiagnosisReport {
       reasoning:
           json['reasoning'] as String? ??
           AppStrings.t('diagnosis_default_reasoning'),
+      symptomAnalysis: json['symptom_analysis'] as String? ?? '',
+      validatedSpecies: json['validated_species'] as String?,
+      visualDetectionConfidence:
+          (json['visual_detection_confidence'] as num?)?.toDouble(),
+      disclaimer:
+          json['disclaimer'] as String? ??
+          AppStrings.t('diagnosis_professional_disclaimer'),
       findings:
           (json['findings'] as List<dynamic>? ?? [])
               .whereType<Map<String, dynamic>>()
@@ -172,6 +192,53 @@ class DiagnosisReport {
     );
   }
 
+  DiagnosisReport copyWith({
+    String? primaryDiagnosis,
+    String? diagnosticStatement,
+    double? confidence,
+    int? severityIndex,
+    int? urgencyIndex,
+    bool? isContagious,
+    bool? requiresVeterinarian,
+    String? reasoning,
+    String? symptomAnalysis,
+    String? validatedSpecies,
+    double? visualDetectionConfidence,
+    String? disclaimer,
+    List<DiagnosisFinding>? findings,
+    List<String>? differentialDiagnoses,
+    List<String>? immediateActions,
+    List<String>? treatmentProtocol,
+    List<String>? isolationMeasures,
+    List<String>? monitoringPlan,
+    DateTime? generatedAt,
+  }) {
+    return DiagnosisReport(
+      primaryDiagnosis: primaryDiagnosis ?? this.primaryDiagnosis,
+      diagnosticStatement: diagnosticStatement ?? this.diagnosticStatement,
+      confidence: confidence ?? this.confidence,
+      severityIndex: severityIndex ?? this.severityIndex,
+      urgencyIndex: urgencyIndex ?? this.urgencyIndex,
+      isContagious: isContagious ?? this.isContagious,
+      requiresVeterinarian:
+          requiresVeterinarian ?? this.requiresVeterinarian,
+      reasoning: reasoning ?? this.reasoning,
+      symptomAnalysis: symptomAnalysis ?? this.symptomAnalysis,
+      validatedSpecies: validatedSpecies ?? this.validatedSpecies,
+      visualDetectionConfidence:
+          visualDetectionConfidence ?? this.visualDetectionConfidence,
+      disclaimer: disclaimer ?? this.disclaimer,
+      findings: findings ?? this.findings,
+      differentialDiagnoses:
+          differentialDiagnoses ?? this.differentialDiagnoses,
+      immediateActions: immediateActions ?? this.immediateActions,
+      treatmentProtocol: treatmentProtocol ?? this.treatmentProtocol,
+      isolationMeasures: isolationMeasures ?? this.isolationMeasures,
+      monitoringPlan: monitoringPlan ?? this.monitoringPlan,
+      generatedAt: generatedAt ?? this.generatedAt,
+    );
+  }
+
   String toMedicalRecordSummary() {
     final buffer = StringBuffer()
       ..writeln(diagnosticStatement)
@@ -182,6 +249,12 @@ class DiagnosisReport {
         '${isContagious ? AppStrings.t('yes') : AppStrings.t('no')}',
       )
       ..writeln('${AppStrings.t('diagnosis_reasoning')}: $reasoning');
+
+    if (symptomAnalysis.trim().isNotEmpty) {
+      buffer.writeln(
+        '${AppStrings.t('diagnosis_symptom_analysis')}: $symptomAnalysis',
+      );
+    }
 
     if (immediateActions.isNotEmpty) {
       buffer.writeln(
