@@ -5,6 +5,7 @@ import '../../utils/app_strings.dart';
 import '../models/diagnosis_request.dart';
 import '../models/diagnosis_response.dart';
 import '../models/livestock_detection.dart';
+import 'deep_learning_evidence_processor.dart';
 import 'groq_diagnosis_api.dart';
 import 'supabase_diagnosis_api.dart';
 
@@ -12,11 +13,13 @@ class LivestockDiagnosisService {
   final NetworkInfo networkInfo;
   final SupabaseDiagnosisApi remoteDiagnosisApi;
   final GroqDiagnosisApi groqApi;
+  final DeepLearningEvidenceProcessor evidenceProcessor;
 
   const LivestockDiagnosisService({
     required this.networkInfo,
     this.remoteDiagnosisApi = const SupabaseDiagnosisApi(),
     this.groqApi = const GroqDiagnosisApi(),
+    this.evidenceProcessor = const LivestockEvidenceProcessor(),
   });
 
   Future<DiagnosisResponse> prepare(DiagnosisRequest request) async {
@@ -89,8 +92,12 @@ class LivestockDiagnosisService {
       );
     }
 
+    final cloudRequest = await _buildCloudReadyRequest(request);
+
     try {
-      final report = await remoteDiagnosisApi.createDiagnosisReport(request);
+      final report = await remoteDiagnosisApi.createDiagnosisReport(
+        cloudRequest,
+      );
       return DiagnosisResponse(
         status: DiagnosisStatus.completed,
         nextStep: DiagnosisNextStep(
@@ -109,7 +116,7 @@ class LivestockDiagnosisService {
       );
     }
 
-    final report = await groqApi.createDiagnosisReport(request);
+    final report = await groqApi.createDiagnosisReport(cloudRequest);
     return DiagnosisResponse(
       status: DiagnosisStatus.completed,
       nextStep: DiagnosisNextStep(
@@ -118,6 +125,27 @@ class LivestockDiagnosisService {
         message: AppStrings.t('diagnosis_remote_completed_message'),
       ),
       report: report,
+    );
+  }
+
+  Future<DiagnosisRequest> _buildCloudReadyRequest(
+    DiagnosisRequest request,
+  ) async {
+    final localEvidence = await evidenceProcessor.process(request);
+    final localFindings = localEvidence.findings.map((item) {
+      return '${item.label} (${item.source}, ${(item.confidence * 100).toStringAsFixed(1)}%)';
+    });
+
+    final visualFindings = <String>{
+      ...request.visualFindings,
+      ...localFindings,
+    }.where((item) => item.trim().isNotEmpty).toList();
+
+    return request.copyWith(
+      imageBytes:
+          request.livestockDetection?.croppedImageBytes ?? request.imageBytes,
+      species: request.livestockDetection?.species ?? request.species,
+      visualFindings: visualFindings,
     );
   }
 }
