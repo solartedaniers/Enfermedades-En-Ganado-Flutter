@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 
@@ -37,7 +39,10 @@ class ScannerCameraView extends StatelessWidget {
         _buildCameraLayer(context),
         _ScannerCameraOverlay(targetSize: targetSize),
         if (livestockDetection != null)
-          _LivestockDetectionOverlay(detection: livestockDetection!),
+          _LivestockDetectionOverlay(
+            detection: livestockDetection!,
+            previewSize: _previewDisplaySize,
+          ),
         Positioned(
           left: AppSizes.large,
           right: AppSizes.large,
@@ -118,12 +123,25 @@ class ScannerCameraView extends StatelessWidget {
       ),
     );
   }
+
+  Size? get _previewDisplaySize {
+    final previewSize = cameraController?.value.previewSize;
+    if (previewSize == null) {
+      return null;
+    }
+
+    return Size(previewSize.height, previewSize.width);
+  }
 }
 
 class _LivestockDetectionOverlay extends StatelessWidget {
   final LivestockDetection detection;
+  final Size? previewSize;
 
-  const _LivestockDetectionOverlay({required this.detection});
+  const _LivestockDetectionOverlay({
+    required this.detection,
+    required this.previewSize,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -131,10 +149,12 @@ class _LivestockDetectionOverlay extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final box = detection.boundingBox;
-          final left = box.left * constraints.maxWidth;
-          final top = box.top * constraints.maxHeight;
-          final width = box.width * constraints.maxWidth;
-          final height = box.height * constraints.maxHeight;
+          final previewRect = _resolvePreviewRect(constraints);
+          final left = previewRect.left + box.left * previewRect.width;
+          final top = previewRect.top + box.top * previewRect.height;
+          final width = box.width * previewRect.width;
+          final height = box.height * previewRect.height;
+          final labelTop = (top - 36).clamp(12.0, constraints.maxHeight - 48);
 
           return Stack(
             children: [
@@ -154,8 +174,8 @@ class _LivestockDetectionOverlay extends StatelessWidget {
                 ),
               ),
               Positioned(
-                left: left,
-                top: (top - 36).clamp(12.0, constraints.maxHeight - 48),
+                left: left.clamp(12.0, constraints.maxWidth - 120),
+                top: labelTop,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSizes.medium,
@@ -179,6 +199,24 @@ class _LivestockDetectionOverlay extends StatelessWidget {
         },
       ),
     );
+  }
+
+  Rect _resolvePreviewRect(BoxConstraints constraints) {
+    final size = previewSize;
+    if (size == null || size.width <= 0 || size.height <= 0) {
+      return Rect.fromLTWH(0, 0, constraints.maxWidth, constraints.maxHeight);
+    }
+
+    final scale = math.max(
+      constraints.maxWidth / size.width,
+      constraints.maxHeight / size.height,
+    );
+    final displayedWidth = size.width * scale;
+    final displayedHeight = size.height * scale;
+    final left = (constraints.maxWidth - displayedWidth) / 2;
+    final top = (constraints.maxHeight - displayedHeight) / 2;
+
+    return Rect.fromLTWH(left, top, displayedWidth, displayedHeight);
   }
 }
 
