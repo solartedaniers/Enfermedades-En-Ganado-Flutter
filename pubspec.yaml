@@ -25,7 +25,6 @@ dependencies:
   image_picker: ^1.1.2
   camera: ^0.11.0
   image: ^4.5.4
-  tflite_flutter: ^0.11.0
   app_links: ^6.4.1
   logger: ^2.6.2
   connectivity_plus: ^6.0.3
@@ -35,6 +34,7 @@ dependencies:
   flutter_local_notifications: ^18.0.1
   flutter_animate: ^4.5.0
   timezone: ^0.10.1
+  http: ^1.2.0
 
 dev_dependencies:
   flutter_test:
@@ -48,16 +48,11 @@ flutter:
 
   assets:
     - .env
-    - assets/ai/animal_vs_noanimal.tflite
-    - assets/ai/species_classifier.tflite
-    - assets/ai/disease_diagnostic.tflite
-    - assets/ai/livestock_labels.txt
     - lib/images/logo.webp
     - lib/images/AgroVet.webp
     - lib/images/icon.webp
     - lib/images/Taureau.webp
     - lib/images/animals.webp
-    - assets/ai/
     - lib/l10n/es.json
     - lib/l10n/en.json
     - lib/geolocation/config/region_disease_profiles.json

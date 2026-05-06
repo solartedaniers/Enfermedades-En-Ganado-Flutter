@@ -67,17 +67,33 @@ class ScannerResultView extends StatelessWidget {
                 const SizedBox(height: AppSizes.medium),
                 _TechnicalHeader(report: currentReport),
                 const SizedBox(height: AppSizes.large),
+                // Hallazgos Visuales
+                _HighlightedSection(
+                  title: 'Hallazgos Visuales',
+                  icon: Icons.visibility,
+                  items: currentReport.findings
+                      .map((f) => '${f.label} (${(f.confidence * 100).toStringAsFixed(0)}%): ${f.interpretation}')
+                      .toList(),
+                  backgroundColor: context.appColors.scannerAccent.withValues(alpha: 0.06),
+                ),
+                const SizedBox(height: AppSizes.large),
                 _ScannerSection(
-                  title: AppStrings.t('diagnosis_symptom_analysis'),
-                  items: [
-                    currentReport.symptomAnalysis.trim().isEmpty
-                        ? currentReport.reasoning
-                        : currentReport.symptomAnalysis,
-                  ],
+                  title: 'Análisis Clínico',
+                  items: [currentReport.diagnosticStatement],
+                ),
+                const SizedBox(height: AppSizes.large),
+                if (currentReport.differentialDiagnoses.isNotEmpty)
+                  _ScannerSection(
+                    title: 'Diagnósticos Diferenciales',
+                    items: currentReport.differentialDiagnoses,
+                  ),
+                _ScannerSection(
+                  title: AppStrings.t('diagnosis_immediate_actions'),
+                  items: currentReport.immediateActions,
                 ),
                 _ScannerSection(
-                  title: AppStrings.t('diagnosis_presumptive_diagnosis'),
-                  items: [currentReport.diagnosticStatement],
+                  title: AppStrings.t('diagnosis_treatment'),
+                  items: currentReport.treatmentProtocol,
                 ),
                 const SizedBox(height: AppSizes.large),
                 Wrap(
@@ -113,23 +129,18 @@ class ScannerResultView extends StatelessWidget {
                   ),
                 ],
                 const SizedBox(height: AppSizes.xLarge),
-                _ScannerSection(
-                  title: AppStrings.t('diagnosis_immediate_actions'),
-                  items: currentReport.immediateActions,
-                ),
-                _ScannerSection(
-                  title: AppStrings.t('diagnosis_treatment'),
+                _HighlightedSection(
+                  title: 'Sugerencias Preventivas',
+                  icon: Icons.shield,
                   items: currentReport.treatmentProtocol,
+                  backgroundColor: context.appColors.success.withValues(alpha: 0.06),
                 ),
-                if (currentReport.isolationMeasures.isNotEmpty)
+                const SizedBox(height: AppSizes.large),
+                if (currentReport.immediateActions.isNotEmpty)
                   _ScannerSection(
-                    title: AppStrings.t('diagnosis_isolation'),
-                    items: currentReport.isolationMeasures,
+                    title: AppStrings.t('diagnosis_immediate_actions'),
+                    items: currentReport.immediateActions,
                   ),
-                _ScannerSection(
-                  title: AppStrings.t('diagnosis_monitoring'),
-                  items: currentReport.monitoringPlan,
-                ),
                 _ScannerDisclaimer(text: currentReport.disclaimer),
                 const SizedBox(height: AppSizes.xLarge),
                 Row(
@@ -293,7 +304,57 @@ class _ScannerSection extends StatelessWidget {
     );
   }
 }
+class _HighlightedSection extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final List<String> items;
+  final Color backgroundColor;
 
+  const _HighlightedSection({
+    required this.title,
+    required this.icon,
+    required this.items,
+    required this.backgroundColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSizes.large),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(AppSizes.fieldRadius),
+        border: Border.all(
+          color: context.appColors.scannerAccent.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: context.appColors.scannerAccent),
+              const SizedBox(width: AppSizes.small),
+              Expanded(
+                child: Text(
+                  title,
+                  style: AppTextStyles.sectionTitle(Theme.of(context)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSizes.medium),
+          ...items.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text('• $item'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 class _ScannerDisclaimer extends StatelessWidget {
   final String text;
 

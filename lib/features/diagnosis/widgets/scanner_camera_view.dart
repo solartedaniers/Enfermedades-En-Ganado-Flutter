@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 
-import '../../../core/ai/models/livestock_detection.dart';
 import '../../../core/theme/app_sizes.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -14,7 +13,6 @@ class ScannerCameraView extends StatelessWidget {
   final bool isInitializingCamera;
   final bool isSubmitting;
   final String? errorMessage;
-  final LivestockDetection? livestockDetection;
   final double targetSize;
   final VoidCallback onBack;
   final VoidCallback onRetry;
@@ -25,7 +23,6 @@ class ScannerCameraView extends StatelessWidget {
     required this.isInitializingCamera,
     required this.isSubmitting,
     required this.errorMessage,
-    required this.livestockDetection,
     required this.targetSize,
     required this.onBack,
     required this.onRetry,
@@ -38,11 +35,7 @@ class ScannerCameraView extends StatelessWidget {
       children: [
         _buildCameraLayer(context),
         _ScannerCameraOverlay(targetSize: targetSize),
-        if (livestockDetection != null)
-          _LivestockDetectionOverlay(
-            detection: livestockDetection!,
-            previewSize: _previewDisplaySize,
-          ),
+        _ScanningAnimationOverlay(),
         Positioned(
           left: AppSizes.large,
           right: AppSizes.large,
@@ -113,110 +106,21 @@ class ScannerCameraView extends StatelessWidget {
     final previewSize = controller.value.previewSize;
 
     return SizedBox.expand(
-      child: FittedBox(
-        fit: BoxFit.cover,
-        child: SizedBox(
-          width: previewSize?.height ?? 1,
-          height: previewSize?.width ?? 1,
-          child: CameraPreview(controller),
+      child: ColorFiltered(
+        colorFilter: ColorFilter.mode(
+          const Color(0xFF00FF88).withValues(alpha: 0.12),
+          BlendMode.colorDodge,
+        ),
+        child: FittedBox(
+          fit: BoxFit.cover,
+          child: SizedBox(
+            width: previewSize?.height ?? 1,
+            height: previewSize?.width ?? 1,
+            child: CameraPreview(controller),
+          ),
         ),
       ),
     );
-  }
-
-  Size? get _previewDisplaySize {
-    final previewSize = cameraController?.value.previewSize;
-    if (previewSize == null) {
-      return null;
-    }
-
-    return Size(previewSize.height, previewSize.width);
-  }
-}
-
-class _LivestockDetectionOverlay extends StatelessWidget {
-  final LivestockDetection detection;
-  final Size? previewSize;
-
-  const _LivestockDetectionOverlay({
-    required this.detection,
-    required this.previewSize,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final box = detection.boundingBox;
-          final previewRect = _resolvePreviewRect(constraints);
-          final left = previewRect.left + box.left * previewRect.width;
-          final top = previewRect.top + box.top * previewRect.height;
-          final width = box.width * previewRect.width;
-          final height = box.height * previewRect.height;
-          final labelTop = (top - 36).clamp(12.0, constraints.maxHeight - 48);
-
-          return Stack(
-            children: [
-              Positioned(
-                left: left,
-                top: top,
-                width: width,
-                height: height,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(AppSizes.medium),
-                    border: Border.all(
-                      color: context.appColors.success,
-                      width: AppSizes.thickStroke,
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                left: left.clamp(12.0, constraints.maxWidth - 120),
-                top: labelTop,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSizes.medium,
-                    vertical: AppSizes.small,
-                  ),
-                  decoration: BoxDecoration(
-                    color: context.appColors.success,
-                    borderRadius: BorderRadius.circular(AppSizes.fieldRadius),
-                  ),
-                  child: Text(
-                    '${detection.species} ${(detection.confidence * 100).toStringAsFixed(1)}%',
-                    style: AppTextStyles.bodyStrong(
-                      Theme.of(context),
-                      context.appColors.onSolid,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  Rect _resolvePreviewRect(BoxConstraints constraints) {
-    final size = previewSize;
-    if (size == null || size.width <= 0 || size.height <= 0) {
-      return Rect.fromLTWH(0, 0, constraints.maxWidth, constraints.maxHeight);
-    }
-
-    final scale = math.max(
-      constraints.maxWidth / size.width,
-      constraints.maxHeight / size.height,
-    );
-    final displayedWidth = size.width * scale;
-    final displayedHeight = size.height * scale;
-    final left = (constraints.maxWidth - displayedWidth) / 2;
-    final top = (constraints.maxHeight - displayedHeight) / 2;
-
-    return Rect.fromLTWH(left, top, displayedWidth, displayedHeight);
   }
 }
 
@@ -272,5 +176,108 @@ class _ScannerCameraOverlay extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _ScanningAnimationOverlay extends StatefulWidget {
+  const _ScanningAnimationOverlay();
+
+  @override
+  State<_ScanningAnimationOverlay> createState() =>
+      _ScanningAnimationOverlayState();
+}
+
+class _ScanningAnimationOverlayState extends State<_ScanningAnimationOverlay>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    )..repeat();
+
+    _animation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: _animation,
+        builder: (context, child) {
+          return CustomPaint(
+            painter: _ScanningLinePainter(
+              progress: _animation.value,
+              color: context.appColors.scannerAccent,
+            ),
+            size: Size.infinite,
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ScanningLinePainter extends CustomPainter {
+  final double progress;
+  final Color color;
+
+  _ScanningLinePainter({
+    required this.progress,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final centerY = size.height * progress;
+
+    // Línea horizontal principal
+    final paint = Paint()
+      ..color = color.withValues(alpha: 0.7)
+      ..strokeWidth = 2.5;
+
+    canvas.drawLine(
+      Offset(0, centerY),
+      Offset(size.width, centerY),
+      paint,
+    );
+
+    // Efecto de brillo/glow alrededor de la línea
+    final glowPaint = Paint()
+      ..color = color.withValues(alpha: 0.2)
+      ..strokeWidth = 15
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
+
+    canvas.drawLine(
+      Offset(0, centerY),
+      Offset(size.width, centerY),
+      glowPaint,
+    );
+
+    // Puntos de reflexión
+    final dotPaint = Paint()
+      ..color = color.withValues(alpha: 0.8)
+      ..style = PaintingStyle.fill;
+
+    for (double x = 0; x < size.width; x += size.width / 8) {
+      canvas.drawCircle(Offset(x, centerY), 3, dotPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ScanningLinePainter oldDelegate) {
+    return oldDelegate.progress != progress;
   }
 }

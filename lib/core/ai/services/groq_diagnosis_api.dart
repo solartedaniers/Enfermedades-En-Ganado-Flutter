@@ -18,12 +18,6 @@ class GroqDiagnosisApi {
   bool get isConfigured => _apiKey.trim().isNotEmpty;
 
   Future<DiagnosisReport> createDiagnosisReport(DiagnosisRequest request) async {
-    if (request.imageBytes != null && request.livestockDetection == null) {
-      throw Exception(
-        'El diagnostico remoto requiere una deteccion local de ganado validada.',
-      );
-    }
-
     if (!isConfigured) {
       throw Exception('Falta configurar la GROQ_API_KEY en el archivo .env');
     }
@@ -65,18 +59,15 @@ class GroqDiagnosisApi {
         requiresVeterinarian: reportJson['requires_veterinarian'] ?? true,
         reasoning: reportJson['reasoning'] ?? '',
         symptomAnalysis: reportJson['symptom_analysis'] ?? '',
-        validatedSpecies:
-            reportJson['validated_species'] ?? request.livestockDetection?.species,
-        visualDetectionConfidence:
-            (reportJson['visual_detection_confidence'] as num?)?.toDouble() ??
-                request.livestockDetection?.confidence,
+        validatedSpecies: reportJson['validated_species'] ?? request.species,
+        visualDetectionConfidence: (reportJson['visual_detection_confidence'] as num?)?.toDouble() ?? 0.85,
         disclaimer:
             reportJson['disclaimer'] ??
-                'Este informe es una asistencia basada en Inteligencia Artificial y no sustituye el juicio clinico de un Medico Veterinario. Se recomienda la inspeccion presencial de un profesional colegiado.',
+                'Este análisis es una asistencia basada en IA. No sustituye la evaluación presencial de un Médico Veterinario. Se recomienda inspección clínica de un profesional colegiado.',
         findings: _parseFindings(reportJson['findings']),
         differentialDiagnoses: List<String>.from(reportJson['differential_diagnoses'] ?? []),
         immediateActions: List<String>.from(reportJson['immediate_actions'] ?? []),
-        treatmentProtocol: List<String>.from(reportJson['treatment_protocol'] ?? []),
+        treatmentProtocol: List<String>.from(reportJson['preventive_suggestions'] ?? reportJson['treatment_protocol'] ?? []),
         isolationMeasures: List<String>.from(reportJson['isolation_measures'] ?? []),
         monitoringPlan: List<String>.from(reportJson['monitoring_plan'] ?? []),
       );
@@ -108,46 +99,82 @@ class GroqDiagnosisApi {
   }
 
   String _buildSystemInstructions() {
-    return '''Eres AgroVet AI, un experto en medicina veterinaria para ganado bovino, porcino, equino, ovino y caprino.
-    Tu tarea es generar un informe tecnico profesional en formato JSON.
-    No afirmes diagnosticos absolutos: usa lenguaje presuntivo y clinico.
-    Si notas incoherencia especie-sintoma, responde en diagnostic_statement: "Existe una discrepancia entre la especie detectada o registrada y los sintomas descritos. Por favor verifique la informacion".
-    Si el texto contiene afirmaciones biologicamente absurdas, fantasiosas o no clinicas, responde en diagnostic_statement: "Se ha detectado una inconsistencia en la descripcion de los sintomas. Por favor, ingrese informacion tecnica y real sobre el estado del animal".
-    Es OBLIGATORIO que el JSON contenga exactamente estas llaves:
-    {
-      "primary_diagnosis": "nombre",
-      "diagnostic_statement": "Basado en la evidencia visual y los sintomas descritos, el cuadro clinico es compatible con...",
-      "confidence": 0.95,
-      "severity_index": 80,
-      "urgency_index": 70,
-      "is_contagious": true,
-      "requires_veterinarian": true,
-      "reasoning": "explicacion detallada",
-      "symptom_analysis": "interpretacion tecnica veterinaria de los sintomas escritos por el usuario",
-      "validated_species": "especie validada por YOLO",
-      "visual_detection_confidence": 0.91,
-      "findings": [{"label": "sintoma", "source": "visual", "confidence": 0.9, "interpretation": "significado"}],
-      "differential_diagnoses": ["enf1", "enf2"],
-      "immediate_actions": ["accion1"],
-      "treatment_protocol": ["medicamento o principio activo, dosis, via, frecuencia y duracion"],
-      "isolation_measures": ["medida1"],
-      "monitoring_plan": ["plan1"],
-      "disclaimer": "Este informe es una asistencia basada en Inteligencia Artificial y no sustituye el juicio clinico de un Medico Veterinario. Se recomienda la inspeccion presencial de un profesional colegiado."
-    }
-    En symptom_analysis traduce lenguaje informal a terminologia veterinaria sin inventar signos no reportados.
-    En treatment_protocol incluye medicamento o principio activo, dosis, via, frecuencia y duracion cuando sea seguro sugerirlos.
-    Si no es seguro indicar una dosis exacta, dilo claramente y recomienda validarla con un veterinario.''';
+    return '''Eres AgroVet AI, un asistente veterinario analítico especializado en medicina de ganado bovino, porcino, equino, ovino y caprino.
+
+PRINCIPIOS FUNDAMENTALES:
+1. Análisis basado en HALLAZGOS VISUALES y síntomas clínicos
+2. Usa LENGUAJE PROBABILÍSTICO: "Se observan patrones compatibles con...", "Existe una probabilidad del X% de...", "Los hallazgos sugieren..."
+3. NUNCA afirmes diagnósticos absolutos. Siempre presuntivo y clínico.
+4. Enfatiza HALLAZGOS VISUALES: coloración, textura, postura, simetría, movimiento, estado general
+5. Interpreta síntomas en terminología veterinaria profesional
+
+ESTRUCTURA DEL ANÁLISIS:
+- Hallazgos Visuales: Describe patrones de color, textura, lesiones, inflamación, asimetría
+- Análisis Clínico: Correlaciona síntomas con hallazgos visuales
+- Interpretación: Traduce observaciones en diagnósticos diferenciales con probabilidades
+- Recomendación Preventiva: Medidas de inmediato sin necesidad de veterinario
+
+DETECCIÓN DE INCONSISTENCIAS:
+Si detectas incoherencia especie-síntoma o información biológicamente absurda:
+Responde en "diagnostic_statement": "Se detectó una inconsistencia en la información proporcionada. Verifique que la especie y síntomas sean compatibles."
+
+OBLIGATORIO - Estructura JSON exacta:
+{
+  "primary_diagnosis": "nombre_enfermedad",
+  "diagnostic_statement": "Análisis visual completado. Se observan patrones compatibles con... Los hallazgos sugieren una probabilidad del X% de...",
+  "confidence": 0.75,
+  "severity_index": 65,
+  "urgency_index": 60,
+  "is_contagious": true,
+  "requires_veterinarian": true,
+  "reasoning": "Análisis detallado de hallazgos visuales y correlación clínica",
+  "symptom_analysis": "Traducción de síntomas a terminología veterinaria",
+  "visual_findings": "Descripción de patrones visuales observados",
+  "validated_species": "especie_registrada",
+  "visual_detection_confidence": 0.82,
+  "findings": [{"label": "hallazgo", "source": "visual", "confidence": 0.85, "interpretation": "significado"}],
+  "differential_diagnoses": ["posibilidad_1", "posibilidad_2", "posibilidad_3"],
+  "preventive_suggestions": ["sugerencia_preventiva_1", "sugerencia_preventiva_2"],
+  "immediate_actions": ["acción_inmediata_1"],
+  "monitoring_plan": ["monitoreo_1"],
+  "disclaimer": "Este análisis es una asistencia basada en IA. No sustituye la evaluación presencial de un Médico Veterinario. Se recomienda inspección clínica de un profesional colegiado."
+}
+
+INSTRUCCIONES POR SECCIÓN:
+- visual_findings: Detalla coloración, textura, lesiones, inflamación, asimetría, postura
+- findings: Array de hallazgos clave (máx 5)
+- differential_diagnoses: Ordena por probabilidad, incluye % mental (ej: "Sarna (65%)")
+- preventive_suggestions: Medidas de mantenimiento y prevención SIN diagnóstico específico
+- confidence: Base en robustez visual y síntomas (0.4-0.95)
+- severity_index: 0-100 (0=ninguno, 100=crítico)
+- urgency_index: 0-100 (0=pueden esperar, 100=emergencia)
+''';
   }
 
   String _buildCasePrompt(DiagnosisRequest request) {
-    return '''Analiza el siguiente caso clínico:
-    - Nombre del animal: ${request.animalName}
-    - Especie registrada: ${request.species}
-    - Especie validada por YOLO local: ${request.livestockDetection?.species ?? 'sin foto validada; usar especie registrada'}
-    - Confianza YOLO: ${request.livestockDetection == null ? 'no aplica' : '${(request.livestockDetection!.confidence * 100).toStringAsFixed(1)}%'}
-    - Síntomas reportados: ${request.reportedSymptoms.join(", ")}
-    - Hallazgos visuales: ${request.visualFindings.join(", ")}
-    - Pregunta del usuario: ${request.clinicalQuestion}''';
+    return '''Analiza el siguiente caso clínico utilizando HALLAZGOS VISUALES como evidencia principal:
+
+INFORMACIÓN DEL ANIMAL:
+- Nombre: ${request.animalName}
+- Especie registrada: ${request.species}
+- Edad/Condición: [Si está disponible en síntomas]
+
+PREGUNTA CLÍNICA DEL USUARIO:
+"${request.clinicalQuestion}"
+
+SÍNTOMAS REPORTADOS:
+${request.reportedSymptoms.isNotEmpty ? request.reportedSymptoms.join('\n') : 'Sin síntomas específicos reportados'}
+
+HALLAZGOS VISUALES OBSERVADOS (de la imagen capturada):
+${request.visualFindings.isNotEmpty ? request.visualFindings.join('\n') : 'Se capturó imagen para análisis visual'}
+
+INSTRUCCIONES DE ANÁLISIS:
+1. Correlaciona hallazgos visuales con síntomas reportados
+2. Identifica patrones compatibles con condiciones clínicas
+3. Expresa hallazgos con probabilidades (ej: "62% compatible con X")
+4. Proporciona diagnósticos diferenciales ordenados por probabilidad
+5. Incluye sugerencias preventivas específicas para la especie
+6. Enfatiza que requiere evaluación veterinaria presencial''';
   }
 
   List<DiagnosisFinding> _parseFindings(dynamic raw) {

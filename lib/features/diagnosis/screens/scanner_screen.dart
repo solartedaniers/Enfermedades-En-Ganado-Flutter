@@ -10,7 +10,6 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/ai/models/diagnosis_request.dart';
 import '../../../core/ai/models/diagnosis_response.dart';
-import '../../../core/ai/models/livestock_detection.dart';
 import '../../../core/ai/providers/ai_diagnosis_provider.dart';
 import '../../../core/network/network_provider.dart';
 import '../../../core/services/connectivity_message_presenter.dart';
@@ -260,44 +259,20 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   }
 
   Future<void> _processImageBytes(Uint8List bytes) async {
-    final detector = ref.read(yoloLivestockDetectorProvider);
-    final detection = await detector.detect(bytes);
-
-    if (detection == null || !detection.isValid) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _livestockDetection = null;
-        _errorMessage = AppStrings.t('diagnosis_livestock_required_message');
-      });
-      return;
-    }
+    // Preprocesar imagen: mejorar contraste y brillo
+    final preprocessor = ref.read(imagePreprocessingServiceProvider);
+    final preprocessedBytes = await preprocessor.preprocessImage(bytes);
 
     if (!mounted) {
       return;
     }
 
     setState(() {
-      _livestockDetection = detection;
       _errorMessage = null;
     });
 
-    _showMessage(
-      AppStrings.t('diagnosis_livestock_detected')
-          .replaceAll('{species}', detection.species)
-          .replaceAll(
-            '{confidence}',
-            (detection.confidence * 100).toStringAsFixed(1),
-          ),
-    );
-
-    await Future<void>.delayed(const Duration(milliseconds: 450));
-    await _runDiagnosis(
-      imageBytes: detection.croppedImageBytes ?? bytes,
-      livestockDetection: detection,
-    );
+    // Proceder directamente al diagnóstico sin detección de objetos
+    await _runDiagnosis(imageBytes: preprocessedBytes);
   }
 
   void _backToIntake() {
@@ -320,18 +295,13 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     try {
       final picture = await controller.takePicture();
       final bytes = await File(picture.path).readAsBytes();
-      final pipeline = ref.read(diagnosisPipelineProvider);
-      final result = await pipeline.runPipeline(bytes);
+      
+      // Preprocesar imagen capturada
+      final preprocessor = ref.read(imagePreprocessingServiceProvider);
+      final preprocessedBytes = await preprocessor.preprocessImage(bytes);
 
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _capturedImageBytes = bytes;
-        _errorMessage = result; // Mostrar el resultado del pipeline
-        _currentStep = _ScannerStep.result; // Ir al resultado
-      });
+      // Proceder directamente al diagnóstico
+      await _runDiagnosis(imageBytes: preprocessedBytes);
     } on CameraException catch (error) {
       if (!mounted) {
         return;
@@ -488,11 +458,10 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       visualFindings: imageBytes == null
           ? const []
           : [
-              'YOLOv8 local validation: ${livestockDetection?.species ?? 'livestock'} '
-                  'with ${((livestockDetection?.confidence ?? 0) * 100).toStringAsFixed(1)}% confidence.',
-              'Cropped ROI attached for visual analysis.',
+              'Imagen capturada para análisis visual.',
+              'Preprocesamiento aplicado: mejora de contraste y brillo.',
             ],
-      livestockDetection: livestockDetection,
+      livestockDetection: null,
       geolocationContext: geolocationContext,
     );
   }
