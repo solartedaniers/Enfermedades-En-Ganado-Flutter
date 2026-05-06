@@ -48,6 +48,10 @@ flutter:
 
   assets:
     - .env
+    - assets/ai/animal_vs_noanimal.tflite
+    - assets/ai/species_classifier.tflite
+    - assets/ai/disease_diagnostic.tflite
+    - assets/ai/livestock_labels.txt
     - lib/images/logo.webp
     - lib/images/AgroVet.webp
     - lib/images/icon.webp

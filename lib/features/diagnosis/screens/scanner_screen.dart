@@ -320,42 +320,18 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     try {
       final picture = await controller.takePicture();
       final bytes = await File(picture.path).readAsBytes();
-      final detector = ref.read(yoloLivestockDetectorProvider);
-      final detection = await detector.detect(bytes);
-
-      if (detection == null || !detection.isValid) {
-        if (!mounted) {
-          return;
-        }
-
-        setState(() {
-          _livestockDetection = null;
-          _errorMessage = AppStrings.t('diagnosis_livestock_required_message');
-        });
-        return;
-      }
+      final pipeline = ref.read(diagnosisPipelineProvider);
+      final result = await pipeline.runPipeline(bytes);
 
       if (!mounted) {
         return;
       }
 
       setState(() {
-        _livestockDetection = detection;
+        _capturedImageBytes = bytes;
+        _errorMessage = result; // Mostrar el resultado del pipeline
+        _currentStep = _ScannerStep.result; // Ir al resultado
       });
-      _showMessage(
-        AppStrings.t('diagnosis_livestock_detected')
-            .replaceAll('{species}', detection.species)
-            .replaceAll(
-              '{confidence}',
-              (detection.confidence * 100).toStringAsFixed(1),
-            ),
-      );
-
-      await Future<void>.delayed(const Duration(milliseconds: 450));
-      await _runDiagnosis(
-        imageBytes: detection.croppedImageBytes ?? bytes,
-        livestockDetection: detection,
-      );
     } on CameraException catch (error) {
       if (!mounted) {
         return;
@@ -445,6 +421,9 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
         }
         break;
       case DiagnosisStatus.completed:
+        _mainReasonController.clear();
+        _symptomsController.clear();
+        _temperatureController.clear();
         setState(() {
           _capturedImageBytes = imageBytes;
           _livestockDetection = livestockDetection ?? _livestockDetection;

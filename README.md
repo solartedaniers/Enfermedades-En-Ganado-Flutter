@@ -47,4 +47,15 @@ Textos en lib/l10n/es.json y lib/l10n/en.json. El cambio de idioma se guarda en 
 🔔 Notificaciones
 Se programan 20 minutos antes del horario indicado usando zonedSchedule de flutter_local_notifications. Se guardan también en Supabase para persistencia entre sesiones.
 
+🤖 Diagnóstico con IA (Nuevo Pipeline On-Device)
+Se implementó un pipeline estructurado para diagnósticos veterinarios usando TensorFlow Lite:
+
+1. **Clasificación Inicial**: Animal vs No Animal (>70% confianza)
+2. **Clasificación de Especie**: Bovine, Porcine, Equine, etc. (>70% confianza)
+3. **Diagnóstico Básico**: Saludable, Úlcera, Cojera (>70% confianza)
+
+Validaciones: Rechaza imágenes borrosas o inválidas. Todo on-device, gratuito.
+
+Para entrenar modelos: Ejecuta `python train_models.py` con datasets de Kaggle/ImageNet.
+
 

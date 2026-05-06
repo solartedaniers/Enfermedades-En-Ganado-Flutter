@@ -52,7 +52,7 @@ class LivestockDetection {
 }
 
 class LivestockDetectionPolicy {
-  static const double minConfidence = 0.85;
+  static const double minConfidence = 0.65;
 
   const LivestockDetectionPolicy._();
 }

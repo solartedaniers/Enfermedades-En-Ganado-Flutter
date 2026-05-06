@@ -229,41 +229,45 @@ class _ScannerCameraOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     return IgnorePointer(
       child: SafeArea(
-        child: Column(
+        child: Stack(
+          fit: StackFit.expand,
           children: [
-            const Spacer(),
-            Container(
-              width: targetSize,
-              height: targetSize,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppSizes.xxxLarge),
-                border: Border.all(
-                  color: context.appColors.scannerTarget,
-                  width: AppSizes.thickStroke,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: context.appColors.scannerTarget.withValues(alpha: 0.28),
-                    blurRadius: 18,
-                    spreadRadius: 3,
+            Center(
+              child: Container(
+                width: targetSize,
+                height: targetSize,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(AppSizes.xxxLarge),
+                  border: Border.all(
+                    color: context.appColors.scannerTarget,
+                    width: AppSizes.thickStroke,
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSizes.xxxLarge),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSizes.xxLarge),
-              child: Text(
-                AppStrings.t('diagnosis_camera_required'),
-                textAlign: TextAlign.center,
-                style: AppTextStyles.sectionTitle(Theme.of(context)).copyWith(
-                  color: context.appColors.onSolid,
-                  fontWeight: FontWeight.w600,
+                  boxShadow: [
+                    BoxShadow(
+                      color: context.appColors.scannerTarget.withValues(alpha: 0.28),
+                      blurRadius: 18,
+                      spreadRadius: 3,
+                    ),
+                  ],
                 ),
               ),
             ),
-            const Spacer(),
-            const SizedBox(height: AppSizes.formBottomSpacing + AppSizes.xLarge),
+            Positioned(
+              bottom: AppSizes.large,
+              left: AppSizes.large,
+              right: AppSizes.large,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSizes.medium),
+                child: Text(
+                  AppStrings.t('diagnosis_camera_required'),
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.caption(
+                    Theme.of(context),
+                    context.appColors.onSolid.withValues(alpha: 0.8),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),

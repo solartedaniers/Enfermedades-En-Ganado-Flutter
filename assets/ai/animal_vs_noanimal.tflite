@@ -1,0 +1,2 @@
+# Placeholder para animal_vs_noanimal.tflite
+# Entrena este modelo con MobileNetV2 usando dataset con clases 'animal' y 'no_animal'
