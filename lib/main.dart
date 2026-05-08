@@ -11,6 +11,7 @@ import 'core/network/network_provider.dart';
 import 'core/services/app_sync_service.dart';
 import 'core/services/local_preferences_service.dart';
 import 'core/services/notification_service.dart';
+import 'core/theme/app_sizes.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/app_strings.dart';
 import 'features/animals/data/models/animal_model.dart';
@@ -150,6 +151,17 @@ class _AgrovetAIState extends ConsumerState<AgrovetAI> {
         AppRoutePaths.login: (_) => const LoginPage(),
         AppRoutePaths.home: (_) => const HomePage(),
         AppRoutePaths.resetPassword: (_) => const ResetPasswordPage(),
+      },
+      builder: (context, child) {
+        final mediaQuery = MediaQuery.of(context);
+        return MediaQuery(
+          data: mediaQuery.copyWith(
+            textScaler: mediaQuery.textScaler.clamp(
+              maxScaleFactor: AppSizes.maxTextScaleFactor,
+            ),
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
       },
       home: const LoginPage(),
     );

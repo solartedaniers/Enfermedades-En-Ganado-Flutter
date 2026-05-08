@@ -1,6 +1,10 @@
 class AppStorageKeys {
   static const String animalsBox = 'animals_box';
   static const String animalsTable = 'animals';
+  static const String notificationsTable = 'notifications';
+  static const String notificationsWithAnimalsSelect = '*, animals(name)';
+  static const String pendingNotifications = 'pending_notifications';
+  static const String pendingNotificationHides = 'pending_notification_hides';
   static const String animalIdColumn = 'id';
   static const String animalUserIdColumn = 'user_id';
   static const String animalCreatedAtColumn = 'created_at';

@@ -1,11 +1,10 @@
-import 'dart:math';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../../core/services/connectivity_service.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../core/theme/app_durations.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -28,15 +27,28 @@ class NotificationsPage extends ConsumerStatefulWidget {
 }
 
 class _NotificationsPageState extends ConsumerState<NotificationsPage> {
+  static const String _messagePlaceholder = 'message';
+  static const String _animalPlaceholder = 'animal';
   final _notificationDataSource = NotificationRemoteDataSource();
   List<NotificationEntity> _notifications = [];
   List<AnimalEntity> _animals = [];
   bool _isLoading = true;
+  StreamSubscription<String>? _completedReminderSubscription;
 
   @override
   void initState() {
     super.initState();
+    _completedReminderSubscription =
+        NotificationService.completedReminderStream.listen(
+          _deleteCompletedNotification,
+        );
     _load();
+  }
+
+  @override
+  void dispose() {
+    _completedReminderSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -44,14 +56,21 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
     setState(() => _isLoading = true);
 
     try {
-      final notifications = await _notificationDataSource.getNotifications();
-      final animals = await ref.read(animalsListProvider.future);
+      var notifications = await _notificationDataSource.getNotifications();
+      if (await _completePendingNotifications(notifications)) {
+        notifications = await _notificationDataSource.getNotifications();
+      }
+      final animals = await _loadAvailableAnimals();
       final allowedAnimalIds = animals.map((animal) => animal.id).toSet();
       final profile = ref.read(profileProvider);
 
       final visibleNotifications = profile.isVeterinarian
           ? notifications
-              .where((notification) => allowedAnimalIds.contains(notification.animalId))
+              .where(
+                (notification) => allowedAnimalIds.contains(
+                  notification.animalId,
+                ),
+              )
               .toList()
           : notifications;
 
@@ -71,12 +90,12 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
   }
 
   Future<void> _addNotification() async {
-    final isOnline = await ConnectivityService.checkAndNotify(
-      context,
-      message: AppStrings.t('notifications_need_internet'),
-    );
+    if (_animals.isEmpty) {
+      final animals = await _loadAvailableAnimals(refresh: true);
+      if (!mounted) return;
 
-    if (!isOnline || !mounted) return;
+      setState(() => _animals = animals);
+    }
 
     if (_animals.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -87,12 +106,9 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
       return;
     }
 
-    final formResult = await showModalBottomSheet<NotificationFormResult>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0),
-      builder: (_) => NotificationFormSheet(animals: _animals),
-    );
+    if (!mounted) return;
+
+    final formResult = await _showNotificationForm();
 
     if (formResult == null) return;
 
@@ -101,6 +117,61 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
       title: formResult.title,
       message: formResult.message,
       scheduledAt: formResult.scheduledAt,
+      repeatWeekdays: formResult.repeatWeekdays,
+    );
+  }
+
+  Future<void> _editNotification(NotificationEntity notification) async {
+    AnimalEntity? selectedAnimal;
+    for (final animal in _animals) {
+      if (animal.id == notification.animalId) {
+        selectedAnimal = animal;
+        break;
+      }
+    }
+
+    if (selectedAnimal == null) return;
+
+    final formResult = await _showNotificationForm(
+      initialValue: NotificationFormResult(
+        animal: selectedAnimal,
+        title: notification.title,
+        message: notification.message,
+        scheduledAt: notification.scheduledAt,
+        repeatWeekdays: notification.repeatWeekdays,
+      ),
+    );
+
+    if (formResult == null) return;
+
+    await _updateNotification(
+      notification: notification,
+      animal: formResult.animal,
+      title: formResult.title,
+      message: formResult.message,
+      scheduledAt: formResult.scheduledAt,
+      repeatWeekdays: formResult.repeatWeekdays,
+    );
+  }
+
+  Future<NotificationFormResult?> _showNotificationForm({
+    NotificationFormResult? initialValue,
+  }) async {
+    if (!mounted) return null;
+
+    final backgroundColor = Theme.of(context)
+        .colorScheme
+        .surface
+        .withValues(alpha: 0);
+
+    return showModalBottomSheet<NotificationFormResult>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: backgroundColor,
+      builder: (_) => NotificationFormSheet(
+        animals: _animals,
+        initialValue: initialValue,
+      ),
     );
   }
 
@@ -109,13 +180,27 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
     required String title,
     required String message,
     required DateTime scheduledAt,
+    required List<int> repeatWeekdays,
   }) async {
     try {
       final userId = ref.read(currentUserIdProvider);
       if (userId == null) return;
 
       final id = const Uuid().v4();
-      final notificationId = Random().nextInt(100000);
+      final notificationBody = AppStrings.format(
+        "notification_body",
+        {
+          _messagePlaceholder: message,
+          _animalPlaceholder: animal.name,
+        },
+      );
+      final localNotificationIds = await NotificationService.scheduleReminder(
+        reminderId: id,
+        title: title,
+        body: notificationBody,
+        scheduledTime: scheduledAt,
+        repeatWeekdays: repeatWeekdays,
+      );
 
       final model = NotificationModel(
         id: id,
@@ -126,33 +211,81 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
         message: message,
         scheduledAt: scheduledAt,
         createdAt: DateTime.now(),
+        localNotificationIds: localNotificationIds,
+        repeatWeekdays: repeatWeekdays,
       );
 
       await _notificationDataSource.insertNotification(model);
 
-      await NotificationService.scheduleNotification(
-        id: notificationId,
-        title: title,
-        body:
-            "${AppStrings.t("notification_reminder")}: $message (${animal.name})",
-        scheduledTime: scheduledAt,
-      );
-
       await _load();
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppStrings.t("notification_saved"))),
-        );
-      }
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppStrings.t("notification_saved"))),
+      );
     } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${AppStrings.t("unexpected_error")}: $error'),
-          ),
-        );
-      }
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${AppStrings.t("unexpected_error")}: $error'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _updateNotification({
+    required NotificationEntity notification,
+    required AnimalEntity animal,
+    required String title,
+    required String message,
+    required DateTime scheduledAt,
+    required List<int> repeatWeekdays,
+  }) async {
+    try {
+      await NotificationService.cancelNotifications(
+        _resolveLocalNotificationIds(notification),
+      );
+
+      final notificationBody = AppStrings.format(
+        "notification_body",
+        {
+          _messagePlaceholder: message,
+          _animalPlaceholder: animal.name,
+        },
+      );
+      final localNotificationIds = await NotificationService.scheduleReminder(
+        reminderId: notification.id,
+        title: title,
+        body: notificationBody,
+        scheduledTime: scheduledAt,
+        repeatWeekdays: repeatWeekdays,
+      );
+
+      final model = NotificationModel(
+        id: notification.id,
+        userId: notification.userId,
+        animalId: animal.id,
+        animalName: animal.name,
+        title: title,
+        message: message,
+        scheduledAt: scheduledAt,
+        createdAt: notification.createdAt,
+        localNotificationIds: localNotificationIds,
+        repeatWeekdays: repeatWeekdays,
+      );
+
+      await _notificationDataSource.updateNotification(model);
+      await _load();
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${AppStrings.t("unexpected_error")}: $error'),
+        ),
+      );
     }
   }
 
@@ -171,7 +304,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
             onPressed: () => Navigator.pop(context, true),
             child: Text(
               AppStrings.t("delete_notification"),
-              style: TextStyle(color: context.appColors.danger),
+              style: TextStyle(color: context.appColors.chipForeground),
             ),
           ),
         ],
@@ -180,14 +313,96 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
 
     if (confirm != true) return;
 
+    await NotificationService.cancelNotifications(
+      _resolveLocalNotificationIds(notification),
+    );
     await _notificationDataSource.deleteNotification(notification.id);
     await _load();
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppStrings.t("notification_deleted"))),
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(AppStrings.t("notification_deleted"))),
+    );
+  }
+
+  Future<bool> _completePendingNotifications(
+    List<NotificationEntity> notifications,
+  ) async {
+    final pendingIds =
+        await NotificationService.takePendingCompletedReminderIds();
+    if (pendingIds.isEmpty) return false;
+
+    final notificationMap = {
+      for (final notification in notifications) notification.id: notification,
+    };
+
+    for (final id in pendingIds) {
+      final notification = notificationMap[id];
+      if (notification != null) {
+        await NotificationService.cancelNotifications(
+          _resolveLocalNotificationIds(notification),
+        );
+      }
+      await _notificationDataSource.completeNotification(id);
+    }
+    return true;
+  }
+
+  Future<void> _deleteCompletedNotification(String id) async {
+    NotificationEntity? notification;
+    for (final current in _notifications) {
+      if (current.id == id) {
+        notification = current;
+        break;
+      }
+    }
+
+    if (notification != null) {
+      await NotificationService.cancelNotifications(
+        _resolveLocalNotificationIds(notification),
       );
     }
+    await _notificationDataSource.completeNotification(id);
+    await _load();
+  }
+
+  Future<List<AnimalEntity>> _loadAvailableAnimals({
+    bool refresh = false,
+  }) async {
+    if (refresh) {
+      ref.invalidate(animalsListProvider);
+      ref.invalidate(rawAnimalsListProvider);
+    }
+
+    final animals = await ref.read(animalsListProvider.future);
+    if (animals.isNotEmpty || ref.read(profileProvider).isVeterinarian) {
+      return animals;
+    }
+
+    final userId = ref.read(currentUserIdProvider);
+    final rawAnimals = await ref.read(rawAnimalsListProvider.future);
+    if (userId == null) {
+      return rawAnimals;
+    }
+
+    return rawAnimals.where((animal) => animal.userId == userId).toList();
+  }
+
+  List<int> _resolveLocalNotificationIds(NotificationEntity notification) {
+    if (notification.localNotificationIds.isNotEmpty) {
+      return notification.localNotificationIds;
+    }
+
+    if (notification.repeatWeekdays.isEmpty) {
+      return [NotificationService.notificationIdFor(notification.id)];
+    }
+
+    return notification.repeatWeekdays
+        .map((weekday) => NotificationService.notificationIdFor(
+              '${notification.id}-$weekday',
+            ))
+        .toList();
   }
 
   @override
@@ -236,6 +451,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                       return NotificationListItem(
                         notification: notification,
                         index: index,
+                        onEdit: () => _editNotification(notification),
                         onDelete: () => _deleteNotification(notification),
                       );
                     },

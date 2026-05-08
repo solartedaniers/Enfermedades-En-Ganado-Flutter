@@ -20,6 +20,7 @@ class AppSizes {
   static const double modalHandleHeight = 4;
   static const double modalHandleRadius = 2;
   static const double bottomActionInset = 24;
+  static const double maxTextScaleFactor = 1.15;
 
   static const double profileAvatarRadius = 55;
   static const double medicalAvatarRadius = 40;

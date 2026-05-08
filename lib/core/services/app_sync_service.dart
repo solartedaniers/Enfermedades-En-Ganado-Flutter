@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../features/animals/domain/repositories/animal_repository.dart';
 import '../../features/auth/services/auth_service.dart';
+import '../../features/notifications/data/datasources/notification_remote_datasource.dart';
 import 'managed_client_service.dart';
 import 'offline_auth_service.dart';
 import '../network/network_info.dart';
@@ -62,6 +63,7 @@ class AppSyncService {
       }
 
       await animalRepository.syncAnimals();
+      await NotificationRemoteDataSource().syncPendingNotifications();
     } catch (_) {
       // Dejamos la cola intacta para el siguiente reintento.
     } finally {
