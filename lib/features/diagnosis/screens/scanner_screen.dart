@@ -17,7 +17,6 @@ import '../../../core/theme/app_sizes.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/app_strings.dart';
 import '../../../geolocation/presentation/providers/geolocation_provider.dart';
-import '../../animals/domain/constants/animal_constants.dart';
 import '../../animals/domain/entities/animal_entity.dart';
 import '../../animals/presentation/pages/add_animal_page.dart';
 import '../../animals/presentation/providers/animal_provider.dart';
@@ -56,7 +55,6 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   AnimalEntity? _selectedAnimal;
   DiagnosisReport? _report;
   Uint8List? _capturedImageBytes;
-  LivestockDetection? _livestockDetection;
   _ScannerStep _currentStep = _ScannerStep.intake;
   bool _isInitializingCamera = false;
   bool _isSubmitting = false;
@@ -354,7 +352,6 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
 
   Future<void> _runDiagnosis({
     Uint8List? imageBytes,
-    LivestockDetection? livestockDetection,
   }) async {
     if (!mounted) {
       return;
@@ -367,7 +364,6 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     final service = ref.read(livestockDiagnosisServiceProvider);
     final request = _buildRequest(
       imageBytes: imageBytes,
-      livestockDetection: livestockDetection ?? _livestockDetection,
     );
     final response = await service.analyze(request);
 
@@ -396,7 +392,6 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
         _temperatureController.clear();
         setState(() {
           _capturedImageBytes = imageBytes;
-          _livestockDetection = livestockDetection ?? _livestockDetection;
           _report = response.report;
           _currentStep = _ScannerStep.result;
           _hasSavedCurrentResult = false;
@@ -407,7 +402,6 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
 
   DiagnosisRequest _buildRequest({
     Uint8List? imageBytes,
-    LivestockDetection? livestockDetection,
   }) {
     final animal = _selectedAnimal;
     final currentUser = Supabase.instance.client.auth.currentUser;
@@ -442,7 +436,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       animalId: animal.id,
       userId: currentUser?.id ?? animal.userId,
       animalName: animal.name,
-      species: livestockDetection?.species ?? AnimalConstants.cattleSpecies,
+      // AnimalEntity no almacena especie por ahora — el app es ganado bovino
+      species: 'bovine',
       breed: animal.breed,
       ageInYears: animal.age,
       clinicalQuestion: _mainReasonController.text.trim(),
@@ -583,7 +578,6 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   void _resetFlow() {
     setState(() {
       _capturedImageBytes = null;
-      _livestockDetection = null;
       _report = null;
       _errorMessage = null;
       _currentStep = _ScannerStep.intake;
@@ -661,7 +655,6 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
             isInitializingCamera: _isInitializingCamera,
             isSubmitting: _isSubmitting,
             errorMessage: _errorMessage,
-            livestockDetection: _livestockDetection,
             targetSize: _targetSize,
             onBack: _backToIntake,
             onRetry: _initializeCamera,
