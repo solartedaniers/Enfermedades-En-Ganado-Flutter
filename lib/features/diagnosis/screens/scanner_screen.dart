@@ -244,8 +244,9 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
         return;
       }
 
+      // Mostrar el error real en lugar de un mensaje genérico
       setState(() {
-        _errorMessage = AppStrings.t('diagnosis_invalid_visual_input');
+        _errorMessage = error.toString().replaceAll('Exception: ', '');
       });
     } finally {
       if (mounted) {
