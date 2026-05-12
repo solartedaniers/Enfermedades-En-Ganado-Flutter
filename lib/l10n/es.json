@@ -42,6 +42,8 @@
   "logout": "Cerrar sesión",
   "logout_confirm": "¿Seguro que deseas cerrar sesión?",
   "cancel": "Cancelar",
+  "accept": "Aceptar",
+  "select_time": "Seleccionar hora",
   "exit": "Salir",
   "hello": "Hola",
   "main_panel": "Panel principal",

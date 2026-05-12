@@ -42,6 +42,8 @@
   "logout": "Logout",
   "logout_confirm": "Are you sure you want to logout?",
   "cancel": "Cancel",
+  "accept": "Accept",
+  "select_time": "Select time",
   "exit": "Exit",
   "hello": "Hello",
   "main_panel": "Main panel",

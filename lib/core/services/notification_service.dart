@@ -14,9 +14,13 @@ import 'notification_schedule_policy.dart';
 
 @pragma('vm:entry-point')
 Future<void> notificationTapBackground(NotificationResponse response) async {
-  // El isolate de background debe esperar a que la operación async termine
-  // para que Android no mate el proceso antes de reprogramar el snooze.
-  await NotificationService.handleNotificationResponse(response);
+  // El isolate de background debe esperar para que Android no mate el proceso
+  // antes de que el snooze quede programado. El try/catch evita crashes silenciosos.
+  try {
+    await NotificationService.handleNotificationResponse(response);
+  } catch (_) {
+    // Error silencioso: el isolate termina limpiamente sin colgar el sistema.
+  }
 }
 
 class NotificationService {
@@ -89,12 +93,14 @@ class NotificationService {
     );
 
     try {
+      // alarmClock usa AlarmManager.setAlarmClock(), que MIUI/HyperOS no puede
+      // bloquear con optimización de batería y tiene la mayor prioridad en Android.
       await _zonedSchedule(
         id: id,
         title: title,
         body: body,
         scheduledTime: notificationTime,
-        scheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        scheduleMode: AndroidScheduleMode.alarmClock,
         matchDateTimeComponents: matchDateTimeComponents,
         payload: payload,
       );
@@ -242,23 +248,6 @@ class NotificationService {
 
     await androidPlugin?.requestNotificationsPermission();
     await androidPlugin?.requestExactAlarmsPermission();
-    await _requestBatteryOptimizationExemption();
-  }
-
-  // Solicita exención de optimización de batería para que las alarmas
-  // no sean canceladas en MIUI/HyperOS y otros sistemas agresivos con la batería.
-  static Future<void> _requestBatteryOptimizationExemption() async {
-    try {
-      const channel = MethodChannel('com.example.agrovet_ai/battery');
-      final isIgnoring =
-          await channel.invokeMethod<bool>('isIgnoringBatteryOptimizations') ??
-          false;
-      if (!isIgnoring) {
-        await channel.invokeMethod('requestIgnoreBatteryOptimizations');
-      }
-    } catch (_) {
-      // Puede no estar disponible en todos los dispositivos.
-    }
   }
 
   static String _buildPayload({
