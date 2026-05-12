@@ -1,6 +1,7 @@
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:logger/logger.dart';
@@ -11,6 +12,7 @@ import 'core/network/network_provider.dart';
 import 'core/services/app_sync_service.dart';
 import 'core/services/local_preferences_service.dart';
 import 'core/services/notification_service.dart';
+import 'core/theme/app_sizes.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/app_strings.dart';
 import 'features/animals/data/models/animal_model.dart';
@@ -138,18 +140,39 @@ class _AgrovetAIState extends ConsumerState<AgrovetAI> {
 
   @override
   Widget build(BuildContext context) {
-    final themeMode = ref.watch(profileProvider).themeMode;
+    final profile = ref.watch(profileProvider);
 
     return MaterialApp(
       navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: themeMode,
+      themeMode: profile.themeMode,
+      locale: Locale(profile.language),
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('es'),
+        Locale('en'),
+      ],
       routes: {
         AppRoutePaths.login: (_) => const LoginPage(),
         AppRoutePaths.home: (_) => const HomePage(),
         AppRoutePaths.resetPassword: (_) => const ResetPasswordPage(),
+      },
+      builder: (context, child) {
+        final mediaQuery = MediaQuery.of(context);
+        return MediaQuery(
+          data: mediaQuery.copyWith(
+            textScaler: mediaQuery.textScaler.clamp(
+              maxScaleFactor: AppSizes.maxTextScaleFactor,
+            ),
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
       },
       home: const LoginPage(),
     );

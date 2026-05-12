@@ -4,11 +4,13 @@ class NotificationChannelConfig {
   final String channelId;
   final String channelName;
   final String channelDescription;
+  final List<AndroidNotificationAction> actions;
 
   const NotificationChannelConfig({
     required this.channelId,
     required this.channelName,
     required this.channelDescription,
+    this.actions = const [],
   });
 
   NotificationDetails toNotificationDetails() {
@@ -17,8 +19,15 @@ class NotificationChannelConfig {
         channelId,
         channelName,
         channelDescription: channelDescription,
-        importance: Importance.high,
-        priority: Priority.high,
+        importance: Importance.max,
+        priority: Priority.max,
+        actions: actions,
+        playSound: true,
+        enableVibration: true,
+        enableLights: true,
+        channelShowBadge: true,
+        // Muestra la notificación completa en la pantalla de bloqueo.
+        visibility: NotificationVisibility.public,
       ),
     );
   }

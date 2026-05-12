@@ -250,13 +250,25 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
                 networkImageUrl: null,
                 height: AppSizes.animalFormImageHeight,
                 borderRadius: BorderRadius.circular(AppSizes.cardRadius),
-                onTap: _showImageSourceDialog,
+                onTap: _selectedImage != null ? () {} : _showImageSourceDialog,
                 overlayLabel: AppStrings.t('add_photo'),
                 overlaySubtitle: AppStrings.t('photo_subtitle'),
                 overlayIcon: Icons.add_a_photo,
+                showOverlay: _selectedImage == null,
               ).animate().fadeIn(duration: 400.ms).scale(
                     begin: const Offset(0.95, 0.95),
                   ),
+              if (_selectedImage != null) ...[
+                const SizedBox(height: AppSizes.medium),
+                Align(
+                  alignment: Alignment.center,
+                  child: OutlinedButton.icon(
+                    onPressed: _showImageSourceDialog,
+                    icon: const Icon(Icons.add_a_photo_outlined),
+                    label: Text(AppStrings.t('change_photo')),
+                  ),
+                ),
+              ],
               const SizedBox(height: AppSizes.xxLarge),
               TextFormField(
                 controller: _nameController,

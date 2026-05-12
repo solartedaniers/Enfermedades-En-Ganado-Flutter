@@ -25,6 +25,7 @@ class AppJsonKeys {
   static const String clientId = 'client_id';
   static const String id = 'id';
   static const String animalId = 'animal_id';
+  static const String animals = 'animals';
   static const String userId = 'user_id';
   static const String breed = 'breed';
   static const String age = 'age';
@@ -36,4 +37,11 @@ class AppJsonKeys {
   static const String createdAt = 'created_at';
   static const String updatedAt = 'updated_at';
   static const String isSynced = 'is_synced';
+  static const String title = 'title';
+  static const String message = 'message';
+  static const String scheduledAt = 'scheduled_at';
+  static const String localNotificationIds = 'local_notification_ids';
+  static const String repeatWeekdays = 'repeat_weekdays';
+  static const String completedAt = 'completed_at';
+  static const String deletedAt = 'deleted_at';
 }

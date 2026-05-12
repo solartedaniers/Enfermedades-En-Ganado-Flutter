@@ -7,6 +7,10 @@ class NotificationEntity {
   final String message;
   final DateTime scheduledAt;
   final DateTime createdAt;
+  final List<int> localNotificationIds;
+  final List<int> repeatWeekdays;
+  final DateTime? completedAt;
+  final DateTime? deletedAt;
 
   NotificationEntity({
     required this.id,
@@ -17,5 +21,12 @@ class NotificationEntity {
     required this.message,
     required this.scheduledAt,
     required this.createdAt,
+    required this.localNotificationIds,
+    required this.repeatWeekdays,
+    this.completedAt,
+    this.deletedAt,
   });
+
+  bool get repeatsWeekly => repeatWeekdays.isNotEmpty;
+  bool get isHidden => completedAt != null || deletedAt != null;
 }

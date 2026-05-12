@@ -13,6 +13,14 @@ class AppStrings {
 
   static String t(String key) => _strings[key] ?? key;
 
+  static String format(String key, Map<String, String> values) {
+    var text = t(key);
+    for (final entry in values.entries) {
+      text = text.replaceAll('{${entry.key}}', entry.value);
+    }
+    return text;
+  }
+
   static String get currentLanguage => _currentLanguage;
 
   static bool get isEnglish => _currentLanguage == 'en';
