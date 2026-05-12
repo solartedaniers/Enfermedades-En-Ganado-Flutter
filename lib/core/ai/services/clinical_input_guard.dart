@@ -1,6 +1,5 @@
 import '../../utils/app_strings.dart';
 import '../models/diagnosis_request.dart';
-import '../models/livestock_detection.dart';
 
 class ClinicalInputValidationResult {
   final bool isValid;
@@ -11,45 +10,21 @@ class ClinicalInputValidationResult {
     this.message,
   });
 
-  const ClinicalInputValidationResult.valid()
-      : this._(isValid: true);
+  const ClinicalInputValidationResult.valid() : this._(isValid: true);
 
   const ClinicalInputValidationResult.invalid(String message)
       : this._(isValid: false, message: message);
 }
 
+/// Validación de entrada clínica.
+///
+/// Principio de diseño: ser lo más permisivo posible con el lenguaje del ganadero
+/// (coloquial, descriptivo, incluso impreciso). El modelo Groq tiene suficiente
+/// inteligencia para interpretar descripciones en español rural y generar un
+/// diagnóstico útil. Este guard solo rechaza contenido claramente absurdo o vacío.
+/// La validación veterinaria real la hace Groq, no este filtro.
 class ClinicalInputGuard {
-  static const Set<String> _acceptedSpecies = {
-    'bovine',
-    'cow',
-    'cattle',
-    'porcine',
-    'pig',
-    'swine',
-    'equine',
-    'horse',
-    'ovine',
-    'sheep',
-    'caprine',
-    'goat',
-  };
-
-  static const Map<String, Set<String>> _speciesAliases = {
-    'bovine': {'bovine', 'cow', 'cattle', 'vaca', 'toro', 'ternero'},
-    'porcine': {'porcine', 'pig', 'swine', 'cerdo', 'marrano'},
-    'equine': {'equine', 'horse', 'caballo', 'yegua'},
-    'ovine': {'ovine', 'sheep', 'oveja', 'cordero'},
-    'caprine': {'caprine', 'goat', 'cabra', 'chivo'},
-  };
-
-  static const Map<String, Set<String>> _speciesExclusiveTerms = {
-    'bovine': {'mastitis bovina', 'fiebre aftosa bovina'},
-    'porcine': {'peste porcina', 'sindrome reproductivo porcino'},
-    'equine': {'colico equino', 'influenza equina'},
-    'ovine': {'scrapie', 'ectima contagioso ovino'},
-    'caprine': {'artritis encefalitis caprina'},
-  };
-
+  // Solo bloqueamos términos que son imposibles para un animal real
   static const Set<String> _fantasySignals = {
     'vuela',
     'volando',
@@ -57,139 +32,59 @@ class ClinicalInputGuard {
     'hablando',
     'invisible',
     'magia',
+    'magico',
     'teletransporta',
     'alien',
     'robot',
     'superpoder',
-  };
-
-  static const Set<String> _clinicalSignals = {
-    'fiebre',
-    'temperatura',
-    'tos',
-    'moco',
-    'secrecion',
-    'diarrea',
-    'vomito',
-    'cojera',
-    'dolor',
-    'inflamacion',
-    'herida',
-    'lesion',
-    'sangre',
-    'apetito',
-    'decaido',
-    'debil',
-    'respira',
-    'babeo',
-    'ubre',
-    'piel',
-    'pezu',
-    'leche',
-    'parasito',
-    'convulsion',
-    'temblor',
-    'nasal',
-    'ocular',
-    'come',
-    'agua',
+    'zombi',
   };
 
   const ClinicalInputGuard();
 
   ClinicalInputValidationResult validate(DiagnosisRequest request) {
-    final detection = request.livestockDetection;
-    final clinicalText = _normalizeText([
-      request.clinicalQuestion,
-      ...request.reportedSymptoms,
-    ].join(' '));
-    final hasImageEvidence = request.imageBytes != null;
+    final hasImage = request.imageBytes != null;
+    final clinicalText = _buildClinicalText(request);
 
-    if (hasImageEvidence) {
-      if (detection == null ||
-          detection.confidence < LivestockDetectionPolicy.minConfidence) {
+    // Si hay imagen, siempre proceder — la foto es evidencia visual suficiente.
+    // El modelo de visión de Groq analiza la imagen directamente.
+    if (hasImage) {
+      // Solo filtrar si además hay texto claramente absurdo
+      if (clinicalText.isNotEmpty && _isObviousNonsense(clinicalText)) {
         return ClinicalInputValidationResult.invalid(
-          AppStrings.t('diagnosis_livestock_required_message'),
+          AppStrings.t('diagnosis_inconsistent_symptoms'),
         );
       }
-
-      final detectedSpecies = _normalizeSpecies(detection.species);
-      if (!_acceptedSpecies.contains(detectedSpecies)) {
-        return ClinicalInputValidationResult.invalid(
-          AppStrings.t('diagnosis_invalid_visual_input'),
-        );
-      }
-
-      if (_hasSpeciesMismatch(detectedSpecies, clinicalText)) {
-        return ClinicalInputValidationResult.invalid(
-          AppStrings.t('diagnosis_species_symptom_mismatch'),
-        );
-      }
-    } else {
-      final registeredSpecies = _normalizeSpecies(request.species);
-      if (_acceptedSpecies.contains(registeredSpecies) &&
-          _hasSpeciesMismatch(registeredSpecies, clinicalText)) {
-        return ClinicalInputValidationResult.invalid(
-          AppStrings.t('diagnosis_species_symptom_mismatch'),
-        );
-      }
+      return const ClinicalInputValidationResult.valid();
     }
 
-    if (_hasNonsenseContent(clinicalText)) {
+    // Sin imagen: necesitamos al menos alguna descripción del problema
+    if (clinicalText.isEmpty) {
+      return ClinicalInputValidationResult.invalid(
+        AppStrings.t('diagnosis_prepare_message'),
+      );
+    }
+
+    // Solo rechazar contenido claramente absurdo o de fantasía
+    if (_isObviousNonsense(clinicalText)) {
       return ClinicalInputValidationResult.invalid(
         AppStrings.t('diagnosis_inconsistent_symptoms'),
       );
     }
 
-    if (clinicalText.isNotEmpty && !_hasClinicalSignal(clinicalText)) {
-      return ClinicalInputValidationResult.invalid(
-        AppStrings.t('diagnosis_inconsistent_symptoms'),
-      );
-    }
-
+    // Cualquier descripción real del ganadero pasa — Groq se encarga del resto
     return const ClinicalInputValidationResult.valid();
   }
 
-  String _normalizeSpecies(String value) {
-    final normalized = _normalizeText(value);
-    for (final entry in _speciesAliases.entries) {
-      if (entry.value.contains(normalized)) {
-        return entry.key;
-      }
-    }
-
-    return normalized;
+  String _buildClinicalText(DiagnosisRequest request) {
+    return [
+      request.clinicalQuestion,
+      ...request.reportedSymptoms,
+    ].map((s) => _normalizeText(s)).where((s) => s.isNotEmpty).join(' ');
   }
 
-  bool _hasNonsenseContent(String value) {
-    if (value.isEmpty) {
-      return false;
-    }
-
-    return _fantasySignals.any(value.contains);
-  }
-
-  bool _hasClinicalSignal(String value) {
-    return _clinicalSignals.any(value.contains) ||
-        RegExp(r'\b\d{2}([,.]\d)?\b').hasMatch(value);
-  }
-
-  bool _hasSpeciesMismatch(String detectedSpecies, String clinicalText) {
-    if (clinicalText.isEmpty) {
-      return false;
-    }
-
-    for (final entry in _speciesExclusiveTerms.entries) {
-      if (entry.key == detectedSpecies) {
-        continue;
-      }
-
-      if (entry.value.any(clinicalText.contains)) {
-        return true;
-      }
-    }
-
-    return false;
+  bool _isObviousNonsense(String normalizedText) {
+    return _fantasySignals.any(normalizedText.contains);
   }
 
   String _normalizeText(String value) {
