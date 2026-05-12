@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -12,8 +13,10 @@ import 'notification_channel_config.dart';
 import 'notification_schedule_policy.dart';
 
 @pragma('vm:entry-point')
-void notificationTapBackground(NotificationResponse response) {
-  NotificationService.handleNotificationResponse(response);
+Future<void> notificationTapBackground(NotificationResponse response) async {
+  // El isolate de background debe esperar a que la operación async termine
+  // para que Android no mate el proceso antes de reprogramar el snooze.
+  await NotificationService.handleNotificationResponse(response);
 }
 
 class NotificationService {
@@ -21,6 +24,7 @@ class NotificationService {
   static const String _channelId = 'agrovet_channel';
   static const String _snoozeActionId = 'snooze_reminder';
   static const String _completeActionId = 'complete_reminder';
+  static const String _snoozeNotificationKey = 'snooze';
   static const String _pendingCompletedKey = 'pending_completed_reminders';
   static const String _payloadReminderIdKey = 'reminder_id';
   static const String _payloadTitleKey = 'title';
@@ -43,7 +47,7 @@ class NotificationService {
   static Future<void> init() async {
     if (_initialized) return;
 
-    tz.initializeTimeZones();
+    await _configureTimezone();
 
     const androidSettings = AndroidInitializationSettings(_launcherIconPath);
     const settings = InitializationSettings(android: androidSettings);
@@ -116,20 +120,28 @@ class NotificationService {
   }) async {
     if (repeatWeekdays.isEmpty) {
       final id = notificationIdFor(reminderId);
+      final cancelNotificationIds = [
+        id,
+        snoozeNotificationIdFor(reminderId),
+      ];
       await scheduleNotification(
         id: id,
         reminderId: reminderId,
         title: title,
         body: body,
         scheduledTime: scheduledTime,
-        cancelNotificationIds: [id],
+        cancelNotificationIds: cancelNotificationIds,
       );
-      return [id];
+      return cancelNotificationIds;
     }
 
     final ids = repeatWeekdays
         .map((weekday) => notificationIdFor('$reminderId-$weekday'))
         .toList();
+    final cancelNotificationIds = [
+      ...ids,
+      snoozeNotificationIdFor(reminderId),
+    ];
     var index = 0;
     for (final weekday in repeatWeekdays) {
       final id = ids[index];
@@ -144,12 +156,12 @@ class NotificationService {
         title: title,
         body: body,
         scheduledTime: nextOccurrence,
-        cancelNotificationIds: ids,
+        cancelNotificationIds: cancelNotificationIds,
         matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
       );
       index++;
     }
-    return ids;
+    return cancelNotificationIds;
   }
 
   static Future<void> cancelNotification(int id) async {
@@ -198,6 +210,10 @@ class NotificationService {
     return hash == 0 ? 1 : hash;
   }
 
+  static int snoozeNotificationIdFor(String reminderId) {
+    return notificationIdFor('$reminderId-$_snoozeNotificationKey');
+  }
+
   static NotificationChannelConfig _buildChannelConfig() {
     return NotificationChannelConfig(
       channelId: _channelId,
@@ -226,6 +242,23 @@ class NotificationService {
 
     await androidPlugin?.requestNotificationsPermission();
     await androidPlugin?.requestExactAlarmsPermission();
+    await _requestBatteryOptimizationExemption();
+  }
+
+  // Solicita exención de optimización de batería para que las alarmas
+  // no sean canceladas en MIUI/HyperOS y otros sistemas agresivos con la batería.
+  static Future<void> _requestBatteryOptimizationExemption() async {
+    try {
+      const channel = MethodChannel('com.example.agrovet_ai/battery');
+      final isIgnoring =
+          await channel.invokeMethod<bool>('isIgnoringBatteryOptimizations') ??
+          false;
+      if (!isIgnoring) {
+        await channel.invokeMethod('requestIgnoreBatteryOptimizations');
+      }
+    } catch (_) {
+      // Puede no estar disponible en todos los dispositivos.
+    }
   }
 
   static String _buildPayload({
@@ -273,16 +306,18 @@ class NotificationService {
     }
 
     final snoozeAt = _schedulePolicy.resolveSnoozeTime(DateTime.now());
-    final snoozeId = notificationIdFor(
-      '${payload.reminderId}-${snoozeAt.millisecondsSinceEpoch}',
-    );
+    final snoozeId = snoozeNotificationIdFor(payload.reminderId);
+    final cancelNotificationIds = {
+      ...payload.cancelNotificationIds,
+      snoozeId,
+    }.toList();
     await scheduleNotification(
       id: snoozeId,
       reminderId: payload.reminderId,
       title: payload.title,
       body: payload.body,
       scheduledTime: snoozeAt,
-      cancelNotificationIds: [snoozeId],
+      cancelNotificationIds: cancelNotificationIds,
     );
   }
 
@@ -309,7 +344,7 @@ class NotificationService {
   static Future<void> _ensureInitializedForScheduling() async {
     if (_initialized) return;
 
-    tz.initializeTimeZones();
+    await _configureTimezone();
 
     const androidSettings = AndroidInitializationSettings(_launcherIconPath);
     const settings = InitializationSettings(android: androidSettings);
@@ -320,6 +355,18 @@ class NotificationService {
       onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
     );
     _initialized = true;
+  }
+
+  // Inicializa la zona horaria local del dispositivo para que el scheduler
+  // use el tiempo local correcto y no descarte alarmas por creerlas en el pasado.
+  static Future<void> _configureTimezone() async {
+    tz.initializeTimeZones();
+    try {
+      final timezoneInfo = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(timezoneInfo.identifier));
+    } catch (_) {
+      // Si no se puede obtener la zona horaria, se usa UTC como fallback.
+    }
   }
 
   static List<int> _asIntList(dynamic value) {

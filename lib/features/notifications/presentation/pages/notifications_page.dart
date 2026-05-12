@@ -390,19 +390,32 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
   }
 
   List<int> _resolveLocalNotificationIds(NotificationEntity notification) {
+    final snoozeId = NotificationService.snoozeNotificationIdFor(
+      notification.id,
+    );
+
     if (notification.localNotificationIds.isNotEmpty) {
-      return notification.localNotificationIds;
+      return {
+        ...notification.localNotificationIds,
+        snoozeId,
+      }.toList();
     }
 
     if (notification.repeatWeekdays.isEmpty) {
-      return [NotificationService.notificationIdFor(notification.id)];
+      return [
+        NotificationService.notificationIdFor(notification.id),
+        snoozeId,
+      ];
     }
 
-    return notification.repeatWeekdays
-        .map((weekday) => NotificationService.notificationIdFor(
-              '${notification.id}-$weekday',
-            ))
-        .toList();
+    return [
+      ...notification.repeatWeekdays.map(
+        (weekday) => NotificationService.notificationIdFor(
+          '${notification.id}-$weekday',
+        ),
+      ),
+      snoozeId,
+    ];
   }
 
   @override

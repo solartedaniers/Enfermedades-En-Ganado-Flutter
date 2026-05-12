@@ -19,12 +19,15 @@ class NotificationChannelConfig {
         channelId,
         channelName,
         channelDescription: channelDescription,
-        importance: Importance.high,
-        priority: Priority.high,
+        importance: Importance.max,
+        priority: Priority.max,
         actions: actions,
         playSound: true,
         enableVibration: true,
+        enableLights: true,
         channelShowBadge: true,
+        // Muestra la notificación completa en la pantalla de bloqueo.
+        visibility: NotificationVisibility.public,
       ),
     );
   }

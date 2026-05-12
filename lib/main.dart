@@ -1,6 +1,7 @@
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:logger/logger.dart';
@@ -139,14 +140,24 @@ class _AgrovetAIState extends ConsumerState<AgrovetAI> {
 
   @override
   Widget build(BuildContext context) {
-    final themeMode = ref.watch(profileProvider).themeMode;
+    final profile = ref.watch(profileProvider);
 
     return MaterialApp(
       navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: themeMode,
+      themeMode: profile.themeMode,
+      locale: Locale(profile.language),
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('es'),
+        Locale('en'),
+      ],
       routes: {
         AppRoutePaths.login: (_) => const LoginPage(),
         AppRoutePaths.home: (_) => const HomePage(),

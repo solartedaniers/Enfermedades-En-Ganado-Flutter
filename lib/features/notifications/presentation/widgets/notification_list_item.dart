@@ -93,7 +93,7 @@ class NotificationListItem extends StatelessWidget {
                       Flexible(
                         flex: 2,
                         child: Text(
-                          AppDateFormatter.shortDateTime(
+                          AppDateFormatter.shortTime(
                             notification.scheduledAt,
                           ),
                           maxLines: 1,
