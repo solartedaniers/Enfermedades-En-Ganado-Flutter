@@ -14,8 +14,9 @@ class GroqDiagnosisApi {
 
   // Modelo de texto puro: genera JSON de forma muy confiable
   static const String _textModel = 'llama-3.3-70b-versatile';
-  // Modelo de visión: analiza la imagen real del animal
-  static const String _visionModel = 'llama-3.2-11b-vision-preview';
+  // Modelo de visión: Llama 4 Scout soporta imagen + texto en Groq
+  static const String _visionModel =
+      'meta-llama/llama-4-scout-17b-16e-instruct';
   static const String _baseUrl =
       'https://api.groq.com/openai/v1/chat/completions';
 
@@ -36,6 +37,33 @@ class GroqDiagnosisApi {
     final imageBytes = request.imageBytes;
     final hasImage = imageBytes != null && imageBytes.isNotEmpty;
 
+    // Si hay imagen, intentamos con modelo de visión primero.
+    // Si ese modelo falla (deprecado, cuota, etc.) hacemos fallback al modelo de texto.
+    if (hasImage) {
+      try {
+        return await _callGroq(
+          _buildVisionPayload(request, imageBytes),
+          request,
+        );
+      } catch (e) {
+        developer.log(
+          'Modelo de visión no disponible, reintentando sin imagen',
+          name: 'GroqDiagnosisApi',
+          error: e,
+        );
+        // Fallback: texto puro (sin imagen) para no dejar al usuario sin diagnóstico
+        final textRequest = request.copyWith(imageBytes: null);
+        return await _callGroq(_buildTextPayload(textRequest), textRequest);
+      }
+    }
+
+    return await _callGroq(_buildTextPayload(request), request);
+  }
+
+  Future<DiagnosisReport> _callGroq(
+    Map<String, dynamic> payload,
+    DiagnosisRequest request,
+  ) async {
     final client = HttpClient();
     try {
       final httpRequest = await client.postUrl(Uri.parse(_baseUrl));
@@ -47,12 +75,6 @@ class GroqDiagnosisApi {
         HttpHeaders.contentTypeHeader,
         'application/json; charset=utf-8',
       );
-
-      // Si hay imagen: usamos modelo de visión y enviamos la foto como base64
-      final payload =
-          hasImage
-              ? _buildVisionPayload(request, imageBytes)
-              : _buildTextPayload(request);
 
       httpRequest.add(utf8.encode(jsonEncode(payload)));
 
@@ -206,7 +228,20 @@ PRINCIPIOS DE ANÁLISIS:
 5. Responde SIEMPRE en español
 6. Traduce el lenguaje coloquial a terminología veterinaria en "symptom_analysis"
 
-INCONSISTENCIA REAL: Solo marca inconsistencia si la especie registrada es biológicamente imposible de tener el síntoma descrito (ej: un bovino con síntomas de solo reptiles). NO marques inconsistencia por descripción coloquial o imprecisa.
+ENTRADA SIN RELEVANCIA VETERINARIA:
+Si el texto no describe ningún síntoma, comportamiento, condición física o problema de salud de un animal (ejemplo: "futbol", "hola", "abc", nombres de lugares sin contexto clínico), responde así:
+- primary_diagnosis: "Información insuficiente"
+- diagnostic_statement: "No se identificaron síntomas veterinarios en la descripción. Por favor describe qué le pasa al animal: si tiene fiebre, manchas, no come, cojea, está decaído, etc."
+- confidence: 0.0
+- severity_index: 0
+- urgency_index: 0
+- requires_veterinarian: false
+- findings: []
+- differential_diagnoses: []
+- immediate_actions: ["Describe los síntomas reales del animal para obtener un diagnóstico"]
+- monitoring_plan: []
+
+INCONSISTENCIA REAL: Solo marca inconsistencia si la especie es biológicamente imposible para el síntoma (ej: bovino con síntomas exclusivos de reptiles). NO marques inconsistencia por descripción coloquial o imprecisa.
 
 SALIDA OBLIGATORIA: Responde ÚNICAMENTE con este JSON exacto, sin texto adicional:
 {
