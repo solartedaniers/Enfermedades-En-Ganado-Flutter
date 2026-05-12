@@ -158,31 +158,54 @@ class LivestockDiagnosisService {
     final detection = request.livestockDetection;
     final species = detection?.species ?? request.species;
     final visualConfidence = detection?.confidence;
-    final statement = report.diagnosticStatement.trim().isNotEmpty
-        ? report.diagnosticStatement.trim()
-        : 'Basado en la evidencia visual y los sintomas descritos, el cuadro clinico es compatible con ${report.primaryDiagnosis}.';
+    final hasImage = request.imageBytes != null;
+
+    var statement = report.diagnosticStatement.trim();
+
+    // Si Groq no devolvió statement, generamos uno acorde a la evidencia disponible
+    if (statement.isEmpty) {
+      statement = hasImage
+          ? 'Con base en la imagen y los síntomas descritos, el cuadro clínico es compatible con ${report.primaryDiagnosis}.'
+          : 'Con base en los síntomas descritos, el cuadro clínico es compatible con ${report.primaryDiagnosis}.';
+    }
+
+    // Solo agregar prefijo si el statement no tiene uno propio
+    final alreadyHasPrefix =
+        statement.startsWith('Con base') ||
+        statement.startsWith('Basado') ||
+        statement.startsWith('No se') ||
+        statement.startsWith('Se detectó');
+
+    if (!alreadyHasPrefix) {
+      statement = hasImage
+          ? 'Con base en la imagen adjunta y los síntomas descritos, $statement'
+          : 'Con base en los síntomas descritos, $statement';
+    }
 
     return report.copyWith(
-      diagnosticStatement: statement.startsWith('Basado en la evidencia')
-          ? statement
-          : 'Basado en la evidencia visual y los sintomas descritos, $statement',
+      diagnosticStatement: statement,
       symptomAnalysis: report.symptomAnalysis.trim().isNotEmpty
           ? report.symptomAnalysis
-          : _buildLocalSymptomAnalysis(request),
+          : _buildLocalSymptomAnalysis(request, hasImage: hasImage),
       validatedSpecies: species,
       visualDetectionConfidence: visualConfidence,
       disclaimer: AppStrings.t('diagnosis_professional_disclaimer'),
     );
   }
 
-  String _buildLocalSymptomAnalysis(DiagnosisRequest request) {
+  String _buildLocalSymptomAnalysis(
+    DiagnosisRequest request, {
+    bool hasImage = false,
+  }) {
     final symptoms = request.reportedSymptoms
         .map((item) => item.trim())
         .where((item) => item.isNotEmpty)
         .toList();
 
     if (symptoms.isEmpty && request.clinicalQuestion.trim().isEmpty) {
-      return 'No se registraron sintomas escritos adicionales; el analisis se apoya principalmente en la evidencia visual validada localmente.';
+      return hasImage
+          ? 'El análisis se basa principalmente en la evidencia visual de la imagen adjunta.'
+          : 'No se registraron síntomas escritos. Agrega síntomas o una foto para un diagnóstico más preciso.';
     }
 
     final sourceText = [
@@ -190,6 +213,6 @@ class LivestockDiagnosisService {
       ...symptoms,
     ].where((item) => item.isNotEmpty).join(', ');
 
-    return 'La descripcion ingresada por el usuario se interpreta como signos clinicos reportados para evaluacion veterinaria: $sourceText.';
+    return 'Descripción del usuario interpretada como signos clínicos: $sourceText.';
   }
 }
