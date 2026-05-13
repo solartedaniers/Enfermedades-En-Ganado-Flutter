@@ -1,9 +1,6 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../../../core/services/connectivity_service.dart';
 import '../../../../core/theme/app_sizes.dart';
@@ -12,7 +9,7 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../../../animals/domain/entities/animal_entity.dart';
 import '../../../animals/presentation/providers/animal_provider.dart';
-import '../../data/models/medical_record_model.dart';
+import '../../../diagnosis/screens/scanner_screen.dart';
 import '../providers/medical_provider.dart';
 import '../widgets/animal_medical_header.dart';
 import '../widgets/medical_record_card.dart';
@@ -95,75 +92,12 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
   }
 
   Future<void> _openRecordSheet() async {
-    final isOnline = await ConnectivityService.checkAndNotify(
-      context,
-      message: AppStrings.t('medical_need_internet_add_record'),
-    );
-    if (!isOnline || !mounted) {
-      return;
-    }
-
-    final draft = await showModalBottomSheet<MedicalRecordDraft>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => MedicalRecordEditorSheet(
-        title: AppStrings.t('medical_new_record'),
-        buttonLabel: AppStrings.t('medical_save_record'),
-        allowImage: true,
+    // Navegar al diagnóstico con el animal ya preseleccionado
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ScannerScreen(initialAnimal: _animal),
       ),
     );
-
-    if (draft == null) {
-      return;
-    }
-
-    await _saveRecord(diagnosis: draft.diagnosis, imageFile: draft.imageFile);
-  }
-
-  Future<void> _saveRecord({
-    required String diagnosis,
-    File? imageFile,
-  }) async {
-    try {
-      final userId = ref.read(currentUserIdProvider);
-      if (userId == null) {
-        return;
-      }
-
-      String? imageUrl;
-      if (imageFile != null) {
-        final storageService = ref.read(storageServiceProvider);
-        imageUrl = await storageService.uploadAnimalImage(imageFile, userId);
-      }
-
-      final record = MedicalRecordModel(
-        id: const Uuid().v4(),
-        animalId: _animal.id,
-        userId: userId,
-        diagnosis: diagnosis.isEmpty ? null : diagnosis,
-        aiResult: null,
-        imageUrl: imageUrl,
-        createdAt: DateTime.now(),
-      );
-
-      await ref.read(medicalRepositoryProvider).addRecord(record);
-
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {});
-      _showSnack(AppStrings.t('medical_record_saved'));
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      _showSnack('${AppStrings.t("unexpected_error")}: $error');
-    }
   }
 
   Future<void> _deleteRecord(String recordId) async {

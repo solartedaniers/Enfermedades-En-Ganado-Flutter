@@ -34,7 +34,10 @@ enum _ScannerStep {
 }
 
 class ScannerScreen extends ConsumerStatefulWidget {
-  const ScannerScreen({super.key});
+  /// Animal pre-seleccionado al abrir el scanner desde el historial médico
+  final AnimalEntity? initialAnimal;
+
+  const ScannerScreen({super.key, this.initialAnimal});
 
   @override
   ConsumerState<ScannerScreen> createState() => _ScannerScreenState();
@@ -66,6 +69,11 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Si viene con animal pre-seleccionado (desde historial médico), usarlo
+    if (widget.initialAnimal != null) {
+      _selectedAnimal = widget.initialAnimal;
+      _prefillFromAnimal(widget.initialAnimal!);
+    }
     _animalsFuture = _loadAnimals();
     Future.microtask(
       () => ref
