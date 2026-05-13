@@ -40,6 +40,10 @@ class ScannerResultView extends StatelessWidget {
       return Center(child: Text(AppStrings.t('diagnosis_not_available')));
     }
 
+    final theme = Theme.of(context);
+    final appColors = context.appColors;
+    final isDark = theme.brightness == Brightness.dark;
+
     return SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(AppSizes.pagePadding),
@@ -47,11 +51,11 @@ class ScannerResultView extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(AppSizes.xLarge),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
+              color: theme.colorScheme.surface,
               borderRadius: BorderRadius.circular(AppSizes.xxLarge),
               boxShadow: [
                 BoxShadow(
-                  color: context.appColors.scannerAccent.withValues(alpha: 0.10),
+                  color: appColors.scannerAccent.withValues(alpha: 0.10),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
@@ -60,64 +64,23 @@ class ScannerResultView extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Nombre del animal
                 Text(
                   '${AppStrings.t('diagnosis_animal_prefix')}: ${currentAnimal.name}',
-                  style: AppTextStyles.sectionTitle(Theme.of(context)),
+                  style: AppTextStyles.sectionTitle(theme),
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: AppSizes.medium),
-                _TechnicalHeader(report: currentReport),
-                const SizedBox(height: AppSizes.large),
-                // Hallazgos Visuales
-                _HighlightedSection(
-                  title: 'Hallazgos Visuales',
-                  icon: Icons.visibility,
-                  items: currentReport.findings
-                      .map((f) => '${f.label} (${(f.confidence * 100).toStringAsFixed(0)}%): ${f.interpretation}')
-                      .toList(),
-                  backgroundColor: context.appColors.scannerAccent.withValues(alpha: 0.06),
+
+                // Encabezado técnico (fecha + especie)
+                _TechnicalHeader(
+                  report: currentReport,
+                  isDark: isDark,
                 ),
                 const SizedBox(height: AppSizes.large),
-                _ScannerSection(
-                  title: 'Análisis Clínico',
-                  items: [currentReport.diagnosticStatement],
-                ),
-                const SizedBox(height: AppSizes.large),
-                if (currentReport.differentialDiagnoses.isNotEmpty)
-                  _ScannerSection(
-                    title: 'Diagnósticos Diferenciales',
-                    items: currentReport.differentialDiagnoses,
-                  ),
-                _ScannerSection(
-                  title: AppStrings.t('diagnosis_immediate_actions'),
-                  items: currentReport.immediateActions,
-                ),
-                _ScannerSection(
-                  title: AppStrings.t('diagnosis_treatment'),
-                  items: currentReport.treatmentProtocol,
-                ),
-                const SizedBox(height: AppSizes.large),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    _ScannerMetricChip(
-                      title: AppStrings.t('diagnosis_severity'),
-                      value: '${currentReport.severityIndex}/100',
-                    ),
-                    _ScannerMetricChip(
-                      title: AppStrings.t('diagnosis_urgency'),
-                      value: '${currentReport.urgencyIndex}/100',
-                    ),
-                    _ScannerMetricChip(
-                      title: AppStrings.t('diagnosis_contagion'),
-                      value: currentReport.isContagious
-                          ? AppStrings.t('yes')
-                          : AppStrings.t('no'),
-                    ),
-                  ],
-                ),
+
+                // Imagen del diagnóstico (si existe)
                 if (capturedImageBytes != null) ...[
-                  const SizedBox(height: AppSizes.xLarge),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(AppSizes.fieldRadius),
                     child: Image.memory(
@@ -127,22 +90,140 @@ class ScannerResultView extends StatelessWidget {
                       fit: BoxFit.cover,
                     ),
                   ),
+                  const SizedBox(height: AppSizes.large),
                 ],
-                const SizedBox(height: AppSizes.xLarge),
-                _HighlightedSection(
-                  title: 'Sugerencias Preventivas',
-                  icon: Icons.shield,
-                  items: currentReport.treatmentProtocol,
-                  backgroundColor: context.appColors.success.withValues(alpha: 0.06),
-                ),
-                const SizedBox(height: AppSizes.large),
-                if (currentReport.immediateActions.isNotEmpty)
-                  _ScannerSection(
-                    title: AppStrings.t('diagnosis_immediate_actions'),
-                    items: currentReport.immediateActions,
+
+                // Análisis clínico principal
+                if (currentReport.diagnosticStatement.isNotEmpty)
+                  _ResultSection(
+                    title: 'Análisis Clínico',
+                    items: [currentReport.diagnosticStatement],
+                    theme: theme,
                   ),
-                _ScannerDisclaimer(text: currentReport.disclaimer),
+
+                // Análisis de síntomas
+                if (currentReport.symptomAnalysis.trim().isNotEmpty)
+                  _ResultSection(
+                    title: AppStrings.t('diagnosis_symptom_analysis'),
+                    items: [currentReport.symptomAnalysis],
+                    theme: theme,
+                  ),
+
+                // Hallazgos visuales
+                if (currentReport.findings.isNotEmpty)
+                  _HighlightedSection(
+                    title: 'Hallazgos Visuales',
+                    icon: Icons.visibility_outlined,
+                    items: currentReport.findings
+                        .map(
+                          (f) =>
+                              '${f.label} '
+                              '(${(f.confidence * 100).toStringAsFixed(0)}%)'
+                              ': ${f.interpretation}',
+                        )
+                        .toList(),
+                    background: appColors.scannerAccent.withValues(
+                      alpha: isDark ? 0.14 : 0.07,
+                    ),
+                    borderColor: appColors.scannerAccent.withValues(alpha: 0.25),
+                    iconColor: appColors.scannerAccent,
+                    theme: theme,
+                  ),
+
+                // Diagnósticos diferenciales
+                if (currentReport.differentialDiagnoses.isNotEmpty)
+                  _ResultSection(
+                    title: 'Diagnósticos Diferenciales',
+                    items: currentReport.differentialDiagnoses,
+                    theme: theme,
+                  ),
+
+                // Acciones inmediatas (destacado en naranja)
+                if (currentReport.immediateActions.isNotEmpty)
+                  _HighlightedSection(
+                    title: AppStrings.t('diagnosis_immediate_actions'),
+                    icon: Icons.warning_amber_rounded,
+                    items: currentReport.immediateActions,
+                    background: appColors.warning.withValues(
+                      alpha: isDark ? 0.14 : 0.07,
+                    ),
+                    borderColor: appColors.warning.withValues(alpha: 0.35),
+                    iconColor: appColors.warning,
+                    theme: theme,
+                  ),
+
+                // Tratamiento sugerido (destacado en verde)
+                if (currentReport.treatmentProtocol.isNotEmpty)
+                  _HighlightedSection(
+                    title: AppStrings.t('diagnosis_treatment'),
+                    icon: Icons.healing_outlined,
+                    items: currentReport.treatmentProtocol,
+                    background: appColors.success.withValues(
+                      alpha: isDark ? 0.14 : 0.07,
+                    ),
+                    borderColor: appColors.success.withValues(alpha: 0.30),
+                    iconColor: appColors.success,
+                    theme: theme,
+                  ),
+
+                // Medidas de aislamiento
+                if (currentReport.isolationMeasures.isNotEmpty)
+                  _ResultSection(
+                    title: AppStrings.t('diagnosis_isolation'),
+                    items: currentReport.isolationMeasures,
+                    theme: theme,
+                  ),
+
+                // Plan de monitoreo
+                if (currentReport.monitoringPlan.isNotEmpty)
+                  _ResultSection(
+                    title: AppStrings.t('diagnosis_monitoring'),
+                    items: currentReport.monitoringPlan,
+                    theme: theme,
+                  ),
+
+                const SizedBox(height: AppSizes.medium),
+
+                // Métricas: severidad, urgencia, contagio
+                Wrap(
+                  spacing: AppSizes.medium,
+                  runSpacing: AppSizes.medium,
+                  children: [
+                    _MetricChip(
+                      title: AppStrings.t('diagnosis_severity'),
+                      value: '${currentReport.severityIndex}/100',
+                      theme: theme,
+                      appColors: appColors,
+                    ),
+                    _MetricChip(
+                      title: AppStrings.t('diagnosis_urgency'),
+                      value: '${currentReport.urgencyIndex}/100',
+                      theme: theme,
+                      appColors: appColors,
+                    ),
+                    _MetricChip(
+                      title: AppStrings.t('diagnosis_contagion'),
+                      value: currentReport.isContagious
+                          ? AppStrings.t('yes')
+                          : AppStrings.t('no'),
+                      theme: theme,
+                      appColors: appColors,
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: AppSizes.large),
+
+                // Disclaimer
+                _DisclaimerCard(
+                  text: currentReport.disclaimer,
+                  theme: theme,
+                  appColors: appColors,
+                ),
+
                 const SizedBox(height: AppSizes.xLarge),
+
+                // Botones de acción
                 Row(
                   children: [
                     Expanded(
@@ -150,17 +231,25 @@ class ScannerResultView extends StatelessWidget {
                         onPressed: isSaveDisabled ? null : onSave,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: hasSaved
-                              ? context.appColors.success
-                              : context.appColors.scannerAccent,
-                          foregroundColor: context.appColors.onSolid,
+                              ? appColors.success
+                              : appColors.scannerAccent,
+                          foregroundColor: appColors.onSolid,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: AppSizes.sectionSpacing,
+                          ),
                         ),
                         icon: isSaving
-                            ? const SizedBox(
+                            ? SizedBox(
                                 width: AppIconSizes.medium,
                                 height: AppIconSizes.medium,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: appColors.onSolid,
+                                ),
                               )
-                            : Icon(hasSaved ? Icons.check_circle : Icons.save),
+                            : Icon(
+                                hasSaved ? Icons.check_circle : Icons.save,
+                              ),
                         label: Text(
                           hasSaved
                               ? AppStrings.t('diagnosis_saved_button')
@@ -173,9 +262,10 @@ class ScannerResultView extends StatelessWidget {
                       child: OutlinedButton.icon(
                         onPressed: onReset,
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: context.appColors.scannerAccent,
-                          side: BorderSide(
-                            color: context.appColors.scannerAccent,
+                          foregroundColor: appColors.scannerAccent,
+                          side: BorderSide(color: appColors.scannerAccent),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: AppSizes.sectionSpacing,
                           ),
                         ),
                         icon: const Icon(Icons.refresh),
@@ -193,23 +283,32 @@ class ScannerResultView extends StatelessWidget {
   }
 }
 
+// Encabezado técnico con fecha y especie validada
 class _TechnicalHeader extends StatelessWidget {
   final DiagnosisReport report;
+  final bool isDark;
 
-  const _TechnicalHeader({required this.report});
+  const _TechnicalHeader({required this.report, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final appColors = context.appColors;
     final dateLabel = AppDateFormatter.shortDateTime(report.generatedAt);
     final confidence = report.visualDetectionConfidence == null
         ? AppStrings.t('diagnosis_not_available')
         : '${(report.visualDetectionConfidence! * 100).toStringAsFixed(1)}%';
 
+    // Color de fondo adaptado al tema
+    final bgColor = isDark
+        ? appColors.scannerAccent.withValues(alpha: 0.15)
+        : appColors.selectionBackground;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(AppSizes.large),
       decoration: BoxDecoration(
-        color: context.appColors.selectionBackground,
+        color: bgColor,
         borderRadius: BorderRadius.circular(AppSizes.fieldRadius),
       ),
       child: Column(
@@ -218,53 +317,29 @@ class _TechnicalHeader extends StatelessWidget {
           Text(
             AppStrings.t('diagnosis_technical_header'),
             style: AppTextStyles.bodyStrong(
-              Theme.of(context),
-              Theme.of(context).colorScheme.onSurface,
+              theme,
+              theme.colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: AppSizes.small),
           Text(
-            '${AppStrings.t('diagnosis_validated_species')}: ${report.validatedSpecies ?? AppStrings.t('diagnosis_not_available')}',
-          ),
-          Text('${AppStrings.t('diagnosis_yolo_confidence')}: $confidence'),
-          Text('${AppStrings.t('diagnosis_generated_at')}: $dateLabel'),
-        ],
-      ),
-    );
-  }
-}
-
-class _ScannerMetricChip extends StatelessWidget {
-  final String title;
-  final String value;
-
-  const _ScannerMetricChip({
-    required this.title,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: context.appColors.scannerAccent.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(AppSizes.fieldRadius),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            title,
-            style: AppTextStyles.bodyStrong(
-              Theme.of(context),
-              context.appColors.subduedForeground,
+            '${AppStrings.t('diagnosis_validated_species')}: '
+            '${report.validatedSpecies ?? AppStrings.t('diagnosis_not_available')}',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
             ),
           ),
-          const SizedBox(height: AppSizes.xSmall),
           Text(
-            value,
-            style: AppTextStyles.sectionTitle(Theme.of(context)),
+            '${AppStrings.t('diagnosis_yolo_confidence')}: $confidence',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+            ),
+          ),
+          Text(
+            '${AppStrings.t('diagnosis_generated_at')}: $dateLabel',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+            ),
           ),
         ],
       ),
@@ -272,31 +347,41 @@ class _ScannerMetricChip extends StatelessWidget {
   }
 }
 
-class _ScannerSection extends StatelessWidget {
+// Sección de texto estándar con título y lista
+class _ResultSection extends StatelessWidget {
   final String title;
   final List<String> items;
+  final ThemeData theme;
 
-  const _ScannerSection({
+  const _ResultSection({
     required this.title,
     required this.items,
+    required this.theme,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (items.isEmpty) return const SizedBox.shrink();
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppIconSizes.medium),
+      padding: const EdgeInsets.only(bottom: AppSizes.large),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: AppTextStyles.sectionTitle(Theme.of(context)),
+            style: AppTextStyles.sectionTitle(theme),
           ),
           const SizedBox(height: AppSizes.small),
           ...items.map(
             (item) => Padding(
               padding: const EdgeInsets.only(bottom: 6),
-              child: Text('- $item'),
+              child: Text(
+                '- $item',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.87),
+                ),
+              ),
             ),
           ),
         ],
@@ -304,41 +389,51 @@ class _ScannerSection extends StatelessWidget {
     );
   }
 }
+
+// Sección destacada con ícono y fondo de color
 class _HighlightedSection extends StatelessWidget {
   final String title;
   final IconData icon;
   final List<String> items;
-  final Color backgroundColor;
+  final Color background;
+  final Color borderColor;
+  final Color iconColor;
+  final ThemeData theme;
 
   const _HighlightedSection({
     required this.title,
     required this.icon,
     required this.items,
-    required this.backgroundColor,
+    required this.background,
+    required this.borderColor,
+    required this.iconColor,
+    required this.theme,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (items.isEmpty) return const SizedBox.shrink();
+
     return Container(
+      margin: const EdgeInsets.only(bottom: AppSizes.large),
       padding: const EdgeInsets.all(AppSizes.large),
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: background,
         borderRadius: BorderRadius.circular(AppSizes.fieldRadius),
-        border: Border.all(
-          color: context.appColors.scannerAccent.withValues(alpha: 0.2),
-        ),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, color: context.appColors.scannerAccent),
+              Icon(icon, color: iconColor, size: AppIconSizes.large),
               const SizedBox(width: AppSizes.small),
               Expanded(
                 child: Text(
                   title,
-                  style: AppTextStyles.sectionTitle(Theme.of(context)),
+                  style: AppTextStyles.sectionTitle(theme),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -347,7 +442,12 @@ class _HighlightedSection extends StatelessWidget {
           ...items.map(
             (item) => Padding(
               padding: const EdgeInsets.only(bottom: 8),
-              child: Text('• $item'),
+              child: Text(
+                '• $item',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.87),
+                ),
+              ),
             ),
           ),
         ],
@@ -355,30 +455,98 @@ class _HighlightedSection extends StatelessWidget {
     );
   }
 }
-class _ScannerDisclaimer extends StatelessWidget {
-  final String text;
 
-  const _ScannerDisclaimer({required this.text});
+// Chip de métrica (severidad, urgencia, contagio)
+class _MetricChip extends StatelessWidget {
+  final String title;
+  final String value;
+  final ThemeData theme;
+  final AppThemeColors appColors;
+
+  const _MetricChip({
+    required this.title,
+    required this.value,
+    required this.theme,
+    required this.appColors,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 80),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: appColors.scannerAccent.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(AppSizes.fieldRadius),
+        border: Border.all(
+          color: appColors.scannerAccent.withValues(alpha: 0.20),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            title,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: AppTextStyles.sectionTitle(theme),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Disclaimer de IA con borde de advertencia
+class _DisclaimerCard extends StatelessWidget {
+  final String text;
+  final ThemeData theme;
+  final AppThemeColors appColors;
+
+  const _DisclaimerCard({
+    required this.text,
+    required this.theme,
+    required this.appColors,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(top: AppSizes.medium),
       padding: const EdgeInsets.all(AppSizes.large),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppSizes.fieldRadius),
         border: Border.all(
-          color: context.appColors.warning.withValues(alpha: 0.55),
+          color: appColors.warning.withValues(alpha: 0.50),
         ),
-        color: context.appColors.warning.withValues(alpha: 0.10),
+        color: appColors.warning.withValues(alpha: 0.08),
       ),
-      child: Text(
-        text,
-        style: AppTextStyles.bodyMuted(
-          Theme.of(context),
-          Theme.of(context).colorScheme.onSurface,
-        ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.info_outline,
+            color: appColors.warning,
+            size: AppIconSizes.medium,
+          ),
+          const SizedBox(width: AppSizes.small),
+          Expanded(
+            child: Text(
+              text,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.80),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

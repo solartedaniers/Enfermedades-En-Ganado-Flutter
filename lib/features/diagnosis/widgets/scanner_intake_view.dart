@@ -420,24 +420,36 @@ class _ScannerGeolocationCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
     final appColors = context.appColors;
+    final isDark = theme.brightness == Brightness.dark;
+
+    // Color adaptado al tema: verde muy sutil en oscuro, verde claro en light
+    final bgColor = isDark
+        ? appColors.scannerAccent.withValues(alpha: 0.15)
+        : appColors.selectionBackground;
 
     return Container(
       padding: const EdgeInsets.all(AppSizes.sectionSpacing),
       decoration: BoxDecoration(
-        color: appColors.selectionBackground,
+        color: bgColor,
         borderRadius: BorderRadius.circular(AppSizes.fieldRadius),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.location_on_outlined, color: appColors.chipForeground),
+          Icon(Icons.location_on_outlined, color: appColors.scannerAccent),
           const SizedBox(width: AppSizes.medium),
           Expanded(
             child: geolocationState.when(
               data: (contextValue) {
                 if (contextValue == null) {
-                  return Text(AppStrings.t('geolocation_unavailable'));
+                  return Text(
+                    AppStrings.t('geolocation_unavailable'),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                  );
                 }
 
                 return Column(
@@ -446,28 +458,38 @@ class _ScannerGeolocationCard extends ConsumerWidget {
                     Text(
                       AppStrings.t('geolocation_region_ready'),
                       style: AppTextStyles.bodyStrong(
-                        Theme.of(context),
-                        Theme.of(context).colorScheme.onSurface,
+                        theme,
+                        theme.colorScheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: AppSizes.xSmall),
                     Text(
                       '${AppStrings.t('geolocation_region_label')}: ${contextValue.regionLabel}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: AppSizes.xSmall - 2),
+                    const SizedBox(height: 2),
                     Text(
                       '${AppStrings.t('geolocation_climate_label')}: ${contextValue.climateZone}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 );
               },
-              loading: () => Text(AppStrings.t('geolocation_loading')),
-              error: (error, _) => Text(
-                '${AppStrings.t('geolocation_unavailable')}: $error',
-                style: AppTextStyles.bodyMuted(
-                  Theme.of(context),
-                  appColors.danger,
+              loading: () => Text(
+                AppStrings.t('geolocation_loading'),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
+              ),
+              error: (error, _) => Text(
+                AppStrings.t('geolocation_unavailable'),
+                style: AppTextStyles.bodyMuted(theme, appColors.danger),
               ),
             ),
           ),
@@ -476,7 +498,10 @@ class _ScannerGeolocationCard extends ConsumerWidget {
                 .read(currentGeolocationContextProvider.notifier)
                 .loadCurrentContext(),
             tooltip: AppStrings.t('geolocation_refresh'),
-            icon: const Icon(Icons.refresh),
+            icon: Icon(
+              Icons.refresh,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            ),
           ),
         ],
       ),
