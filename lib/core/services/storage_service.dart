@@ -31,6 +31,34 @@ class StorageService {
     return _supabase.storage.from(_userAvatarsBucket).getPublicUrl(filePath);
   }
 
+  /// Sube la imagen capturada durante el diagnóstico al bucket 'diagnosticos'
+  /// y retorna la URL pública para guardarla junto al reporte.
+  Future<String?> uploadDiagnosisImage({
+    required Uint8List imageBytes,
+    required String animalName,
+  }) async {
+    try {
+      final userId = _supabase.auth.currentUser?.id ?? 'anonymous';
+      final filePath = _pathBuilder.buildDiagnosisImagePath(userId, animalName);
+
+      await _supabase.storage.from(_diagnosisReportsBucket).uploadBinary(
+        filePath,
+        imageBytes,
+        fileOptions: const FileOptions(
+          contentType: 'image/jpeg',
+          upsert: false,
+        ),
+      );
+
+      return _supabase.storage
+          .from(_diagnosisReportsBucket)
+          .getPublicUrl(filePath);
+    } catch (error) {
+      // No es crítico si la imagen no se guarda — solo logueamos y continuamos
+      return null;
+    }
+  }
+
   Future<String> uploadDiagnosisReportJson({
     required Map<String, dynamic> diagnosisJson,
     required String animalName,

@@ -481,7 +481,18 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
 
     try {
       String? saveWarningMessage;
-      final reportUrl = await ref.read(storageServiceProvider).uploadDiagnosisReportJson(
+      final storageService = ref.read(storageServiceProvider);
+
+      // Si hay imagen del diagnóstico, subirla a Supabase Storage primero
+      String? capturedImageUrl;
+      if (_capturedImageBytes != null) {
+        capturedImageUrl = await storageService.uploadDiagnosisImage(
+          imageBytes: _capturedImageBytes!,
+          animalName: animal.name,
+        );
+      }
+
+      final reportUrl = await storageService.uploadDiagnosisReportJson(
         diagnosisJson: {
           'source': 'scanner',
           'animal_id': animal.id,
@@ -493,7 +504,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
           },
           'user_id': currentUser.id,
           'has_captured_image': _capturedImageBytes != null,
-          'image_url': _capturedImageBytes != null ? animal.imageUrl : null,
+          // URL real de la imagen subida (no la del perfil del animal)
+          'image_url': capturedImageUrl,
           'report': report.toJson(),
           'generated_at': report.generatedAt.toIso8601String(),
         },
@@ -510,6 +522,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
           'animal_id': animal.id,
           'diagnosis_summary': diagnosisSummary,
           'report_url': reportUrl,
+          'image_url': capturedImageUrl,
           'created_at': report.generatedAt.toIso8601String(),
         });
       } on PostgrestException catch (error) {

@@ -20,6 +20,11 @@ class StoragePathBuilder {
     return '$userId/$normalizedAnimalName-${uuid.v4()}.json';
   }
 
+  String buildDiagnosisImagePath(String userId, String animalName) {
+    final normalizedAnimalName = _normalizeSegment(animalName);
+    return '$userId/$normalizedAnimalName-${uuid.v4()}.jpg';
+  }
+
   String _normalizeSegment(String value) {
     final sanitized = value
         .trim()
