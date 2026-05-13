@@ -530,11 +530,12 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
           'animal_id': animal.id,
           'diagnosis_summary': diagnosisSummary,
           'report_url': reportUrl,
-          'image_url': capturedImageUrl,
+          // image_url va en el JSON del reporte (Storage), no en esta tabla
           'created_at': report.generatedAt.toIso8601String(),
         });
       } on PostgrestException catch (error) {
-        if (error.code == 'PGRST205') {
+        // PGRST205: tabla no existe  |  PGRST204: columna no existe
+        if (error.code == 'PGRST205' || error.code == 'PGRST204') {
           saveWarningMessage = AppStrings.t('diagnosis_missing_reports_table');
         } else {
           rethrow;
