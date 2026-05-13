@@ -561,6 +561,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
         animalId: animal.id,
         userId: currentUser.id,
         report: report,
+        imageUrl: capturedImageUrl, // URL de la imagen subida a Supabase Storage
       );
       await medicalRepository.addRecord(record);
 
