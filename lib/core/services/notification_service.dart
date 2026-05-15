@@ -35,6 +35,8 @@ class NotificationService {
   static const String _payloadBodyKey = 'body';
   static const String _payloadNotificationIdKey = 'notification_id';
   static const String _payloadCancelIdsKey = 'cancel_notification_ids';
+  static const String _payloadSnoozeActionLabelKey = 'snooze_action_label';
+  static const String _payloadCompleteActionLabelKey = 'complete_action_label';
   static const int _notificationIdLimit = 2147483647;
   static final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
@@ -73,6 +75,8 @@ class NotificationService {
     required DateTime scheduledTime,
     required List<int> cancelNotificationIds,
     DateTimeComponents? matchDateTimeComponents,
+    String? snoozeActionLabel,
+    String? completeActionLabel,
   }) async {
     await _ensureInitializedForScheduling();
 
@@ -84,12 +88,17 @@ class NotificationService {
     if (notifyAt == null) return;
 
     final notificationTime = tz.TZDateTime.from(notifyAt, tz.local);
+    final labels = _NotificationActionLabels(
+      snooze: _asString(snoozeActionLabel, _currentSnoozeActionLabel()),
+      complete: _asString(completeActionLabel, _currentCompleteActionLabel()),
+    );
     final payload = _buildPayload(
       reminderId: reminderId,
       title: title,
       body: body,
       notificationId: id,
       cancelNotificationIds: cancelNotificationIds,
+      actionLabels: labels,
     );
 
     try {
@@ -103,6 +112,7 @@ class NotificationService {
         scheduleMode: AndroidScheduleMode.alarmClock,
         matchDateTimeComponents: matchDateTimeComponents,
         payload: payload,
+        actionLabels: labels,
       );
     } on PlatformException {
       await _zonedSchedule(
@@ -113,6 +123,7 @@ class NotificationService {
         scheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         matchDateTimeComponents: matchDateTimeComponents,
         payload: payload,
+        actionLabels: labels,
       );
     }
   }
@@ -220,7 +231,9 @@ class NotificationService {
     return notificationIdFor('$reminderId-$_snoozeNotificationKey');
   }
 
-  static NotificationChannelConfig _buildChannelConfig() {
+  static NotificationChannelConfig _buildChannelConfig(
+    _NotificationActionLabels actionLabels,
+  ) {
     return NotificationChannelConfig(
       channelId: _channelId,
       channelName: AppStrings.t('notification_channel_name'),
@@ -228,13 +241,13 @@ class NotificationService {
       actions: [
         AndroidNotificationAction(
           _snoozeActionId,
-          AppStrings.t('notification_snooze_action'),
+          actionLabels.snooze,
           showsUserInterface: false,
           cancelNotification: true,
         ),
         AndroidNotificationAction(
           _completeActionId,
-          AppStrings.t('notification_complete_action'),
+          actionLabels.complete,
           showsUserInterface: false,
           cancelNotification: true,
         ),
@@ -256,6 +269,7 @@ class NotificationService {
     required String body,
     required int notificationId,
     required List<int> cancelNotificationIds,
+    required _NotificationActionLabels actionLabels,
   }) {
     return jsonEncode({
       _payloadReminderIdKey: reminderId,
@@ -263,6 +277,8 @@ class NotificationService {
       _payloadBodyKey: body,
       _payloadNotificationIdKey: notificationId,
       _payloadCancelIdsKey: cancelNotificationIds,
+      _payloadSnoozeActionLabelKey: actionLabels.snooze,
+      _payloadCompleteActionLabelKey: actionLabels.complete,
     });
   }
 
@@ -272,6 +288,7 @@ class NotificationService {
     try {
       final json = jsonDecode(payload) as Map<String, dynamic>;
       final cancelNotificationIds = _asIntList(json[_payloadCancelIdsKey]);
+      final fallbackLabels = _currentActionLabels();
       return _NotificationPayload(
         reminderId: json[_payloadReminderIdKey] as String,
         title: json[_payloadTitleKey] as String,
@@ -279,6 +296,16 @@ class NotificationService {
         notificationId: _asInt(json[_payloadNotificationIdKey]) ??
             (cancelNotificationIds.isEmpty ? null : cancelNotificationIds.first),
         cancelNotificationIds: cancelNotificationIds,
+        actionLabels: _NotificationActionLabels(
+          snooze: _asString(
+            json[_payloadSnoozeActionLabelKey],
+            fallbackLabels.snooze,
+          ),
+          complete: _asString(
+            json[_payloadCompleteActionLabelKey],
+            fallbackLabels.complete,
+          ),
+        ),
       );
     } catch (_) {
       return null;
@@ -307,6 +334,8 @@ class NotificationService {
       body: payload.body,
       scheduledTime: snoozeAt,
       cancelNotificationIds: cancelNotificationIds,
+      snoozeActionLabel: payload.actionLabels.snooze,
+      completeActionLabel: payload.actionLabels.complete,
     );
   }
 
@@ -372,6 +401,26 @@ class NotificationService {
     return int.tryParse(value?.toString() ?? '');
   }
 
+  static String _asString(dynamic value, String fallback) {
+    if (value is String && value.isNotEmpty) return value;
+    return fallback;
+  }
+
+  static _NotificationActionLabels _currentActionLabels() {
+    return _NotificationActionLabels(
+      snooze: _currentSnoozeActionLabel(),
+      complete: _currentCompleteActionLabel(),
+    );
+  }
+
+  static String _currentSnoozeActionLabel() {
+    return AppStrings.t('notification_snooze_action');
+  }
+
+  static String _currentCompleteActionLabel() {
+    return AppStrings.t('notification_complete_action');
+  }
+
   static Future<void> _zonedSchedule({
     required int id,
     required String title,
@@ -379,6 +428,7 @@ class NotificationService {
     required tz.TZDateTime scheduledTime,
     required AndroidScheduleMode scheduleMode,
     required String payload,
+    required _NotificationActionLabels actionLabels,
     DateTimeComponents? matchDateTimeComponents,
   }) async {
     await _plugin.zonedSchedule(
@@ -386,7 +436,7 @@ class NotificationService {
       title,
       body,
       scheduledTime,
-      _buildChannelConfig().toNotificationDetails(),
+      _buildChannelConfig(actionLabels).toNotificationDetails(),
       androidScheduleMode: scheduleMode,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
@@ -402,6 +452,7 @@ class _NotificationPayload {
   final String body;
   final int? notificationId;
   final List<int> cancelNotificationIds;
+  final _NotificationActionLabels actionLabels;
 
   const _NotificationPayload({
     required this.reminderId,
@@ -409,5 +460,16 @@ class _NotificationPayload {
     required this.body,
     required this.notificationId,
     required this.cancelNotificationIds,
+    required this.actionLabels,
+  });
+}
+
+class _NotificationActionLabels {
+  final String snooze;
+  final String complete;
+
+  const _NotificationActionLabels({
+    required this.snooze,
+    required this.complete,
   });
 }
