@@ -57,7 +57,7 @@ class MedicalRecordCard extends StatelessWidget {
                   icon: Icon(
                     Icons.delete,
                     size: AppIconSizes.medium,
-                    color: appColors.danger,
+                    color: appColors.chipForeground,
                   ),
                   onPressed: onDelete,
                 ),

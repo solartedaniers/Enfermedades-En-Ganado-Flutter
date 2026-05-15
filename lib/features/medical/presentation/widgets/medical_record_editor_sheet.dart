@@ -76,12 +76,23 @@ class _MedicalRecordEditorSheetState extends State<MedicalRecordEditorSheet> {
         bottom: MediaQuery.of(context).viewInsets.bottom + AppSizes.large,
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: MainAxisSize.max,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            widget.title,
-            style: AppTextStyles.sectionTitle(theme),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  widget.title,
+                  style: AppTextStyles.sectionTitle(theme),
+                ),
+              ),
+              IconButton(
+                tooltip: AppStrings.t('cancel'),
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.close),
+              ),
+            ],
           ),
           if (widget.allowImage) ...[
             const SizedBox(height: AppSizes.large),
@@ -122,12 +133,18 @@ class _MedicalRecordEditorSheetState extends State<MedicalRecordEditorSheet> {
             ),
           ],
           const SizedBox(height: AppSizes.medium),
-          TextField(
-            controller: _diagnosisController,
-            decoration: InputDecoration(
-              labelText: AppStrings.t('medical_diagnosis_observations'),
+          Expanded(
+            child: TextField(
+              controller: _diagnosisController,
+              decoration: InputDecoration(
+                labelText: AppStrings.t('medical_diagnosis_observations'),
+                alignLabelWithHint: true,
+              ),
+              expands: true,
+              maxLines: null,
+              minLines: null,
+              textAlignVertical: TextAlignVertical.top,
             ),
-            maxLines: 3,
           ),
           const SizedBox(height: AppSizes.large),
           SizedBox(

@@ -115,7 +115,7 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
             onPressed: () => Navigator.pop(context, true),
             child: Text(
               AppStrings.t('delete'),
-              style: TextStyle(color: context.appColors.danger),
+              style: TextStyle(color: context.appColors.chipForeground),
             ),
           ),
         ],
@@ -146,14 +146,20 @@ class _MedicalHistoryPageState extends ConsumerState<MedicalHistoryPage> {
     final draft = await showModalBottomSheet<MedicalRecordDraft>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => MedicalRecordEditorSheet(
-        title: AppStrings.t('medical_edit_record'),
-        buttonLabel: AppStrings.t('save_changes'),
-        initialDiagnosis: currentDiagnosis ?? '',
-      ),
+      builder: (sheetContext) {
+        return SizedBox(
+          height: MediaQuery.sizeOf(sheetContext).height,
+          child: MedicalRecordEditorSheet(
+            title: AppStrings.t('medical_edit_record'),
+            buttonLabel: AppStrings.t('save_changes'),
+            initialDiagnosis: currentDiagnosis ?? '',
+          ),
+        );
+      },
     );
 
     if (draft == null || !mounted) {

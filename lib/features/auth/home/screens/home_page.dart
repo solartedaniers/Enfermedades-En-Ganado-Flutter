@@ -461,12 +461,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                           width: 48,
                           height: 48,
                           decoration: BoxDecoration(
-                            color: theme.colorScheme.errorContainer,
+                            color: appColors.selectionBackground,
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Icon(
                             Icons.delete_outline_rounded,
-                            color: appColors.onSolid,
+                            color: appColors.chipForeground,
                           ),
                         ),
                         const SizedBox(width: 14),
@@ -510,11 +510,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: FilledButton(
+                          child: OutlinedButton(
                             onPressed: () => Navigator.pop(sheetContext, true),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: appColors.danger,
-                            ),
                             child: Text(AppStrings.t('delete')),
                           ),
                         ),
@@ -623,11 +620,6 @@ class _HomePageState extends ConsumerState<HomePage> {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const AdminUsersPage()),
-        );
-        break;
-      case 'vaccines':
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppStrings.t('coming_soon_vaccines'))),
         );
         break;
     }
@@ -857,15 +849,6 @@ class _HomePageState extends ConsumerState<HomePage> {
             Color.lerp(colorScheme.tertiaryContainer, colorScheme.tertiary, 0.2)!,
         cardColor:
             Color.lerp(colorScheme.surface, colorScheme.tertiaryContainer, 0.78)!,
-      ),
-      _HomeMenuItem(
-        keyName: 'vaccines',
-        icon: Icons.vaccines,
-        foregroundColor: appColors.danger,
-        backgroundColor:
-            Color.lerp(colorScheme.errorContainer, appColors.danger, 0.14)!,
-        cardColor:
-            Color.lerp(colorScheme.surface, colorScheme.errorContainer, 0.76)!,
       ),
       _HomeMenuItem(
         keyName: 'notifications',

@@ -317,12 +317,12 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
               onPressed: () => Navigator.pop(dialogContext, false),
               child: Text(AppStrings.t('cancel')),
             ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: context.appColors.danger,
-              ),
+            TextButton(
               onPressed: () => Navigator.pop(dialogContext, true),
-              child: Text(AppStrings.t('delete')),
+              child: Text(
+                AppStrings.t('delete'),
+                style: TextStyle(color: context.appColors.chipForeground),
+              ),
             ),
           ],
         );

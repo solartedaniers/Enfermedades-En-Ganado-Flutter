@@ -558,7 +558,13 @@ class _ActionPanel extends ConsumerWidget {
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: Text(AppStrings.t('save')),
+              child: Text(
+                AppStrings.t(
+                  targetStatus == AppAccountStatus.deleted
+                      ? 'admin_delete_user_confirm_action'
+                      : 'save',
+                ),
+              ),
             ),
           ],
         );
