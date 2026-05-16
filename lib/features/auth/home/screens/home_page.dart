@@ -74,7 +74,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: context.appColors.danger,
+              backgroundColor: context.appColors.chipForeground,
             ),
             child: Text(AppStrings.t('exit')),
           ),
@@ -924,16 +924,13 @@ class _HomePageState extends ConsumerState<HomePage> {
                   children: [
                     Icon(
                       Icons.logout,
-                      color: appColors.danger,
+                      color: appColors.chipForeground,
                       size: 22,
                     ),
                     const SizedBox(width: 12),
                     Text(
                       AppStrings.t('logout'),
-                      style: TextStyle(
-                        color: appColors.danger,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      style: const TextStyle(fontWeight: FontWeight.w500),
                     ),
                   ],
                 ),

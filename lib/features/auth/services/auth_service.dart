@@ -12,6 +12,9 @@ enum AuthRegistrationStatus {
 }
 
 class AuthService {
+  static const String _emailRateLimitErrorCode = 'over_email_send_rate_limit';
+  static const String _emailRateLimitErrorMessage = 'email rate limit exceeded';
+
   final SupabaseClient _client = Supabase.instance.client;
   final PendingUserRegistrationService _pendingRegistrationService =
       PendingUserRegistrationService();
@@ -83,7 +86,7 @@ class AuthService {
         throw Exception(AppStrings.t('profile_save_error'));
       }
 
-      throw Exception(message);
+      throw Exception(_mapAuthError(message));
     } catch (e) {
       final normalizedError = e.toString().toLowerCase();
       if (_shouldQueueOffline(normalizedError)) {
@@ -305,10 +308,25 @@ class AuthService {
       return AppStrings.t('auth_otp_invalid_error');
     }
 
-    if (normalizedMessage.contains('over_email_send_rate_limit')) {
+    if (_isEmailRateLimitError(normalizedMessage)) {
       return AppStrings.t('wait_email');
     }
 
     return message;
+  }
+
+  String _mapAuthError(String message) {
+    final normalizedMessage = message.toLowerCase();
+    if (_isEmailRateLimitError(normalizedMessage)) {
+      return AppStrings.t('wait_email');
+    }
+    return message;
+  }
+
+  bool _isEmailRateLimitError(String normalizedMessage) {
+    return normalizedMessage.contains(_emailRateLimitErrorCode) ||
+        normalizedMessage.contains(_emailRateLimitErrorMessage) ||
+        (normalizedMessage.contains('email') &&
+            normalizedMessage.contains('rate limit'));
   }
 }

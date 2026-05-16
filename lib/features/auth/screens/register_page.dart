@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 
 import '../../../../core/constants/app_user_type.dart';
 import '../../../../core/utils/app_strings.dart';
@@ -19,6 +20,8 @@ class RegisterPage extends ConsumerStatefulWidget {
 }
 
 class _RegisterPageState extends ConsumerState<RegisterPage> {
+  static const int _phoneNumberLength = 10;
+
   final firstName = TextEditingController();
   final lastName = TextEditingController();
   final username = TextEditingController();
@@ -351,10 +354,15 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             TextFormField(
               controller: phone,
               keyboardType: TextInputType.phone,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(_phoneNumberLength),
+              ],
               decoration: _inputStyle(
                 AppStrings.t('phone'),
                 Icons.phone_android_outlined,
               ),
+              validator: _validatePhoneNumber,
             ),
             const SizedBox(height: 16),
             _buildLocationCard(),
@@ -477,5 +485,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         ),
       ),
     );
+  }
+
+  String? _validatePhoneNumber(String? value) {
+    final normalizedPhone = value?.trim() ?? '';
+    if (normalizedPhone.length != _phoneNumberLength) {
+      return AppStrings.t('invalid_phone_number');
+    }
+    return null;
   }
 }
