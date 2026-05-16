@@ -1,23 +1,21 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/app_sizes.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_strings.dart';
 import '../../../../core/widgets/livestock_icon.dart';
-import '../../data/services/animal_reference_catalog_service.dart';
-import '../../domain/constants/animal_constants.dart';
-import '../../domain/entities/animal_entity.dart';
-import '../../shared/animal_input_formatters.dart';
-import '../providers/animal_reference_catalog_provider.dart';
 import '../../../profile/presentation/providers/managed_client_provider.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
+import '../../data/services/animal_reference_catalog_service.dart';
+import '../../domain/entities/animal_entity.dart';
+import '../../shared/animal_input_formatters.dart';
+import '../controllers/animal_form_controller.dart';
 import '../providers/animal_provider.dart';
+import '../providers/animal_reference_catalog_provider.dart';
 import '../widgets/animal_image_card.dart';
 import '../widgets/animal_image_source_sheet.dart';
 import '../widgets/animal_option_picker_sheet.dart';
@@ -32,58 +30,53 @@ class AddAnimalPage extends ConsumerStatefulWidget {
 
 class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _weightController = TextEditingController();
-  final _picker = ImagePicker();
-
-  File? _selectedImage;
-  String? _selectedBreedKey;
-  AnimalAgeOption? _selectedAgeOption;
+  late final AnimalFormController _formController;
   bool _isLoading = false;
 
   @override
+  void initState() {
+    super.initState();
+    _formController = AnimalFormController();
+  }
+
+  @override
   void dispose() {
-    _nameController.dispose();
-    _weightController.dispose();
+    _formController.dispose();
     super.dispose();
   }
 
+  // ---------------------------------------------------------------------------
+  // Manejo de imagen
+  // ---------------------------------------------------------------------------
+
   Future<void> _pickImage(ImageSource source) async {
-    final pickedImage = await _picker.pickImage(
-      source: source,
-      imageQuality: 80,
-    );
-
-    if (pickedImage == null) {
-      return;
-    }
-
-    setState(() => _selectedImage = File(pickedImage.path));
+    final image = await _formController.pickImage(source);
+    if (image != null) setState(() {});
   }
 
   void _showImageSourceDialog() {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0),
-      builder: (_) {
-        return AnimalImageSourceSheet(
-          onSourceSelected: (source) {
-            Navigator.pop(context);
-            _pickImage(source);
-          },
-        );
-      },
+      backgroundColor:
+          Theme.of(context).colorScheme.surface.withValues(alpha: 0),
+      builder: (_) => AnimalImageSourceSheet(
+        onSourceSelected: (source) {
+          Navigator.pop(context);
+          _pickImage(source);
+        },
+      ),
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Selección de raza y edad
+  // ---------------------------------------------------------------------------
+
   Future<void> _showBreedSelector() async {
     final breedChoices = await ref.read(animalBreedChoicesProvider.future);
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     if (breedChoices.isEmpty) {
-
       _showSnack(AppStrings.t('internet_required_default'));
       return;
     }
@@ -91,36 +84,27 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0),
-      builder: (_) {
-        return AnimalOptionPickerSheet(
-          title: AppStrings.t('select_breed'),
-          options: breedChoices
-              .map(
-                (breedChoice) => AnimalOptionItem(
-                  value: breedChoice.value,
-                  label: breedChoice.label,
-                ),
-              )
-              .toList(),
-          selectedValue: _selectedBreedKey,
-          onOptionSelected: (breedKey) {
-            setState(() => _selectedBreedKey = breedKey);
-            Navigator.pop(context);
-          },
-        );
-      },
+      backgroundColor:
+          Theme.of(context).colorScheme.surface.withValues(alpha: 0),
+      builder: (_) => AnimalOptionPickerSheet(
+        title: AppStrings.t('select_breed'),
+        options: breedChoices
+            .map((b) => AnimalOptionItem(value: b.value, label: b.label))
+            .toList(),
+        selectedValue: _formController.selectedBreedKey,
+        onOptionSelected: (key) {
+          setState(() => _formController.selectedBreedKey = key);
+          Navigator.pop(context);
+        },
+      ),
     );
   }
 
   Future<void> _showAgeSelector() async {
     final ageOptions = await ref.read(animalAgeOptionsProvider.future);
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     if (ageOptions.isEmpty) {
-
       _showSnack(AppStrings.t('internet_required_default'));
       return;
     }
@@ -128,40 +112,37 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0),
-      builder: (_) {
-        return AnimalOptionPickerSheet(
-          title: AppStrings.t('select_age'),
-          options: ageOptions
-              .map(
-                (option) => AnimalOptionItem(
-                  value: option.months.toString(),
-                  label: option.label,
-                ),
-              )
-              .toList(),
-          selectedValue: _selectedAgeOption?.months.toString(),
-          initialChildSize: 0.55,
-          minChildSize: 0.35,
-          maxChildSize: 0.85,
-          onOptionSelected: (selectedValue) {
-            final selectedAgeOption = ageOptions.firstWhere(
-              (option) => option.months.toString() == selectedValue,
-            );
-            setState(() => _selectedAgeOption = selectedAgeOption);
-            Navigator.pop(context);
-          },
-        );
-      },
+      backgroundColor:
+          Theme.of(context).colorScheme.surface.withValues(alpha: 0),
+      builder: (_) => AnimalOptionPickerSheet(
+        title: AppStrings.t('select_age'),
+        options: ageOptions
+            .map((o) => AnimalOptionItem(value: o.months.toString(), label: o.label))
+            .toList(),
+        selectedValue: _formController.selectedAgeOption?.months.toString(),
+        initialChildSize: 0.55,
+        minChildSize: 0.35,
+        maxChildSize: 0.85,
+        onOptionSelected: (value) {
+          final selected = ageOptions.firstWhere(
+            (o) => o.months.toString() == value,
+          );
+          setState(() => _formController.selectedAgeOption = selected);
+          Navigator.pop(context);
+        },
+      ),
     );
   }
 
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+  // ---------------------------------------------------------------------------
+  // Envío del formulario
+  // ---------------------------------------------------------------------------
 
-    if (_selectedBreedKey == null || _selectedAgeOption == null) {
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    if (_formController.selectedBreedKey == null ||
+        _formController.selectedAgeOption == null) {
       _showSnack(AppStrings.t('required_field'));
       return;
     }
@@ -174,28 +155,25 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
         throw Exception(AppStrings.t('error_no_session'));
       }
 
-      final normalizedWeight = _weightController.text.trim().replaceAll(',', '.');
-      final weight =
-          normalizedWeight.isEmpty ? null : double.tryParse(normalizedWeight);
       final now = DateTime.now();
-
       final animal = AnimalEntity(
         id: const Uuid().v4(),
         userId: currentUserId,
-        name: _nameController.text.trim(),
-        breed: _selectedBreedKey!,
-        age: _selectedAgeOption!.months,
-        ageLabel: _selectedAgeOption!.label,
+        name: _formController.nameController.text.trim(),
+        breed: _formController.selectedBreedKey!,
+        age: _formController.selectedAgeOption!.months,
+        ageLabel: _formController.selectedAgeOption!.label,
         symptoms: '',
-        weight: weight,
+        weight: _formController.parseWeight(),
         createdAt: now,
         updatedAt: now,
       );
 
       await ref.read(animalRepositoryProvider).addAnimal(
             animal,
-            localImagePath: _selectedImage?.path,
+            localImagePath: _formController.selectedImage?.path,
           );
+
       final profile = ref.read(profileProvider);
       if (profile.isVeterinarian) {
         await ref
@@ -203,31 +181,27 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
             .assignAnimalToActiveClient(animal.id);
       }
 
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
       refreshAnimals(ref);
       _showSnack(AppStrings.t('saved_ok'));
       Navigator.pop(context, animal);
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
+      if (!mounted) return;
       _showSnack('${AppStrings.t('save_error')}: $error');
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   void _showSnack(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
+
+  // ---------------------------------------------------------------------------
+  // Build
+  // ---------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -245,20 +219,22 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               AnimalImageCard(
-                selectedImage: _selectedImage,
+                selectedImage: _formController.selectedImage,
                 localImagePath: null,
                 networkImageUrl: null,
                 height: AppSizes.animalFormImageHeight,
                 borderRadius: BorderRadius.circular(AppSizes.cardRadius),
-                onTap: _selectedImage != null ? () {} : _showImageSourceDialog,
+                onTap: _formController.selectedImage != null
+                    ? () {}
+                    : _showImageSourceDialog,
                 overlayLabel: AppStrings.t('add_photo'),
                 overlaySubtitle: AppStrings.t('photo_subtitle'),
                 overlayIcon: Icons.add_a_photo,
-                showOverlay: _selectedImage == null,
+                showOverlay: _formController.selectedImage == null,
               ).animate().fadeIn(duration: 400.ms).scale(
                     begin: const Offset(0.95, 0.95),
                   ),
-              if (_selectedImage != null) ...[
+              if (_formController.selectedImage != null) ...[
                 const SizedBox(height: AppSizes.medium),
                 Align(
                   alignment: Alignment.center,
@@ -271,13 +247,11 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
               ],
               const SizedBox(height: AppSizes.xxLarge),
               TextFormField(
-                controller: _nameController,
+                controller: _formController.nameController,
                 inputFormatters: [AnimalInputFormatters.name],
                 decoration: InputDecoration(
                   labelText: '${AppStrings.t('name')} *',
-                  prefixIcon: const LivestockIcon(
-                    padding: EdgeInsets.all(12),
-                  ),
+                  prefixIcon: const LivestockIcon(padding: EdgeInsets.all(12)),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
@@ -289,10 +263,10 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
               const SizedBox(height: AppSizes.sectionSpacing),
               AnimalSelectorField(
                 label: '${AppStrings.t('breed')} *',
-                value: _selectedBreedKey == null
+                value: _formController.selectedBreedKey == null
                     ? null
                     : AnimalReferenceCatalogService.resolveBreedLabel(
-                        _selectedBreedKey,
+                        _formController.selectedBreedKey,
                         choices: breedChoices,
                       ),
                 icon: Icons.category_outlined,
@@ -301,17 +275,19 @@ class _AddAnimalPageState extends ConsumerState<AddAnimalPage> {
               const SizedBox(height: AppSizes.sectionSpacing),
               AnimalSelectorField(
                 label: '${AppStrings.t('age')} *',
-                value: _selectedAgeOption?.label,
+                value: _formController.selectedAgeOption?.label,
                 icon: Icons.cake_outlined,
                 onTap: _showAgeSelector,
               ).animate().fadeIn(duration: 300.ms).slideX(begin: 0.03),
               const SizedBox(height: AppSizes.sectionSpacing),
               TextFormField(
-                controller: _weightController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                controller: _formController.weightController,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [AnimalInputFormatters.decimal],
                 decoration: InputDecoration(
-                  labelText: '${AppStrings.t('weight')} - ${AppStrings.t('optional')}',
+                  labelText:
+                      '${AppStrings.t('weight')} - ${AppStrings.t('optional')}',
                   hintText: AppStrings.t('weight_hint'),
                   prefixIcon: Icon(
                     Icons.monitor_weight_outlined,

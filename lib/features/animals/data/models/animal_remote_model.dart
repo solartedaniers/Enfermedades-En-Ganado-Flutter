@@ -5,6 +5,8 @@ import '../../domain/constants/animal_breed_catalog.dart';
 import '../../domain/entities/animal_entity.dart';
 import '../../shared/age_label_formatter.dart';
 
+/// Modelo de transferencia de datos para la API remota (Supabase).
+/// Responsabilidad única: mapeo entre JSON de Supabase y [AnimalEntity].
 class AnimalRemoteModel {
   final String id;
   final String userId;
@@ -36,6 +38,7 @@ class AnimalRemoteModel {
     this.profileImageUrl,
   });
 
+  /// Crea un [AnimalRemoteModel] desde una entidad de dominio para enviar a Supabase.
   factory AnimalRemoteModel.fromEntity(AnimalEntity entity) {
     return AnimalRemoteModel(
       id: entity.id,
@@ -56,15 +59,15 @@ class AnimalRemoteModel {
     );
   }
 
+  /// Deserializa la respuesta JSON de Supabase a [AnimalRemoteModel].
   factory AnimalRemoteModel.fromJson(Map<String, dynamic> json) {
     final ageValue = JsonParser.asInt(json[AppJsonKeys.age]);
 
     return AnimalRemoteModel(
       id: JsonParser.asString(json[AppJsonKeys.id]) ?? '',
       userId: JsonParser.asString(json[AppJsonKeys.userId]) ?? '',
-      name:
-          JsonParser.asString(json[AppJsonKeys.name]) ??
-              AppStrings.t('animal_no_name'),
+      name: JsonParser.asString(json[AppJsonKeys.name]) ??
+          AppStrings.t('animal_no_name'),
       breed: AnimalBreedCatalog.storageValue(
         JsonParser.asString(json[AppJsonKeys.breed]),
       ),
@@ -80,6 +83,7 @@ class AnimalRemoteModel {
     );
   }
 
+  /// Convierte el modelo remoto a entidad de dominio.
   AnimalEntity toEntity() {
     return AnimalEntity(
       id: id,
@@ -98,6 +102,7 @@ class AnimalRemoteModel {
     );
   }
 
+  /// Serializa el modelo a JSON para enviar a Supabase.
   Map<String, dynamic> toJson() {
     return {
       AppJsonKeys.id: id,

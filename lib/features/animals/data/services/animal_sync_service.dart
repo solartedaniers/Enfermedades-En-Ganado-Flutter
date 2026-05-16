@@ -1,45 +1,48 @@
 import 'dart:async';
 
-import '../../../../core/services/offline_auth_service.dart';
 import '../../../../core/network/network_info.dart';
+import '../../../../core/services/offline_auth_service.dart';
 import '../../domain/repositories/animal_repository.dart';
 
+/// Servicio de sincronización de animales.
+/// Responsabilidad única: escuchar cambios de conectividad y lanzar sincronización
+/// cuando la red vuelve a estar disponible.
 class AnimalSyncService {
-  final AnimalRepository animalRepository;
-  final NetworkInfo networkInfo;
-  StreamSubscription? _subscription;
+  final AnimalRepository _animalRepository;
+  final NetworkInfo _networkInfo;
+
+  StreamSubscription<bool>? _connectivitySubscription;
 
   AnimalSyncService({
-    required this.animalRepository,
-    required this.networkInfo,
-  });
+    required AnimalRepository animalRepository,
+    required NetworkInfo networkInfo,
+  })  : _animalRepository = animalRepository,
+        _networkInfo = networkInfo;
 
+  /// Inicia la escucha de conectividad y sincroniza inmediatamente si hay red.
   void start() {
-    _subscription?.cancel();
+    _connectivitySubscription?.cancel();
     _syncIfConnected();
-    _subscription =
-        networkInfo.onConnectivityChanged.listen((isConnected) async {
-      if (isConnected) {
-        await _syncIfConnected();
-      }
+    _connectivitySubscription =
+        _networkInfo.onConnectivityChanged.listen((isConnected) async {
+      if (isConnected) await _syncIfConnected();
     });
   }
 
+  /// Sincroniza animales pendientes si hay conexión activa.
   Future<void> _syncIfConnected() async {
     try {
-      if (!await networkInfo.isConnected) {
-        return;
-      }
-
+      if (!await _networkInfo.isConnected) return;
       await OfflineAuthService.restoreCloudSessionIfPossible();
-      await animalRepository.syncAnimals();
+      await _animalRepository.syncAnimals();
     } catch (_) {
-      // Fallo silencioso.
+      // Fallo silencioso; se reintentará en el siguiente evento de conectividad.
     }
   }
 
+  /// Detiene la escucha de conectividad.
   void stop() {
-    _subscription?.cancel();
-    _subscription = null;
+    _connectivitySubscription?.cancel();
+    _connectivitySubscription = null;
   }
 }

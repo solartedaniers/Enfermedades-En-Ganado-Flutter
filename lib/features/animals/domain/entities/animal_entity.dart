@@ -1,3 +1,5 @@
+/// Entidad de dominio que representa un animal en el sistema.
+/// Es inmutable y no depende de ninguna capa de datos.
 class AnimalEntity {
   final String id;
   final String userId;

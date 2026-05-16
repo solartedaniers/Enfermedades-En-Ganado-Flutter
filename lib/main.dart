@@ -15,7 +15,7 @@ import 'core/services/notification_service.dart';
 import 'core/theme/app_sizes.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/app_strings.dart';
-import 'features/animals/data/models/animal_model.dart';
+import 'features/animals/data/models/animal_model_adapter.dart';
 import 'features/animals/presentation/providers/animal_provider.dart';
 import 'features/auth/home/screens/home_page.dart';
 import 'features/auth/screens/login_page.dart';
@@ -40,6 +40,7 @@ Future<void> main() async {
   }
 
   await Hive.initFlutter();
+  // Registra el adaptador separado del modelo (SRP aplicado).
   if (!Hive.isAdapterRegistered(0)) {
     Hive.registerAdapter(AnimalModelAdapter());
   }

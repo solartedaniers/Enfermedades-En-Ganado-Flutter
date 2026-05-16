@@ -1,12 +1,13 @@
 import '../entities/animal_entity.dart';
 import '../repositories/animal_repository.dart';
 
+/// Caso de uso: agregar un animal nuevo al sistema.
 class AddAnimal {
-  final AnimalRepository repository;
+  final AnimalRepository _repository;
 
-  AddAnimal(this.repository);
+  AddAnimal(this._repository);
 
-  Future<void> call(AnimalEntity animal, {String? localImagePath}) async {
-    return await repository.addAnimal(animal, localImagePath: localImagePath);
+  Future<void> call(AnimalEntity animal, {String? localImagePath}) {
+    return _repository.addAnimal(animal, localImagePath: localImagePath);
   }
 }

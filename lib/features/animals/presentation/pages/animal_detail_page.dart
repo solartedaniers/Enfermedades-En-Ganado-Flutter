@@ -4,32 +4,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/app_sizes.dart';
-import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_strings.dart';
-import '../../../../core/widgets/livestock_icon.dart';
 import '../../../medical/presentation/pages/medical_history_page.dart';
-import '../../data/services/animal_reference_catalog_service.dart';
-import '../../domain/constants/animal_constants.dart';
 import '../../domain/constants/animal_breed_catalog.dart';
+import '../../domain/constants/animal_constants.dart';
 import '../../domain/entities/animal_entity.dart';
 import '../../shared/age_label_formatter.dart';
-import '../../shared/animal_input_formatters.dart';
-import '../providers/animal_reference_catalog_provider.dart';
+import '../controllers/animal_form_controller.dart';
 import '../providers/animal_provider.dart';
+import '../providers/animal_reference_catalog_provider.dart';
+import '../widgets/animal_detail_edit_form.dart';
+import '../widgets/animal_detail_view_mode.dart';
 import '../widgets/animal_image_card.dart';
 import '../widgets/animal_image_source_sheet.dart';
 import '../widgets/animal_option_picker_sheet.dart';
-import '../widgets/animal_selector_field.dart';
 
 class AnimalDetailPage extends ConsumerStatefulWidget {
   final AnimalEntity animal;
 
-  const AnimalDetailPage({
-    super.key,
-    required this.animal,
-  });
+  const AnimalDetailPage({super.key, required this.animal});
 
   @override
   ConsumerState<AnimalDetailPage> createState() => _AnimalDetailPageState();
@@ -37,14 +32,8 @@ class AnimalDetailPage extends ConsumerStatefulWidget {
 
 class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
   late AnimalEntity _currentAnimal;
-  final _picker = ImagePicker();
+  late AnimalFormController _formController;
 
-  late TextEditingController _nameController;
-  late TextEditingController _weightController;
-  String? _selectedBreedKey;
-  AnimalAgeOption? _selectedAgeOption;
-
-  File? _newImage;
   bool _isEditing = false;
   bool _isSaving = false;
   bool _isUpdatingPhoto = false;
@@ -53,19 +42,23 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
   void initState() {
     super.initState();
     _currentAnimal = widget.animal;
-    _resetEditState();
+    _initFormController();
   }
 
-  void _resetEditState() {
-    _nameController = TextEditingController(text: _currentAnimal.name);
-    _weightController = TextEditingController(
-      text: _currentAnimal.weight != null ? '${_currentAnimal.weight}' : '',
+  void _initFormController() {
+    _formController = AnimalFormController(
+      initialName: _currentAnimal.name,
+      initialWeight:
+          _currentAnimal.weight != null ? '${_currentAnimal.weight}' : '',
+      selectedBreedKey: AnimalBreedCatalog.storageValue(_currentAnimal.breed),
+      selectedAgeOption: _resolveCurrentAgeOption(),
     );
-    _selectedBreedKey = AnimalBreedCatalog.storageValue(_currentAnimal.breed);
+  }
 
+  AnimalAgeOption _resolveCurrentAgeOption() {
     final ageOptions = ref.read(animalAgeOptionsProvider).valueOrNull ?? const [];
-    _selectedAgeOption = ageOptions.firstWhere(
-      (ageOption) => ageOption.months == _currentAnimal.age,
+    return ageOptions.firstWhere(
+      (o) => o.months == _currentAnimal.age,
       orElse: () => AnimalAgeOption(
         label: _currentAnimal.ageLabel.isNotEmpty
             ? _currentAnimal.ageLabel
@@ -73,50 +66,54 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
         months: _currentAnimal.age,
       ),
     );
+  }
 
-    _newImage = null;
+  void _resetEditState() {
+    _formController.dispose();
+    _initFormController();
   }
 
   @override
   void dispose() {
-    _nameController.dispose();
-    _weightController.dispose();
+    _formController.dispose();
     super.dispose();
   }
 
-  void _goHome() {
-    Navigator.of(context).popUntil((route) => route.isFirst);
-  }
+  void _goHome() => Navigator.of(context).popUntil((r) => r.isFirst);
+
+  // ---------------------------------------------------------------------------
+  // Imagen
+  // ---------------------------------------------------------------------------
 
   Future<void> _pickImage(ImageSource source) async {
-    final pickedImage = await _picker.pickImage(
-      source: source,
-      imageQuality: 80,
-    );
-
-    if (pickedImage == null) {
-      return;
-    }
-
-    final pickedFile = File(pickedImage.path);
+    final image = await _formController.pickImage(source);
+    if (image == null) return;
 
     if (_isEditing) {
-      setState(() => _newImage = pickedFile);
+      setState(() {});
       return;
     }
+    await _savePhotoUpdate(image);
+  }
 
-    await _savePhotoUpdate(pickedFile);
+  void _showImageSourceDialog() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor:
+          Theme.of(context).colorScheme.surface.withValues(alpha: 0),
+      builder: (_) => AnimalImageSourceSheet(
+        onSourceSelected: (source) {
+          Navigator.pop(context);
+          _pickImage(source);
+        },
+      ),
+    );
   }
 
   Future<void> _savePhotoUpdate(File imageFile) async {
-    if (_isUpdatingPhoto) {
-      return;
-    }
+    if (_isUpdatingPhoto) return;
 
-    setState(() {
-      _isUpdatingPhoto = true;
-      _newImage = imageFile;
-    });
+    setState(() => _isUpdatingPhoto = true);
 
     try {
       final updatedAnimal = _currentAnimal.copyWith(updatedAt: DateTime.now());
@@ -125,55 +122,36 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
             localImagePath: imageFile.path,
           );
 
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
       setState(() {
         _currentAnimal = updatedAnimal.copyWith(
           localProfileImagePath: imageFile.path,
         );
-        _newImage = null;
+        _formController.selectedImage = null;
         _isUpdatingPhoto = false;
       });
       refreshAnimals(ref);
       _showSnack(AppStrings.t('medical_photo_updated'));
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
+      if (!mounted) return;
       setState(() {
-        _newImage = null;
+        _formController.selectedImage = null;
         _isUpdatingPhoto = false;
       });
       _showSnack('${AppStrings.t('save_error')}: $error');
     }
   }
 
-  void _showImageSourceDialog() {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0),
-      builder: (_) {
-        return AnimalImageSourceSheet(
-          onSourceSelected: (source) {
-            Navigator.pop(context);
-            _pickImage(source);
-          },
-        );
-      },
-    );
-  }
+  // ---------------------------------------------------------------------------
+  // Selección de raza y edad
+  // ---------------------------------------------------------------------------
 
   Future<void> _showBreedSelector() async {
     final breedChoices = await ref.read(animalBreedChoicesProvider.future);
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     if (breedChoices.isEmpty) {
-
       _showSnack(AppStrings.t('internet_required_default'));
       return;
     }
@@ -181,36 +159,27 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0),
-      builder: (_) {
-        return AnimalOptionPickerSheet(
-          title: AppStrings.t('select_breed'),
-          options: breedChoices
-              .map(
-                (breedChoice) => AnimalOptionItem(
-                  value: breedChoice.value,
-                  label: breedChoice.label,
-                ),
-              )
-              .toList(),
-          selectedValue: _selectedBreedKey,
-          onOptionSelected: (breedKey) {
-            setState(() => _selectedBreedKey = breedKey);
-            Navigator.pop(context);
-          },
-        );
-      },
+      backgroundColor:
+          Theme.of(context).colorScheme.surface.withValues(alpha: 0),
+      builder: (_) => AnimalOptionPickerSheet(
+        title: AppStrings.t('select_breed'),
+        options: breedChoices
+            .map((b) => AnimalOptionItem(value: b.value, label: b.label))
+            .toList(),
+        selectedValue: _formController.selectedBreedKey,
+        onOptionSelected: (key) {
+          setState(() => _formController.selectedBreedKey = key);
+          Navigator.pop(context);
+        },
+      ),
     );
   }
 
   Future<void> _showAgeSelector() async {
     final ageOptions = await ref.read(animalAgeOptionsProvider.future);
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     if (ageOptions.isEmpty) {
-
       _showSnack(AppStrings.t('internet_required_default'));
       return;
     }
@@ -218,36 +187,33 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0),
-      builder: (_) {
-        return AnimalOptionPickerSheet(
-          title: AppStrings.t('select_age'),
-          options: ageOptions
-              .map(
-                (option) => AnimalOptionItem(
-                  value: option.months.toString(),
-                  label: option.label,
-                ),
-              )
-              .toList(),
-          selectedValue: _selectedAgeOption?.months.toString(),
-          initialChildSize: 0.55,
-          minChildSize: 0.35,
-          maxChildSize: 0.85,
-          onOptionSelected: (selectedValue) {
-            final selectedAgeOption = ageOptions.firstWhere(
-              (option) => option.months.toString() == selectedValue,
-            );
-            setState(() => _selectedAgeOption = selectedAgeOption);
-            Navigator.pop(context);
-          },
-        );
-      },
+      backgroundColor:
+          Theme.of(context).colorScheme.surface.withValues(alpha: 0),
+      builder: (_) => AnimalOptionPickerSheet(
+        title: AppStrings.t('select_age'),
+        options: ageOptions
+            .map((o) => AnimalOptionItem(value: o.months.toString(), label: o.label))
+            .toList(),
+        selectedValue: _formController.selectedAgeOption?.months.toString(),
+        initialChildSize: 0.55,
+        minChildSize: 0.35,
+        maxChildSize: 0.85,
+        onOptionSelected: (value) {
+          final selected =
+              ageOptions.firstWhere((o) => o.months.toString() == value);
+          setState(() => _formController.selectedAgeOption = selected);
+          Navigator.pop(context);
+        },
+      ),
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Guardar edición
+  // ---------------------------------------------------------------------------
+
   Future<void> _saveEdit() async {
-    final name = _nameController.text.trim();
+    final name = _formController.nameController.text.trim();
     if (name.isEmpty) {
       _showSnack(AppStrings.t('required_field'));
       return;
@@ -256,179 +222,113 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
     setState(() => _isSaving = true);
 
     try {
-      final normalizedWeight = _weightController.text.trim().replaceAll(',', '.');
+      final weight = _formController.parseWeight();
       final updatedAnimal = _currentAnimal.copyWith(
         name: name,
-        breed: _selectedBreedKey,
-        age: _selectedAgeOption?.months,
-        ageLabel: _selectedAgeOption?.label,
-        weight: normalizedWeight.isEmpty
-            ? null
-            : double.tryParse(normalizedWeight),
-        clearWeight: normalizedWeight.isEmpty,
+        breed: _formController.selectedBreedKey,
+        age: _formController.selectedAgeOption?.months,
+        ageLabel: _formController.selectedAgeOption?.label,
+        weight: weight,
+        clearWeight: weight == null,
         updatedAt: DateTime.now(),
       );
 
       await ref.read(animalRepositoryProvider).updateAnimal(
             updatedAnimal,
-            localImagePath: _newImage?.path,
+            localImagePath: _formController.selectedImage?.path,
           );
 
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
       setState(() {
         _currentAnimal = updatedAnimal.copyWith(
-          localProfileImagePath:
-              _newImage?.path ?? _currentAnimal.localProfileImagePath,
+          localProfileImagePath: _formController.selectedImage?.path ??
+              _currentAnimal.localProfileImagePath,
         );
-        _newImage = null;
+        _formController.selectedImage = null;
         _isEditing = false;
         _isSaving = false;
       });
       refreshAnimals(ref);
       _showSnack(AppStrings.t('saved_ok'));
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
+      if (!mounted) return;
       setState(() => _isSaving = false);
       _showSnack('${AppStrings.t('save_error')}: $error');
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Eliminar
+  // ---------------------------------------------------------------------------
+
   Future<void> _confirmDelete() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Text(
-            AppStrings.t('delete_animal'),
-            style: AppTextStyles.sectionTitle(Theme.of(context)),
-          ),
-          content: Text(AppStrings.t('delete_animal_confirm')),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: Text(AppStrings.t('cancel')),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: Text(
-                AppStrings.t('delete'),
-                style: TextStyle(color: context.appColors.chipForeground),
-              ),
-            ),
-          ],
-        );
-      },
+      builder: (dialogContext) => _buildDeleteDialog(dialogContext),
     );
 
-    if (confirmed != true || !mounted) {
-      return;
-    }
+    if (confirmed != true || !mounted) return;
 
     try {
       await ref.read(animalRepositoryProvider).deleteAnimal(_currentAnimal.id);
       refreshAnimals(ref);
-
-      if (!mounted) {
-        return;
-      }
-
+      if (!mounted) return;
       _showSnack(AppStrings.t('animal_deleted'));
       Navigator.pop(context);
     } catch (_) {
-      if (mounted) {
-        _showSnack(AppStrings.t('delete_error'));
-      }
+      if (mounted) _showSnack(AppStrings.t('delete_error'));
     }
   }
 
-  void _showSnack(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+  Widget _buildDeleteDialog(BuildContext dialogContext) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppSizes.large),
+      ),
+      title: Text(AppStrings.t('delete_animal')),
+      content: Text(AppStrings.t('delete_animal_confirm')),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext, false),
+          child: Text(AppStrings.t('cancel')),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext, true),
+          child: Text(
+            AppStrings.t('delete'),
+            style: TextStyle(color: context.appColors.chipForeground),
+          ),
+        ),
+      ],
     );
   }
 
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Build
+  // ---------------------------------------------------------------------------
+
   @override
   Widget build(BuildContext context) {
-    final animalAsync = ref.watch(animalByIdProvider(_currentAnimal.id));
-    final latestAnimal = animalAsync.valueOrNull;
+    // Actualiza el animal si cambió externamente (sin sobrescribir edición activa).
+    final latestAnimal =
+        ref.watch(animalByIdProvider(_currentAnimal.id)).valueOrNull;
     if (!_isEditing && latestAnimal != null && latestAnimal != _currentAnimal) {
       _currentAnimal = latestAnimal;
     }
 
-    final hasAnimalPhoto =
-        _newImage != null ||
+    final hasPhoto = _formController.selectedImage != null ||
         (_currentAnimal.localProfileImagePath?.isNotEmpty ?? false) ||
         (_currentAnimal.profileImageUrl?.isNotEmpty ?? false);
-    final imageActionLabel = hasAnimalPhoto
-        ? AppStrings.t('change_photo')
-        : AppStrings.t('add_photo');
-    final imageActionIcon = hasAnimalPhoto
-        ? Icons.add_a_photo_outlined
-        : Icons.camera_alt_outlined;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          _isEditing ? AppStrings.t('edit_animal') : _currentAnimal.name,
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.home_outlined),
-            tooltip: AppStrings.t('go_home'),
-            onPressed: _goHome,
-          ),
-          if (!_isEditing) ...[
-            IconButton(
-              icon: const Icon(Icons.edit_outlined),
-              tooltip: AppStrings.t('edit_animal'),
-              onPressed: () => setState(() => _isEditing = true),
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline),
-              tooltip: AppStrings.t('delete_animal'),
-              onPressed: _confirmDelete,
-            ),
-          ] else ...[
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  _isEditing = false;
-                  _resetEditState();
-                });
-              },
-              child: Text(
-                AppStrings.t('cancel'),
-                style: TextStyle(color: Theme.of(context).colorScheme.primary),
-              ),
-            ),
-          ],
-        ],
-      ),
-      floatingActionButton: _isEditing
-          ? FloatingActionButton.extended(
-              onPressed: (_isSaving || _isUpdatingPhoto) ? null : _saveEdit,
-              icon: (_isSaving || _isUpdatingPhoto)
-                  ? SizedBox(
-                      width: AppIconSizes.medium,
-                      height: AppIconSizes.medium,
-                      child: CircularProgressIndicator(
-                        color: Theme.of(context).colorScheme.onPrimary,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : const Icon(Icons.save_outlined),
-              label: Text(AppStrings.t('save_changes')),
-            )
-          : null,
+      appBar: _buildAppBar(),
+      floatingActionButton: _isEditing ? _buildSaveFab() : null,
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(
           AppSizes.large,
@@ -439,192 +339,135 @@ class _AnimalDetailPageState extends ConsumerState<AnimalDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            AnimalImageCard(
-              selectedImage: _newImage,
-              localImagePath: _currentAnimal.localProfileImagePath,
-              networkImageUrl: _currentAnimal.profileImageUrl,
-              height: AppSizes.animalDetailImageHeight,
-              borderRadius: BorderRadius.circular(AppSizes.large),
-              onTap:
-                  hasAnimalPhoto && !_isEditing ? () {} : _showImageSourceDialog,
-              overlayLabel: _isEditing
-                  ? AppStrings.t('change_photo')
-                  : AppStrings.t('add_photo'),
-              overlayIcon:
-                  _isEditing ? Icons.camera_alt : Icons.add_a_photo_outlined,
-              showOverlay: _isEditing || !hasAnimalPhoto,
-            ),
-            const SizedBox(height: AppSizes.medium),
-            Align(
-              alignment: Alignment.center,
-              child: OutlinedButton.icon(
-                onPressed: _isUpdatingPhoto ? null : _showImageSourceDialog,
-                icon: _isUpdatingPhoto
-                    ? SizedBox(
-                        width: AppIconSizes.medium,
-                        height: AppIconSizes.medium,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      )
-                    : Icon(imageActionIcon),
-                label: Text(imageActionLabel),
-              ),
-            ),
+            _buildImageSection(hasPhoto),
             const SizedBox(height: AppSizes.xLarge),
-            if (_isEditing) _buildEditForm() else _buildViewMode(),
+            if (_isEditing)
+              AnimalDetailEditForm(
+                formController: _formController,
+                onBreedTap: _showBreedSelector,
+                onAgeTap: _showAgeSelector,
+              )
+            else
+              AnimalDetailViewMode(
+                animal: _currentAnimal,
+                onMedicalHistoryTap: () async {
+                  final updatedAnimal = await Navigator.push<AnimalEntity>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          MedicalHistoryPage(animal: _currentAnimal),
+                    ),
+                  );
+                  if (updatedAnimal != null && mounted) {
+                    setState(() => _currentAnimal = updatedAnimal);
+                  }
+                },
+              ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildViewMode() {
-    final breedChoices =
-        ref.watch(animalBreedChoicesProvider).valueOrNull ?? const [];
-    final weightText = _currentAnimal.weight != null
-        ? '${_currentAnimal.weight} ${AppStrings.t('kg')}'
-        : AppStrings.t('weight_no_data');
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildInfoRow(
-          null,
-          AppStrings.t('breed_label'),
-          AnimalReferenceCatalogService.resolveBreedLabel(
-            _currentAnimal.breed,
-            choices: breedChoices,
+  AppBar _buildAppBar() {
+    return AppBar(
+      title: Text(
+        _isEditing ? AppStrings.t('edit_animal') : _currentAnimal.name,
+      ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.home_outlined),
+          tooltip: AppStrings.t('go_home'),
+          onPressed: _goHome,
+        ),
+        if (!_isEditing) ...[
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            tooltip: AppStrings.t('edit_animal'),
+            onPressed: () => setState(() => _isEditing = true),
           ),
-        ),
-        _buildInfoRow(
-          Icons.cake,
-          AppStrings.t('age_label'),
-          _currentAnimal.ageLabel.isNotEmpty
-              ? _currentAnimal.ageLabel
-              : AgeLabelFormatter.format(_currentAnimal.age),
-        ),
-        _buildInfoRow(
-          Icons.monitor_weight_outlined,
-          AppStrings.t('weight_label'),
-          weightText,
-        ),
-        if (_currentAnimal.temperature != null)
-          _buildInfoRow(
-            Icons.thermostat,
-            AppStrings.t('temperature_label'),
-            '${_currentAnimal.temperature} \u00B0C',
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            tooltip: AppStrings.t('delete_animal'),
+            onPressed: _confirmDelete,
           ),
-        const SizedBox(height: AppSizes.xxLarge),
-        SizedBox(
-          width: double.infinity,
-          height: AppSizes.largeButtonHeight,
-          child: ElevatedButton.icon(
-            onPressed: () async {
-              final updatedAnimal = await Navigator.push<AnimalEntity>(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => MedicalHistoryPage(animal: _currentAnimal),
-                ),
-              );
-
-              if (updatedAnimal != null && mounted) {
-                setState(() => _currentAnimal = updatedAnimal);
-              }
+        ] else
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _isEditing = false;
+                _resetEditState();
+              });
             },
-            icon: const Icon(Icons.medical_services),
-            label: Text(AppStrings.t('view_medical_history')),
+            child: Text(
+              AppStrings.t('cancel'),
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.primary),
+            ),
           ),
-        ),
       ],
     );
   }
 
-  Widget _buildInfoRow(IconData? icon, String label, String value) {
-    final appColors = context.appColors;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSizes.sectionSpacing),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (icon != null)
-            Icon(icon, color: appColors.chipForeground, size: AppIconSizes.large)
-          else
-            const LivestockIcon(
-              size: AppIconSizes.large,
-              padding: EdgeInsets.only(top: 2),
-            ),
-          const SizedBox(width: AppSizes.small + 2),
-          Text(
-            '$label: ',
-            style: AppTextStyles.sectionTitle(Theme.of(context)),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-          ),
-        ],
-      ),
+  Widget _buildSaveFab() {
+    final isBusy = _isSaving || _isUpdatingPhoto;
+    return FloatingActionButton.extended(
+      onPressed: isBusy ? null : _saveEdit,
+      icon: isBusy
+          ? SizedBox(
+              width: AppIconSizes.medium,
+              height: AppIconSizes.medium,
+              child: CircularProgressIndicator(
+                color: Theme.of(context).colorScheme.onPrimary,
+                strokeWidth: 2,
+              ),
+            )
+          : const Icon(Icons.save_outlined),
+      label: Text(AppStrings.t('save_changes')),
     );
   }
 
-  Widget _buildEditForm() {
-    final appColors = context.appColors;
-    final breedChoices =
-        ref.watch(animalBreedChoicesProvider).valueOrNull ?? const [];
+  Widget _buildImageSection(bool hasPhoto) {
+    final imageActionLabel = hasPhoto
+        ? AppStrings.t('change_photo')
+        : AppStrings.t('add_photo');
+    final imageActionIcon =
+        hasPhoto ? Icons.add_a_photo_outlined : Icons.camera_alt_outlined;
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        TextFormField(
-          controller: _nameController,
-          inputFormatters: [AnimalInputFormatters.name],
-          decoration: InputDecoration(
-            labelText: '${AppStrings.t('name')} *',
-            prefixIcon: const LivestockIcon(
-              padding: EdgeInsets.all(12),
-            ),
+        AnimalImageCard(
+          selectedImage: _formController.selectedImage,
+          localImagePath: _currentAnimal.localProfileImagePath,
+          networkImageUrl: _currentAnimal.profileImageUrl,
+          height: AppSizes.animalDetailImageHeight,
+          borderRadius: BorderRadius.circular(AppSizes.large),
+          onTap: hasPhoto && !_isEditing ? () {} : _showImageSourceDialog,
+          overlayLabel: _isEditing
+              ? AppStrings.t('change_photo')
+              : AppStrings.t('add_photo'),
+          overlayIcon:
+              _isEditing ? Icons.camera_alt : Icons.add_a_photo_outlined,
+          showOverlay: _isEditing || !hasPhoto,
+        ),
+        const SizedBox(height: AppSizes.medium),
+        Align(
+          alignment: Alignment.center,
+          child: OutlinedButton.icon(
+            onPressed: _isUpdatingPhoto ? null : _showImageSourceDialog,
+            icon: _isUpdatingPhoto
+                ? SizedBox(
+                    width: AppIconSizes.medium,
+                    height: AppIconSizes.medium,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  )
+                : Icon(imageActionIcon),
+            label: Text(imageActionLabel),
           ),
         ),
-        const SizedBox(height: AppSizes.sectionSpacing),
-        AnimalSelectorField(
-          label: AppStrings.t('breed_label'),
-          value: _selectedBreedKey == null
-              ? null
-              : AnimalReferenceCatalogService.resolveBreedLabel(
-                  _selectedBreedKey,
-                  choices: breedChoices,
-                ),
-          icon: Icons.category_outlined,
-          onTap: _showBreedSelector,
-        ),
-        const SizedBox(height: AppSizes.sectionSpacing),
-        AnimalSelectorField(
-          label: AppStrings.t('age_label'),
-          value: _selectedAgeOption?.label,
-          icon: Icons.cake_outlined,
-          onTap: _showAgeSelector,
-        ),
-        const SizedBox(height: AppSizes.sectionSpacing),
-        TextFormField(
-          controller: _weightController,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          inputFormatters: [AnimalInputFormatters.decimal],
-          decoration: InputDecoration(
-            labelText: '${AppStrings.t('weight')} - ${AppStrings.t('optional')}',
-            hintText: AppStrings.t('weight_hint'),
-            prefixIcon: Icon(
-              Icons.monitor_weight_outlined,
-              color: appColors.chipForeground,
-            ),
-            suffixText: AppStrings.t('kg'),
-          ),
-        ),
-        const SizedBox(height: AppSizes.formBottomSpacing),
       ],
     );
   }

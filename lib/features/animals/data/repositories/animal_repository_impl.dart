@@ -1,34 +1,37 @@
-import 'dart:io';
-
-import '../../../../core/services/storage_service.dart';
 import '../../domain/entities/animal_entity.dart';
 import '../../domain/repositories/animal_repository.dart';
 import '../datasources/animal_local_datasource.dart';
 import '../datasources/animal_remote_datasource.dart';
 import '../models/animal_model.dart';
+import '../services/animal_image_resolver.dart';
 
+/// Implementación del repositorio de animales.
+/// Coordina la fuente local (Hive) y la remota (Supabase) con estrategia offline-first.
 class AnimalRepositoryImpl implements AnimalRepository {
-  final AnimalLocalDataSource localDataSource;
-  final AnimalRemoteDataSource remoteDataSource;
-  final StorageService storageService;
+  final AnimalLocalDataSource _localDataSource;
+  final AnimalRemoteDataSource _remoteDataSource;
+  final AnimalImageResolver _imageResolver;
 
   AnimalRepositoryImpl({
-    required this.localDataSource,
-    required this.remoteDataSource,
-    required this.storageService,
-  });
+    required AnimalLocalDataSource localDataSource,
+    required AnimalRemoteDataSource remoteDataSource,
+    required AnimalImageResolver imageResolver,
+  })  : _localDataSource = localDataSource,
+        _remoteDataSource = remoteDataSource,
+        _imageResolver = imageResolver;
 
   @override
   Future<void> addAnimal(AnimalEntity animal, {String? localImagePath}) async {
+    // Guarda localmente primero para garantizar persistencia offline.
     final localModel = AnimalModel.fromEntity(
       animal,
       isSynced: false,
       pendingImagePath: localImagePath,
     );
-    await localDataSource.saveAnimal(localModel);
+    await _localDataSource.saveAnimal(localModel);
 
     try {
-      final uploadedImageUrl = await _resolveImageUrl(
+      final uploadedImageUrl = await _imageResolver.resolve(
         userId: animal.userId,
         localImagePath: localImagePath,
         currentImageUrl: animal.profileImageUrl,
@@ -41,8 +44,8 @@ class AnimalRepositoryImpl implements AnimalRepository {
         pendingImagePath: null,
       );
 
-      await remoteDataSource.insertAnimal(syncedModel.toEntity());
-      await localDataSource.saveAnimal(syncedModel);
+      await _remoteDataSource.insertAnimal(syncedModel.toEntity());
+      await _localDataSource.saveAnimal(syncedModel);
     } catch (_) {
       // El animal queda guardado localmente y pendiente de sincronizar.
     }
@@ -51,24 +54,28 @@ class AnimalRepositoryImpl implements AnimalRepository {
   @override
   Future<List<AnimalEntity>> getAnimals() async {
     try {
-      final remoteAnimals = await remoteDataSource.getAnimals();
-      final pendingLocalAnimals = await localDataSource.getUnsyncedAnimals();
+      final remoteAnimals = await _remoteDataSource.getAnimals();
+      final pendingLocalAnimals = await _localDataSource.getUnsyncedAnimals();
+
       final mergedAnimals = <String, AnimalModel>{
         for (final animal in remoteAnimals)
           animal.id: AnimalModel.fromEntity(animal, isSynced: true),
       };
 
+      // Los pendientes locales tienen prioridad sobre los remotos.
       for (final pendingAnimal in pendingLocalAnimals) {
         mergedAnimals[pendingAnimal.id] = pendingAnimal;
       }
 
-      await localDataSource.syncFromRemote(mergedAnimals.values.toList());
+      await _localDataSource.syncFromRemote(mergedAnimals.values.toList());
+
       return mergedAnimals.values
           .where((animal) => !animal.isDeleted)
           .map((animal) => animal.toEntity())
           .toList();
     } catch (_) {
-      final localAnimals = await localDataSource.getAnimals();
+      // Fallback a datos locales si no hay conexión.
+      final localAnimals = await _localDataSource.getAnimals();
       return localAnimals
           .where((animal) => !animal.isDeleted)
           .map((model) => model.toEntity())
@@ -86,10 +93,10 @@ class AnimalRepositoryImpl implements AnimalRepository {
       isSynced: false,
       pendingImagePath: localImagePath,
     );
-    await localDataSource.saveAnimal(localModel);
+    await _localDataSource.saveAnimal(localModel);
 
     try {
-      final uploadedImageUrl = await _resolveImageUrl(
+      final uploadedImageUrl = await _imageResolver.resolve(
         userId: animal.userId,
         localImagePath: localImagePath,
         currentImageUrl: animal.profileImageUrl,
@@ -102,37 +109,37 @@ class AnimalRepositoryImpl implements AnimalRepository {
         pendingImagePath: null,
       );
 
-      await remoteDataSource.updateAnimal(syncedModel.toEntity());
-      await localDataSource.saveAnimal(syncedModel);
+      await _remoteDataSource.updateAnimal(syncedModel.toEntity());
+      await _localDataSource.saveAnimal(syncedModel);
     } catch (_) {
-      // Queda actualizado en local y podra sincronizarse luego.
+      // Queda actualizado en local y podrá sincronizarse luego.
     }
   }
 
   @override
   Future<void> deleteAnimal(String id) async {
-    await localDataSource.markAsDeleted(id);
+    await _localDataSource.markAsDeleted(id);
     try {
-      await remoteDataSource.deleteAnimal(id);
-      await localDataSource.deleteAnimal(id);
+      await _remoteDataSource.deleteAnimal(id);
+      await _localDataSource.deleteAnimal(id);
     } catch (_) {
-      // Reintento pendiente.
+      // Reintento pendiente cuando haya conexión.
     }
   }
 
   @override
   Future<void> syncAnimals() async {
-    final pendingAnimals = await localDataSource.getUnsyncedAnimals();
+    final pendingAnimals = await _localDataSource.getUnsyncedAnimals();
 
     for (final pendingAnimal in pendingAnimals) {
       try {
         if (pendingAnimal.isDeleted) {
-          await remoteDataSource.deleteAnimal(pendingAnimal.id);
-          await localDataSource.deleteAnimal(pendingAnimal.id);
+          await _remoteDataSource.deleteAnimal(pendingAnimal.id);
+          await _localDataSource.deleteAnimal(pendingAnimal.id);
           continue;
         }
 
-        final profileImageUrl = await _resolveImageUrl(
+        final profileImageUrl = await _imageResolver.resolve(
           userId: pendingAnimal.userId,
           localImagePath: pendingAnimal.pendingImagePath,
           currentImageUrl: pendingAnimal.profileImageUrl,
@@ -147,28 +154,11 @@ class AnimalRepositoryImpl implements AnimalRepository {
           pendingImagePath: null,
         );
 
-        await remoteDataSource.upsertAnimal(syncedModel.toEntity());
-        await localDataSource.saveAnimal(syncedModel);
+        await _remoteDataSource.upsertAnimal(syncedModel.toEntity());
+        await _localDataSource.saveAnimal(syncedModel);
       } catch (_) {
-        // Reintentara luego.
+        // Reintentará en el próximo ciclo de sincronización.
       }
     }
-  }
-
-  Future<String?> _resolveImageUrl({
-    required String userId,
-    required String? localImagePath,
-    required String? currentImageUrl,
-  }) async {
-    if (localImagePath == null || localImagePath.isEmpty) {
-      return currentImageUrl;
-    }
-
-    final file = File(localImagePath);
-    if (!await file.exists()) {
-      return currentImageUrl;
-    }
-
-    return storageService.uploadAnimalImage(file, userId);
   }
 }
