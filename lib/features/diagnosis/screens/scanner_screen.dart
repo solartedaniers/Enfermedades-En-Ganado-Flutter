@@ -647,7 +647,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       backgroundColor:
           isCameraStep
               ? appColors.authBackgroundDark
-              : appColors.scannerBackground,
+              : theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(AppStrings.t('scanner_title')),
         centerTitle: true,
