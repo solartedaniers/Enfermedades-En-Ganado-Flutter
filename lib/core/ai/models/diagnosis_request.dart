@@ -17,6 +17,8 @@ class DiagnosisRequest {
   final double? weight;
   final Map<String, double> vitalSigns;
   final Uint8List? imageBytes;
+  // Imágenes adicionales (segunda, tercera, etc.) para diagnóstico multi-foto
+  final List<Uint8List> additionalImages;
   final String? imageUrl;
   final List<String> visualFindings;
   final LivestockDetection? livestockDetection;
@@ -36,6 +38,7 @@ class DiagnosisRequest {
     this.weight,
     this.vitalSigns = const {},
     this.imageBytes,
+    this.additionalImages = const [],
     this.imageUrl,
     this.visualFindings = const [],
     this.livestockDetection,
@@ -43,10 +46,20 @@ class DiagnosisRequest {
     DateTime? observedAt,
   }) : observedAt = observedAt ?? DateTime.now();
 
+  /// Todas las imágenes del diagnóstico (principal + adicionales)
+  List<Uint8List> get allImages {
+    final result = <Uint8List>[];
+    final primary = imageBytes;
+    if (primary != null) result.add(primary);
+    result.addAll(additionalImages);
+    return result;
+  }
+
   bool get hasClinicalQuestion => clinicalQuestion.trim().isNotEmpty;
 
   bool get hasVisualEvidence =>
       imageBytes != null ||
+      additionalImages.isNotEmpty ||
       (imageUrl?.trim().isNotEmpty ?? false) ||
       visualFindings.isNotEmpty;
 
@@ -66,6 +79,7 @@ class DiagnosisRequest {
     double? weight,
     Map<String, double>? vitalSigns,
     Uint8List? imageBytes,
+    List<Uint8List>? additionalImages,
     String? imageUrl,
     List<String>? visualFindings,
     LivestockDetection? livestockDetection,
@@ -85,6 +99,7 @@ class DiagnosisRequest {
       weight: weight ?? this.weight,
       vitalSigns: vitalSigns ?? this.vitalSigns,
       imageBytes: imageBytes ?? this.imageBytes,
+      additionalImages: additionalImages ?? this.additionalImages,
       imageUrl: imageUrl ?? this.imageUrl,
       visualFindings: visualFindings ?? this.visualFindings,
       livestockDetection: livestockDetection ?? this.livestockDetection,
@@ -107,6 +122,7 @@ class DiagnosisRequest {
       'weight': weight,
       'vital_signs': vitalSigns,
       'image_base64': imageBytes == null ? null : base64Encode(imageBytes!),
+      'image_count': allImages.length,
       'image_url': imageUrl,
       'visual_findings': visualFindings,
       'livestock_detection': livestockDetection?.toJson(),

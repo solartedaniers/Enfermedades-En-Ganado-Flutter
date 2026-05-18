@@ -34,15 +34,14 @@ class GroqDiagnosisApi {
       throw Exception('GROQ_API_KEY no configurada en el archivo .env');
     }
 
-    final imageBytes = request.imageBytes;
-    final hasImage = imageBytes != null && imageBytes.isNotEmpty;
+    final allImages = request.allImages;
+    final hasImages = allImages.isNotEmpty;
 
-    // Si hay imagen, intentamos con modelo de visión primero.
-    // Si ese modelo falla (deprecado, cuota, etc.) hacemos fallback al modelo de texto.
-    if (hasImage) {
+    // Con imágenes → modelo de visión; fallback a texto si falla
+    if (hasImages) {
       try {
         return await _callGroq(
-          _buildVisionPayload(request, imageBytes),
+          _buildVisionPayload(request, allImages),
           request,
         );
       } catch (e) {
@@ -51,8 +50,7 @@ class GroqDiagnosisApi {
           name: 'GroqDiagnosisApi',
           error: e,
         );
-        // Fallback: texto puro (sin imagen) para no dejar al usuario sin diagnóstico
-        final textRequest = request.copyWith(imageBytes: null);
+        final textRequest = request.copyWith(imageBytes: null, additionalImages: []);
         return await _callGroq(_buildTextPayload(textRequest), textRequest);
       }
     }
@@ -125,33 +123,29 @@ class GroqDiagnosisApi {
     };
   }
 
-  // Payload para análisis visual: envía la foto real al modelo de visión
+  // Payload para análisis visual: envía todas las imágenes al modelo de visión
   Map<String, dynamic> _buildVisionPayload(
     DiagnosisRequest request,
-    Uint8List imageBytes,
+    List<Uint8List> images,
   ) {
-    // Reducir imagen a 512px para minimizar el payload y cumplir límites de la API
-    final visionBytes = _resizeForVision(imageBytes);
-    final base64Image = base64Encode(visionBytes);
+    // Construir el array de contenido: texto + una entrada por imagen (máx 4)
+    final contentItems = <Map<String, dynamic>>[
+      {'type': 'text', 'text': _buildCasePrompt(request)},
+    ];
+
+    for (final imageBytes in images.take(4)) {
+      final visionBytes = _resizeForVision(imageBytes);
+      contentItems.add({
+        'type': 'image_url',
+        'image_url': {'url': 'data:image/jpeg;base64,${base64Encode(visionBytes)}'},
+      });
+    }
 
     return {
       'model': _visionModel,
       'messages': [
-        // El modelo de visión acepta system prompt como rol separado
         {'role': 'system', 'content': _buildSystemPrompt()},
-        {
-          'role': 'user',
-          'content': [
-            {'type': 'text', 'text': _buildCasePrompt(request)},
-            {
-              // Enviamos la imagen como data URI base64
-              'type': 'image_url',
-              'image_url': {
-                'url': 'data:image/jpeg;base64,$base64Image',
-              },
-            },
-          ],
-        },
+        {'role': 'user', 'content': contentItems},
       ],
       'temperature': 0.15,
       'max_tokens': 2048,
