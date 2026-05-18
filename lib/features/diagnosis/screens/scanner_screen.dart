@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -53,11 +54,15 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   final TextEditingController _symptomsController = TextEditingController();
   final TextEditingController _temperatureController = TextEditingController();
 
+  // Máximo de imágenes permitidas por diagnóstico
+  static const int _maxImages = 4;
+
   late Future<List<AnimalEntity>> _animalsFuture;
   CameraController? _cameraController;
   AnimalEntity? _selectedAnimal;
   DiagnosisReport? _report;
-  Uint8List? _capturedImageBytes;
+  // Lista acumulada de imágenes del diagnóstico actual
+  List<Uint8List> _capturedImages = [];
   _ScannerStep _currentStep = _ScannerStep.intake;
   bool _isInitializingCamera = false;
   bool _isSubmitting = false;
@@ -229,57 +234,50 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     await _initializeCamera();
   }
 
+  // Selección múltiple de galería — agrega todas al stack de imágenes
   Future<void> _pickImageFromGallery() async {
+    if (_capturedImages.length >= _maxImages) {
+      _showMessage('Máximo $_maxImages imágenes por diagnóstico.');
+      return;
+    }
+
     setState(() {
       _isSubmitting = true;
       _errorMessage = null;
     });
 
     try {
-      final pickedImage = await ImagePicker().pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 85,
-      );
+      final picked = await ImagePicker().pickMultiImage(imageQuality: 85);
+      if (picked.isEmpty || !mounted) return;
 
-      if (pickedImage == null) {
-        return;
+      final preprocessor = ref.read(imagePreprocessingServiceProvider);
+      final newImages = <Uint8List>[];
+
+      for (final xfile in picked.take(_maxImages - _capturedImages.length)) {
+        final bytes = await File(xfile.path).readAsBytes();
+        final processed = await preprocessor.preprocessImage(bytes);
+        newImages.add(processed);
       }
 
-      final bytes = await File(pickedImage.path).readAsBytes();
-      await _processImageBytes(bytes);
+      if (!mounted) return;
+      setState(() {
+        _capturedImages = [..._capturedImages, ...newImages];
+        _errorMessage = null;
+      });
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      // Mostrar el error real en lugar de un mensaje genérico
+      if (!mounted) return;
       setState(() {
         _errorMessage = error.toString().replaceAll('Exception: ', '');
       });
     } finally {
-      if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-        });
-      }
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
-  Future<void> _processImageBytes(Uint8List bytes) async {
-    // Preprocesar imagen: mejorar contraste y brillo
-    final preprocessor = ref.read(imagePreprocessingServiceProvider);
-    final preprocessedBytes = await preprocessor.preprocessImage(bytes);
-
-    if (!mounted) {
-      return;
-    }
-
+  void _removeImage(int index) {
     setState(() {
-      _errorMessage = null;
+      _capturedImages = List.from(_capturedImages)..removeAt(index);
     });
-
-    // Proceder directamente al diagnóstico sin detección de objetos
-    await _runDiagnosis(imageBytes: preprocessedBytes);
   }
 
   void _backToIntake() {
@@ -288,7 +286,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     });
   }
 
-  Future<void> _captureAndAnalyze() async {
+  // Toma foto con la cámara, la agrega a la lista y vuelve al intake
+  Future<void> _capturePhoto() async {
     final controller = _cameraController;
     if (controller == null || !controller.value.isInitialized || _isSubmitting) {
       return;
@@ -302,39 +301,27 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     try {
       final picture = await controller.takePicture();
       final bytes = await File(picture.path).readAsBytes();
-      
-      // Preprocesar imagen capturada
       final preprocessor = ref.read(imagePreprocessingServiceProvider);
-      final preprocessedBytes = await preprocessor.preprocessImage(bytes);
+      final processed = await preprocessor.preprocessImage(bytes);
 
-      // Proceder directamente al diagnóstico
-      await _runDiagnosis(imageBytes: preprocessedBytes);
+      if (!mounted) return;
+      setState(() {
+        _capturedImages = [..._capturedImages, processed];
+        _currentStep = _ScannerStep.intake; // vuelve al intake con foto lista
+      });
     } on CameraException catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _errorMessage = _mapCameraError(error);
-      });
+      if (!mounted) return;
+      setState(() => _errorMessage = _mapCameraError(error));
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _errorMessage = error.toString();
-      });
+      if (!mounted) return;
+      setState(() => _errorMessage = error.toString());
     } finally {
-      if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-        });
-      }
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
-  Future<void> _diagnoseWithoutImage() async {
+  // Botón "Analizar" — corre diagnóstico con todas las imágenes acumuladas
+  Future<void> _analyze() async {
     setState(() {
       _isSubmitting = true;
       _errorMessage = null;
@@ -343,42 +330,23 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     try {
       await _runDiagnosis();
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _errorMessage = error.toString();
-      });
+      if (!mounted) return;
+      setState(() => _errorMessage = error.toString());
     } finally {
-      if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-        });
-      }
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
-  Future<void> _runDiagnosis({
-    Uint8List? imageBytes,
-  }) async {
-    if (!mounted) {
-      return;
-    }
+  Future<void> _runDiagnosis() async {
+    if (!mounted) return;
 
-    setState(() {
-      _errorMessage = null;
-    });
+    setState(() => _errorMessage = null);
 
     final service = ref.read(livestockDiagnosisServiceProvider);
-    final request = _buildRequest(
-      imageBytes: imageBytes,
-    );
+    final request = _buildRequest();
     final response = await service.analyze(request);
 
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     switch (response.status) {
       case DiagnosisStatus.needsConfiguration:
@@ -400,7 +368,6 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
         _symptomsController.clear();
         _temperatureController.clear();
         setState(() {
-          _capturedImageBytes = imageBytes;
           _report = response.report;
           _currentStep = _ScannerStep.result;
           _hasSavedCurrentResult = false;
@@ -409,9 +376,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     }
   }
 
-  DiagnosisRequest _buildRequest({
-    Uint8List? imageBytes,
-  }) {
+  DiagnosisRequest _buildRequest() {
     final animal = _selectedAnimal;
     final currentUser = Supabase.instance.client.auth.currentUser;
     final geolocationContext =
@@ -419,6 +384,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     final normalizedTemperature =
         _temperatureController.text.trim().replaceAll(',', '.');
     final trimmedAnimalSymptoms = animal?.symptoms.trim() ?? '';
+    final hasImages = _capturedImages.isNotEmpty;
 
     if (animal == null) {
       throw Exception(AppStrings.t('diagnosis_select_animal_first'));
@@ -426,7 +392,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
 
     if (_mainReasonController.text.trim().isEmpty &&
         _symptomsController.text.trim().isEmpty &&
-        imageBytes == null) {
+        !hasImages) {
       throw Exception(AppStrings.t('diagnosis_write_case_first'));
     }
 
@@ -445,7 +411,6 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       animalId: animal.id,
       userId: currentUser?.id ?? animal.userId,
       animalName: animal.name,
-      // AnimalEntity no almacena especie por ahora — el app es ganado bovino
       species: 'bovine',
       breed: animal.breed,
       ageInYears: animal.age,
@@ -457,14 +422,14 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
               : const [],
       temperature: double.tryParse(normalizedTemperature),
       weight: animal.weight,
-      imageBytes: imageBytes,
+      // Primera imagen como principal, el resto como adicionales
+      imageBytes: hasImages ? _capturedImages.first : null,
+      additionalImages:
+          _capturedImages.length > 1 ? _capturedImages.sublist(1) : const [],
       imageUrl: animal.imageUrl,
-      visualFindings: imageBytes == null
-          ? const []
-          : [
-              'Imagen capturada para análisis visual.',
-              'Preprocesamiento aplicado: mejora de contraste y brillo.',
-            ],
+      visualFindings: hasImages
+          ? ['${_capturedImages.length} imagen(es) adjunta(s) para análisis visual.']
+          : const [],
       livestockDetection: null,
       geolocationContext: geolocationContext,
     );
@@ -491,14 +456,22 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       String? saveWarningMessage;
       final storageService = ref.read(storageServiceProvider);
 
-      // Si hay imagen del diagnóstico, subirla a Supabase Storage primero
-      String? capturedImageUrl;
-      if (_capturedImageBytes != null) {
-        capturedImageUrl = await storageService.uploadDiagnosisImage(
-          imageBytes: _capturedImageBytes!,
+      // Subir todas las imágenes del diagnóstico a Supabase Storage
+      final uploadedUrls = <String>[];
+      for (final imgBytes in _capturedImages) {
+        final url = await storageService.uploadDiagnosisImage(
+          imageBytes: imgBytes,
           animalName: animal.name,
         );
+        if (url != null) uploadedUrls.add(url);
       }
+
+      // Codificar como JSON si hay múltiples URLs, o usar la única si es una sola
+      final imageUrlValue = switch (uploadedUrls.length) {
+        0 => null,
+        1 => uploadedUrls.first,
+        _ => jsonEncode(uploadedUrls),
+      };
 
       final reportUrl = await storageService.uploadDiagnosisReportJson(
         diagnosisJson: {
@@ -511,9 +484,9 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
             'age_in_months': animal.age,
           },
           'user_id': currentUser.id,
-          'has_captured_image': _capturedImageBytes != null,
-          // URL real de la imagen subida (no la del perfil del animal)
-          'image_url': capturedImageUrl,
+          'has_captured_image': _capturedImages.isNotEmpty,
+          'image_count': uploadedUrls.length,
+          'image_urls': uploadedUrls,
           'report': report.toJson(),
           'generated_at': report.generatedAt.toIso8601String(),
         },
@@ -561,7 +534,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
         animalId: animal.id,
         userId: currentUser.id,
         report: report,
-        imageUrl: capturedImageUrl, // URL de la imagen subida a Supabase Storage
+        // Una URL si hay 1 imagen, JSON array si hay varias, null si solo texto
+        imageUrl: imageUrlValue,
       );
       await medicalRepository.addRecord(record);
 
@@ -601,7 +575,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
 
   void _resetFlow() {
     setState(() {
-      _capturedImageBytes = null;
+      _capturedImages = [];
       _report = null;
       _errorMessage = null;
       _currentStep = _ScannerStep.intake;
@@ -663,7 +637,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
             mainReasonController: _mainReasonController,
             symptomsController: _symptomsController,
             temperatureController: _temperatureController,
-            capturedImageBytes: _capturedImageBytes,
+            capturedImages: _capturedImages,
+            maxImages: _maxImages,
             isSubmitting: _isSubmitting,
             errorMessage: _errorMessage,
             connectivityState: ref.watch(networkStatusProvider),
@@ -672,7 +647,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
             onAddAnimalRequested: _openAddAnimalFlow,
             onOpenCamera: _openCamera,
             onOpenGallery: _pickImageFromGallery,
-            onDiagnoseWithoutImage: _diagnoseWithoutImage,
+            onRemoveImage: _removeImage,
+            onAnalyze: _analyze,
           ),
         _ScannerStep.camera => ScannerCameraView(
             cameraController: _cameraController,
@@ -686,7 +662,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
         _ScannerStep.result => ScannerResultView(
             report: _report,
             animal: _selectedAnimal,
-            capturedImageBytes: _capturedImageBytes,
+            capturedImages: _capturedImages,
             isSaving: _isSaving,
             hasSaved: _hasSavedCurrentResult,
             onSave: _saveDiagnosis,
@@ -697,7 +673,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
           ? FloatingActionButton(
               onPressed: _isInitializingCamera || _errorMessage != null
                   ? null
-                  : _captureAndAnalyze,
+                  : _capturePhoto,
               backgroundColor: appColors.scannerAccent,
               foregroundColor: appColors.onSolid,
               child: _isSubmitting

@@ -10,13 +10,15 @@ import '../../../core/utils/app_strings.dart';
 import '../../../geolocation/presentation/providers/geolocation_provider.dart';
 import '../../animals/domain/constants/animal_breed_catalog.dart';
 import '../../animals/domain/entities/animal_entity.dart';
+
 class ScannerIntakeView extends StatelessWidget {
   final Future<List<AnimalEntity>> animalsFuture;
   final AnimalEntity? selectedAnimal;
   final TextEditingController mainReasonController;
   final TextEditingController symptomsController;
   final TextEditingController temperatureController;
-  final Uint8List? capturedImageBytes;
+  final List<Uint8List> capturedImages;
+  final int maxImages;
   final bool isSubmitting;
   final String? errorMessage;
   final AsyncValue<bool> connectivityState;
@@ -25,7 +27,8 @@ class ScannerIntakeView extends StatelessWidget {
   final Future<void> Function() onAddAnimalRequested;
   final VoidCallback onOpenCamera;
   final Future<void> Function() onOpenGallery;
-  final VoidCallback onDiagnoseWithoutImage;
+  final ValueChanged<int> onRemoveImage;
+  final VoidCallback onAnalyze;
 
   const ScannerIntakeView({
     super.key,
@@ -34,7 +37,8 @@ class ScannerIntakeView extends StatelessWidget {
     required this.mainReasonController,
     required this.symptomsController,
     required this.temperatureController,
-    required this.capturedImageBytes,
+    required this.capturedImages,
+    required this.maxImages,
     required this.isSubmitting,
     required this.errorMessage,
     required this.connectivityState,
@@ -43,7 +47,8 @@ class ScannerIntakeView extends StatelessWidget {
     required this.onAddAnimalRequested,
     required this.onOpenCamera,
     required this.onOpenGallery,
-    required this.onDiagnoseWithoutImage,
+    required this.onRemoveImage,
+    required this.onAnalyze,
   });
 
   @override
@@ -68,81 +73,14 @@ class ScannerIntakeView extends StatelessWidget {
 
         final animals = snapshot.data ?? [];
         if (animals.isEmpty) {
-          final theme = Theme.of(context);
-          final appColors = context.appColors;
-
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSizes.xxLarge),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(AppSizes.xxLarge),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surface,
-                    borderRadius: BorderRadius.circular(AppSizes.cardRadius),
-                    boxShadow: [
-                      BoxShadow(
-                        color: appColors.scannerAccent.withValues(alpha: 0.10),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.pets_outlined,
-                        size: AppIconSizes.xxxLarge,
-                        color: appColors.mutedForeground,
-                      ),
-                      const SizedBox(height: AppSizes.large),
-                      Text(
-                        AppStrings.t('diagnosis'),
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.title(theme),
-                      ),
-                      const SizedBox(height: AppSizes.medium),
-                      Text(
-                        AppStrings.t('diagnosis_register_animal_first'),
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.bodyMuted(
-                          theme,
-                          appColors.subduedForeground,
-                        ),
-                      ),
-                      const SizedBox(height: AppSizes.xLarge),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: onAddAnimalRequested,
-                          style: ElevatedButton.styleFrom(
-                            minimumSize: const Size(
-                              double.infinity,
-                              AppSizes.largeButtonHeight,
-                            ),
-                            backgroundColor: appColors.scannerAccent,
-                            foregroundColor: appColors.onSolid,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSizes.large,
-                              vertical: AppSizes.large,
-                            ),
-                          ),
-                          icon: const Icon(Icons.add),
-                          label: Text(AppStrings.t('register_animal')),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+          return _EmptyAnimalsCard(
+            onAddAnimalRequested: onAddAnimalRequested,
           );
         }
 
         final isOnline = connectivityState.valueOrNull ?? true;
+        final theme = Theme.of(context);
+        final appColors = context.appColors;
 
         return ListView(
           padding: const EdgeInsets.all(AppSizes.pagePadding),
@@ -150,11 +88,11 @@ class ScannerIntakeView extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(AppSizes.xLarge),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
+                color: theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(AppSizes.xxLarge),
                 boxShadow: [
                   BoxShadow(
-                    color: context.appColors.scannerAccent.withValues(alpha: 0.10),
+                    color: appColors.scannerAccent.withValues(alpha: 0.10),
                     blurRadius: 20,
                     offset: const Offset(0, 8),
                   ),
@@ -165,23 +103,25 @@ class ScannerIntakeView extends StatelessWidget {
                 children: [
                   Text(
                     AppStrings.t('diagnosis_real_title'),
-                    style: AppTextStyles.title(Theme.of(context)),
+                    style: AppTextStyles.title(theme),
                   ),
                   const SizedBox(height: AppSizes.small + 2),
                   Text(
                     AppStrings.t('diagnosis_real_subtitle'),
                     style: AppTextStyles.bodyMuted(
-                      Theme.of(context),
-                      context.appColors.subduedForeground,
+                      theme,
+                      appColors.subduedForeground,
                     ),
                   ),
                   const SizedBox(height: AppSizes.xLarge),
                   if (!isOnline) ...[
-                    _ScannerOfflineBanner(),
+                    _OfflineBanner(),
                     const SizedBox(height: AppSizes.large),
                   ],
-                  _ScannerGeolocationCard(geolocationState: geolocationState),
+                  _GeolocationCard(geolocationState: geolocationState),
                   const SizedBox(height: AppSizes.large),
+
+                  // Selector de animal
                   DropdownButtonFormField<String>(
                     initialValue: selectedAnimal?.id,
                     decoration: InputDecoration(
@@ -192,22 +132,21 @@ class ScannerIntakeView extends StatelessWidget {
                           (animal) => DropdownMenuItem<String>(
                             value: animal.id,
                             child: Text(
-                              '${animal.name} \u2022 ${AnimalBreedCatalog.displayLabel(animal.breed)}',
+                              '${animal.name} • ${AnimalBreedCatalog.displayLabel(animal.breed)}',
                             ),
                           ),
                         )
                         .toList(),
                     onChanged: (value) {
-                      if (value == null) {
-                        return;
-                      }
-
+                      if (value == null) return;
                       onAnimalSelected(
                         animals.firstWhere((item) => item.id == value),
                       );
                     },
                   ),
                   const SizedBox(height: AppSizes.large),
+
+                  // Motivo principal
                   TextField(
                     controller: mainReasonController,
                     decoration: InputDecoration(
@@ -217,6 +156,8 @@ class ScannerIntakeView extends StatelessWidget {
                     maxLines: 3,
                   ),
                   const SizedBox(height: AppSizes.large),
+
+                  // Síntomas
                   TextField(
                     controller: symptomsController,
                     decoration: InputDecoration(
@@ -227,6 +168,8 @@ class ScannerIntakeView extends StatelessWidget {
                     maxLines: 6,
                   ),
                   const SizedBox(height: AppSizes.large),
+
+                  // Temperatura
                   TextField(
                     controller: temperatureController,
                     decoration: InputDecoration(
@@ -238,47 +181,52 @@ class ScannerIntakeView extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: AppSizes.large),
-                  if (capturedImageBytes != null)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(AppSizes.fieldRadius),
-                      child: Image.memory(
-                        capturedImageBytes!,
-                        height: AppSizes.diagnosisPreviewImageHeight,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                      ),
+
+                  // Thumbnails de imágenes seleccionadas
+                  if (capturedImages.isNotEmpty) ...[
+                    _ImageThumbnailRow(
+                      images: capturedImages,
+                      onRemove: onRemoveImage,
+                      appColors: appColors,
                     ),
-                  const SizedBox(height: AppSizes.large),
+                    const SizedBox(height: AppSizes.large),
+                  ],
+
+                  // Botones de foto
                   Row(
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: onOpenCamera,
+                          onPressed: capturedImages.length >= maxImages
+                              ? null
+                              : onOpenCamera,
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: context.appColors.scannerAccent,
+                            foregroundColor: appColors.scannerAccent,
                             side: BorderSide(
-                              color: context.appColors.scannerAccent,
+                              color: capturedImages.length >= maxImages
+                                  ? appColors.mutedForeground
+                                  : appColors.scannerAccent,
                             ),
                             padding: const EdgeInsets.symmetric(
                               vertical: AppSizes.sectionSpacing,
                             ),
                           ),
                           icon: const Icon(Icons.camera_alt),
-                          label: Text(
-                            capturedImageBytes == null
-                                ? AppStrings.t('diagnosis_add_photo')
-                                : AppStrings.t('diagnosis_change_photo'),
-                          ),
+                          label: Text(AppStrings.t('diagnosis_add_photo')),
                         ),
                       ),
                       const SizedBox(width: AppSizes.medium),
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: onOpenGallery,
+                          onPressed: capturedImages.length >= maxImages
+                              ? null
+                              : onOpenGallery,
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: context.appColors.scannerAccent,
+                            foregroundColor: appColors.scannerAccent,
                             side: BorderSide(
-                              color: context.appColors.scannerAccent,
+                              color: capturedImages.length >= maxImages
+                                  ? appColors.mutedForeground
+                                  : appColors.scannerAccent,
                             ),
                             padding: const EdgeInsets.symmetric(
                               vertical: AppSizes.sectionSpacing,
@@ -290,16 +238,29 @@ class ScannerIntakeView extends StatelessWidget {
                       ),
                     ],
                   ),
+
+                  // Hint de imágenes
+                  if (capturedImages.isNotEmpty) ...[
+                    const SizedBox(height: AppSizes.small),
+                    Text(
+                      '${capturedImages.length}/$maxImages imágenes — toca la X para eliminar',
+                      style: AppTextStyles.bodyMuted(
+                        theme,
+                        appColors.subduedForeground,
+                      ),
+                    ),
+                  ],
+
                   const SizedBox(height: AppSizes.medium),
+
+                  // Botón Analizar
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: isSubmitting || !isOnline
-                          ? null
-                          : onDiagnoseWithoutImage,
+                      onPressed: isSubmitting || !isOnline ? null : onAnalyze,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: context.appColors.scannerAccent,
-                        foregroundColor: context.appColors.onSolid,
+                        backgroundColor: appColors.scannerAccent,
+                        foregroundColor: appColors.onSolid,
                         padding: const EdgeInsets.symmetric(
                           vertical: AppSizes.sectionSpacing,
                         ),
@@ -310,31 +271,33 @@ class ScannerIntakeView extends StatelessWidget {
                               height: AppIconSizes.medium,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                valueColor:
-                                    AlwaysStoppedAnimation<Color>(
-                                      context.appColors.onSolid,
-                                    ),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  appColors.onSolid,
+                                ),
                               ),
                             )
                           : const Icon(Icons.psychology_alt_outlined),
                       label: Text(AppStrings.t('diagnosis_analyze')),
                     ),
                   ),
+
                   const SizedBox(height: AppSizes.medium),
                   Text(
                     AppStrings.t('diagnosis_camera_optional'),
                     style: AppTextStyles.bodyMuted(
-                      Theme.of(context),
-                      context.appColors.subduedForeground,
+                      theme,
+                      appColors.subduedForeground,
                     ),
                   ),
+
+                  // Mensaje de error
                   if (errorMessage != null) ...[
                     const SizedBox(height: AppSizes.large),
                     Text(
                       errorMessage!,
                       style: AppTextStyles.bodyMuted(
-                        Theme.of(context),
-                        context.appColors.danger,
+                        theme,
+                        appColors.danger,
                       ),
                     ),
                   ],
@@ -348,7 +311,147 @@ class ScannerIntakeView extends StatelessWidget {
   }
 }
 
-class _ScannerOfflineBanner extends StatelessWidget {
+// Fila scrolleable de thumbnails con botón X para eliminar
+class _ImageThumbnailRow extends StatelessWidget {
+  final List<Uint8List> images;
+  final ValueChanged<int> onRemove;
+  final AppThemeColors appColors;
+
+  const _ImageThumbnailRow({
+    required this.images,
+    required this.onRemove,
+    required this.appColors,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 90,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: images.length,
+        separatorBuilder: (_, _) => const SizedBox(width: AppSizes.small),
+        itemBuilder: (context, index) {
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(AppSizes.fieldRadius),
+                child: Image.memory(
+                  images[index],
+                  width: 90,
+                  height: 90,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              Positioned(
+                top: -6,
+                right: -6,
+                child: GestureDetector(
+                  onTap: () => onRemove(index),
+                  child: Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: appColors.danger,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                    child: const Icon(
+                      Icons.close,
+                      size: 14,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _EmptyAnimalsCard extends StatelessWidget {
+  final Future<void> Function() onAddAnimalRequested;
+
+  const _EmptyAnimalsCard({required this.onAddAnimalRequested});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final appColors = context.appColors;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSizes.xxLarge),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(AppSizes.xxLarge),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(AppSizes.cardRadius),
+              boxShadow: [
+                BoxShadow(
+                  color: appColors.scannerAccent.withValues(alpha: 0.10),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.pets_outlined,
+                  size: AppIconSizes.xxxLarge,
+                  color: appColors.mutedForeground,
+                ),
+                const SizedBox(height: AppSizes.large),
+                Text(
+                  AppStrings.t('diagnosis'),
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.title(theme),
+                ),
+                const SizedBox(height: AppSizes.medium),
+                Text(
+                  AppStrings.t('diagnosis_register_animal_first'),
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.bodyMuted(
+                    theme,
+                    appColors.subduedForeground,
+                  ),
+                ),
+                const SizedBox(height: AppSizes.xLarge),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: onAddAnimalRequested,
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(
+                        double.infinity,
+                        AppSizes.largeButtonHeight,
+                      ),
+                      backgroundColor: appColors.scannerAccent,
+                      foregroundColor: appColors.onSolid,
+                    ),
+                    icon: const Icon(Icons.add),
+                    label: Text(AppStrings.t('register_animal')),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OfflineBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appColors = context.appColors;
@@ -365,9 +468,7 @@ class _ScannerOfflineBanner extends StatelessWidget {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(AppSizes.xxLarge),
-        border: Border.all(
-          color: appColors.danger.withValues(alpha: 0.35),
-        ),
+        border: Border.all(color: appColors.danger.withValues(alpha: 0.35)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -413,10 +514,10 @@ class _ScannerOfflineBanner extends StatelessWidget {
   }
 }
 
-class _ScannerGeolocationCard extends ConsumerWidget {
+class _GeolocationCard extends ConsumerWidget {
   final AsyncValue<dynamic> geolocationState;
 
-  const _ScannerGeolocationCard({required this.geolocationState});
+  const _GeolocationCard({required this.geolocationState});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -424,7 +525,6 @@ class _ScannerGeolocationCard extends ConsumerWidget {
     final appColors = context.appColors;
     final isDark = theme.brightness == Brightness.dark;
 
-    // Color adaptado al tema: verde muy sutil en oscuro, verde claro en light
     final bgColor = isDark
         ? appColors.scannerAccent.withValues(alpha: 0.15)
         : appColors.selectionBackground;
@@ -451,7 +551,6 @@ class _ScannerGeolocationCard extends ConsumerWidget {
                     ),
                   );
                 }
-
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -487,7 +586,7 @@ class _ScannerGeolocationCard extends ConsumerWidget {
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
-              error: (error, _) => Text(
+              error: (_, _) => Text(
                 AppStrings.t('geolocation_unavailable'),
                 style: AppTextStyles.bodyMuted(theme, appColors.danger),
               ),

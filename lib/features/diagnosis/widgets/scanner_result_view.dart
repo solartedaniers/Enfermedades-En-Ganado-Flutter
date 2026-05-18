@@ -13,7 +13,7 @@ import '../../animals/domain/entities/animal_entity.dart';
 class ScannerResultView extends StatelessWidget {
   final DiagnosisReport? report;
   final AnimalEntity? animal;
-  final Uint8List? capturedImageBytes;
+  final List<Uint8List> capturedImages;
   final bool isSaving;
   final bool hasSaved;
   final VoidCallback onSave;
@@ -23,7 +23,7 @@ class ScannerResultView extends StatelessWidget {
     super.key,
     required this.report,
     required this.animal,
-    required this.capturedImageBytes,
+    required this.capturedImages,
     required this.isSaving,
     required this.hasSaved,
     required this.onSave,
@@ -79,17 +79,9 @@ class ScannerResultView extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSizes.large),
 
-                // Imagen del diagnóstico (si existe)
-                if (capturedImageBytes != null) ...[
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(AppSizes.fieldRadius),
-                    child: Image.memory(
-                      capturedImageBytes!,
-                      height: AppSizes.diagnosisResultImageHeight,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
+                // Imágenes del diagnóstico — galería horizontal si hay varias
+                if (capturedImages.isNotEmpty) ...[
+                  _DiagnosisImagePreview(images: capturedImages),
                   const SizedBox(height: AppSizes.large),
                 ],
 
@@ -548,6 +540,164 @@ class _DisclaimerCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Previsualización de imágenes en el resultado del diagnóstico.
+/// 1 imagen: ancho completo. 2+: fila horizontal con tap para pantalla completa.
+class _DiagnosisImagePreview extends StatelessWidget {
+  final List<Uint8List> images;
+
+  const _DiagnosisImagePreview({required this.images});
+
+  void _openViewer(BuildContext context, int initialIndex) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => _ImageViewerPage(
+          images: images,
+          initialIndex: initialIndex,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (images.length == 1) {
+      return GestureDetector(
+        onTap: () => _openViewer(context, 0),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(AppSizes.fieldRadius),
+          child: Image.memory(
+            images.first,
+            height: AppSizes.diagnosisResultImageHeight,
+            width: double.infinity,
+            fit: BoxFit.cover,
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '${images.length} imágenes — toca para ampliar',
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.55),
+              ),
+        ),
+        const SizedBox(height: AppSizes.small),
+        SizedBox(
+          height: 120,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: images.length,
+            separatorBuilder: (_, _) => const SizedBox(width: AppSizes.small),
+            itemBuilder: (context, index) => GestureDetector(
+              onTap: () => _openViewer(context, index),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(AppSizes.fieldRadius),
+                child: Image.memory(
+                  images[index],
+                  width: 120,
+                  height: 120,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Visor a pantalla completa: swipe entre fotos + pinch-to-zoom.
+class _ImageViewerPage extends StatefulWidget {
+  final List<Uint8List> images;
+  final int initialIndex;
+
+  const _ImageViewerPage({required this.images, required this.initialIndex});
+
+  @override
+  State<_ImageViewerPage> createState() => _ImageViewerPageState();
+}
+
+class _ImageViewerPageState extends State<_ImageViewerPage> {
+  late final PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Text(
+          '${_currentIndex + 1} / ${widget.images.length}',
+          style: const TextStyle(color: Colors.white),
+        ),
+        centerTitle: true,
+      ),
+      body: PageView.builder(
+        controller: _pageController,
+        itemCount: widget.images.length,
+        onPageChanged: (index) => setState(() => _currentIndex = index),
+        itemBuilder: (context, index) => InteractiveViewer(
+          minScale: 0.8,
+          maxScale: 5.0,
+          child: Center(
+            child: Image.memory(
+              widget.images[index],
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
+      ),
+      bottomNavigationBar: widget.images.length > 1
+          ? SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(
+                    widget.images.length,
+                    (i) => AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      width: i == _currentIndex ? 16 : 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: i == _currentIndex
+                            ? Colors.white
+                            : Colors.white38,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            )
+          : null,
     );
   }
 }
