@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../../domain/entities/medical_record_entity.dart';
 import '../../../../core/ai/models/diagnosis_response.dart';
 
@@ -44,6 +46,21 @@ class MedicalRecordModel extends MedicalRecordEntity {
       imageUrl: imageUrl,
       createdAt: report.generatedAt,
     );
+  }
+
+  /// Retorna todas las URLs de imágenes del registro.
+  /// Soporta tanto URL única (registros viejos) como JSON array (multi-foto).
+  List<String> get imageUrls {
+    final raw = imageUrl;
+    if (raw == null || raw.isEmpty) return [];
+    if (raw.startsWith('[')) {
+      try {
+        return List<String>.from(jsonDecode(raw) as List);
+      } catch (_) {
+        return [];
+      }
+    }
+    return [raw];
   }
 
   Map<String, dynamic> toJson() {
