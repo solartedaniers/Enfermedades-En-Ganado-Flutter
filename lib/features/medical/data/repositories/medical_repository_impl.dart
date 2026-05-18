@@ -16,6 +16,7 @@ class MedicalRepositoryImpl implements MedicalRepository {
       userId: record.userId,
       diagnosis: record.diagnosis,
       aiResult: record.aiResult,
+      imageUrl: record.imageUrl,
       createdAt: record.createdAt,
     );
     await remote.insertRecord(model);
