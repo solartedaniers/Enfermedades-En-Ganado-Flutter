@@ -24,6 +24,7 @@ class MedicalRecordCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final appColors = context.appColors;
     final theme = Theme.of(context);
+    final recordActionColor = appColors.chipForeground;
 
     // Parsear URLs — soporta URL única (registro viejo) o JSON array (multi-foto)
     final imageUrls = record is MedicalRecordModel
@@ -55,7 +56,7 @@ class MedicalRecordCard extends StatelessWidget {
                   icon: Icon(
                     Icons.edit,
                     size: AppIconSizes.medium,
-                    color: appColors.chipForeground,
+                    color: recordActionColor,
                   ),
                   onPressed: onEdit,
                 ),
@@ -63,7 +64,7 @@ class MedicalRecordCard extends StatelessWidget {
                   icon: Icon(
                     Icons.delete,
                     size: AppIconSizes.medium,
-                    color: appColors.danger,
+                    color: recordActionColor,
                   ),
                   onPressed: onDelete,
                 ),
