@@ -23,6 +23,7 @@
 - [Requisitos previos](#-requisitos-previos)
 - [Configuración del entorno](#️-configuración-del-entorno)
 - [Instalación y ejecución](#-instalación-y-ejecución)
+- [Instalar el APK en Android](#-instalar-el-apk-en-android)
 - [Configuración de Supabase](#-configuración-de-supabase)
 - [Stack tecnológico](#️-stack-tecnológico)
 - [Estructura del proyecto](#-estructura-del-proyecto)
@@ -130,6 +131,56 @@ flutter run
 ```
 
 > **Nota:** La primera vez que corres la app puede tardar unos minutos en compilar. Las siguientes ejecuciones son más rápidas.
+
+---
+
+## 📲 Instalar el APK en Android
+
+Si no quieres compilar el proyecto, puedes instalar directamente el APK precompilado.
+
+### Dónde encontrar el APK
+
+El APK de la versión más reciente se encuentra en:
+
+```
+build/app/outputs/flutter-apk/AgroVet_AI_v1.apk
+```
+
+O puedes solicitarlo directamente al equipo de desarrollo.
+
+---
+
+### Pasos para instalarlo en tu celular
+
+**Paso 1 — Activa la instalación de apps externas**
+
+Ve a **Ajustes → Seguridad** (o **Ajustes → Privacidad** según tu celular) y activa:
+
+> ✅ **"Instalar aplicaciones de fuentes desconocidas"**
+
+En celulares Samsung puede aparecer como:
+> **Ajustes → Aplicaciones → Menú (⋮) → Acceso especial → Instalar apps desconocidas**
+
+**Paso 2 — Descarga o transfiere el APK**
+
+Opciones para pasarlo al celular:
+- 📤 Por **WhatsApp** — envíate el archivo a ti mismo o pídelo al equipo
+- ☁️ Por **Google Drive** — descárgalo desde el enlace compartido
+- 🔌 Por **cable USB** — copia el archivo a cualquier carpeta del celular
+
+**Paso 3 — Instala el APK**
+
+1. Abre el administrador de archivos de tu celular
+2. Navega hasta donde guardaste el archivo `AgroVet_AI_v1.apk`
+3. Tócalo
+4. Acepta los permisos que solicite
+5. Espera a que termine la instalación
+
+**Paso 4 — Abre la app**
+
+Busca el ícono de **AgroVet AI** en tu pantalla de inicio y ábrela. 🐄
+
+> ⚠️ **Importante:** La app requiere conexión a internet para el registro, inicio de sesión y diagnóstico por IA. Las funciones de consulta y edición funcionan sin conexión y se sincronizan automáticamente cuando vuelve la red.
 
 ---
 
@@ -466,6 +517,6 @@ También se persisten en Supabase para mantener coherencia entre sesiones y disp
 
 <div align="center">
 
-Hecho por el equipo Daniers Solarte y Juan Mora -  AgroVet AI · 2026
+Hecho por el equipo Daniers Solarte y Juan Mora - AgroVet AI · 2026
 
 </div>
